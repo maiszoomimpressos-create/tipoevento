@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { eventSlides } from '@/data/events';
+import AuthStatusMenu from '@/components/AuthStatusMenu';
 
 const EventDetails: React.FC = () => {
     const { id } = useParams();
@@ -46,9 +47,12 @@ const EventDetails: React.FC = () => {
                         <a href="/#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
                         <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
                     </nav>
-                    <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer">
-                        Voltar
-                    </Button>
+                    <div className="flex items-center space-x-3">
+                        <AuthStatusMenu />
+                        <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer">
+                            Voltar
+                        </Button>
+                    </div>
                 </div>
             </header>
             <section className="pt-20 pb-0">

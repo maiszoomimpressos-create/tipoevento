@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { eventSlides, categories } from '@/data/events';
+import AuthStatusMenu from '@/components/AuthStatusMenu';
 
 const Index: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -33,21 +34,10 @@ const Index: React.FC = () => {
                         <a href="#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
                     </nav>
                     <div className="flex items-center space-x-3">
-                        <Button
-                            onClick={() => navigate('/login')}
-                            className="bg-transparent text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer px-4"
-                        >
-                            Login
-                        </Button>
-                        <Button
-                            onClick={() => navigate('/register')}
-                            className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer px-4"
-                        >
-                            Cadastro
-                        </Button>
+                        <AuthStatusMenu />
                         <Button
                             onClick={() => navigate('/manager/login')}
-                            className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 cursor-pointer px-4 flex items-center"
+                            className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 cursor-pointer px-4 flex items-center hidden md:flex"
                         >
                             <i className="fas fa-crown mr-2"></i>
                             Gestor PRO
