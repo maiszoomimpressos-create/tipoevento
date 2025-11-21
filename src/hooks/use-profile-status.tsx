@@ -14,15 +14,6 @@ const ESSENTIAL_FIELDS = [
     'birth_date',
 ];
 
-// Campos de endereço que, se preenchidos, exigem atenção
-const ADDRESS_FIELDS_TO_CHECK = [
-    'rua',
-    'numero',
-    'bairro',
-    'cidade',
-    'estado',
-];
-
 // Função auxiliar para verificar se um valor é considerado vazio
 const isValueEmpty = (value: any): boolean => {
     if (value === null || value === undefined) return true;
@@ -64,25 +55,13 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
         // 2. Verificar a consistência do endereço
         const cep = profile.cep ? String(profile.cep).replace(/\D/g, '') : null;
         
-        // Verifica se algum campo de endereço (Rua, Número, Bairro, Cidade, Estado) foi preenchido
-        const hasAnyAddressFieldFilled = ADDRESS_FIELDS_TO_CHECK.some(field => 
-            !isValueEmpty(profile[field as keyof ProfileData])
-        );
-
-        if (hasAnyAddressFieldFilled) {
-            // Se o usuário preencheu manualmente o endereço, mas o CEP está faltando ou inválido
-            if (!cep || cep.length !== 8) {
+        // Se o CEP foi preenchido, a Rua e o Número se tornam obrigatórios para um endereço completo.
+        if (cep && cep.length === 8) {
+            if (isValueEmpty(profile.rua) || isValueEmpty(profile.numero)) {
                 missingAddressDetail = true;
-                console.log(`[ProfileStatus] Missing CEP or invalid when address fields are filled.`);
-            } else {
-                // Se o CEP está preenchido, mas Rua ou Número estão faltando
-                if (isValueEmpty(profile.rua) || isValueEmpty(profile.numero)) {
-                    missingAddressDetail = true;
-                    console.log(`[ProfileStatus] Missing Rua or Numero when CEP is present.`);
-                }
+                console.log(`[ProfileStatus] CEP is present, but Rua or Numero are missing.`);
             }
         }
-
 
         const profileIsComplete = !missingEssential && !missingAddressDetail;
         
