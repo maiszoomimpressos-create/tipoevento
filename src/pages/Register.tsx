@@ -70,13 +70,10 @@ const Register: React.FC = () => {
         } else {
             const today = new Date();
             const birthDate = new Date(formData.birthDate);
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                age--;
-            }
-            if (age < 18) {
-                errors.birthDate = 'Você deve ter pelo menos 18 anos';
+            
+            // Validação para garantir que a data não é futura
+            if (birthDate > today) {
+                errors.birthDate = 'A data de nascimento não pode ser futura';
             }
         }
         if (!formData.password) {

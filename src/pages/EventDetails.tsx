@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { eventSlides } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
+import { Input } from '@/components/ui/input';
 
 const EventDetails: React.FC = () => {
     const { id } = useParams();
@@ -38,16 +39,26 @@ const EventDetails: React.FC = () => {
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="text-2xl font-serif text-yellow-500 font-bold">
-                        Mazoy
+                    <div className="flex items-center space-x-8">
+                        <div className="text-2xl font-serif text-yellow-500 font-bold">
+                            Mazoy
+                        </div>
+                        <nav className="hidden md:flex items-center space-x-8">
+                            <button onClick={() => navigate('/')} className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</button>
+                            <a href="/#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
+                            <a href="/#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
+                            <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
+                        </nav>
                     </div>
-                    <nav className="hidden md:flex items-center space-x-8">
-                        <button onClick={() => navigate('/')} className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</button>
-                        <a href="/#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
-                        <a href="/#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
-                        <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
-                    </nav>
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-4">
+                        <div className="relative hidden lg:block">
+                            <Input 
+                                type="search" 
+                                placeholder="Buscar eventos..." 
+                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-64 pl-4 pr-10 py-2 rounded-xl"
+                            />
+                            <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
+                        </div>
                         <AuthStatusMenu />
                         <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer">
                             Voltar
