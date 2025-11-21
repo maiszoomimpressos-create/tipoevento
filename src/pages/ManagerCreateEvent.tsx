@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,40 +6,132 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { categories } from '@/data/events';
-import { showSuccess } from '@/utils/toast';
+import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
+import { supabase } from '@/integrations/supabase/client';
+
+// Define the structure for the form data
+interface EventFormData {
+    title: string;
+    description: string;
+    date: string;
+    time: string;
+    location: string; // General location name
+    address: string; // Detailed address (new mandatory field)
+    image_url: string; // Image URL (new mandatory field)
+    min_age: number | string; // Minimum age (new mandatory field)
+    category: string;
+    price: string;
+}
 
 const ManagerCreateEvent: React.FC = () => {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<EventFormData>({
         title: '',
         description: '',
         date: '',
         time: '',
         location: '',
+        address: '', // New
+        image_url: '', // New
+        min_age: 0, // New, default to 0 (Livre)
         category: '',
         price: '',
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Fetch current user ID
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) {
+                setUserId(user.id);
+            } else {
+                // Redirect to manager login if no user is found (basic protection)
+                showError("Sessão expirada ou não autenticada. Faça login novamente.");
+                navigate('/manager/login');
+            }
+        });
+    }, [navigate]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
+        const { id, value, type } = e.target;
+        setFormData(prev => ({ 
+            ...prev, 
+            [id]: type === 'number' ? (value === '' ? '' : Number(value)) : value 
+        }));
     };
 
     const handleSelectChange = (value: string) => {
         setFormData(prev => ({ ...prev, category: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
+    const validateForm = () => {
+        const errors: string[] = [];
         
-        // Simulação de envio de dados
-        setTimeout(() => {
+        if (!formData.title) errors.push("Título é obrigatório.");
+        if (!formData.description) errors.push("Descrição é obrigatória.");
+        if (!formData.date) errors.push("Data é obrigatória.");
+        if (!formData.time) errors.push("Horário é obrigatório.");
+        if (!formData.location) errors.push("Localização é obrigatória.");
+        if (!formData.address) errors.push("Endereço detalhado é obrigatório."); // New validation
+        if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória."); // New validation
+        
+        const minAge = Number(formData.min_age);
+        if (formData.min_age === '' || formData.min_age === null || isNaN(minAge) || minAge < 0) {
+            errors.push("Idade Mínima é obrigatória e deve ser 0 ou maior."); // New validation
+        }
+
+        if (!formData.category) errors.push("Categoria é obrigatória.");
+        if (!formData.price || Number(formData.price) <= 0) errors.push("Preço Base é obrigatório e deve ser maior que zero.");
+
+        if (errors.length > 0) {
+            showError(`Por favor, preencha todos os campos obrigatórios.`);
+            return false;
+        }
+        return true;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateForm() || !userId) return;
+
+        const toastId = showLoading("Publicando evento...");
+        setIsLoading(true);
+
+        try {
+            const { error } = await supabase
+                .from('events')
+                .insert([
+                    {
+                        user_id: userId,
+                        title: formData.title,
+                        description: formData.description,
+                        date: formData.date,
+                        time: formData.time,
+                        location: formData.location,
+                        address: formData.address,
+                        image_url: formData.image_url,
+                        min_age: Number(formData.min_age),
+                        category: formData.category,
+                        price: Number(formData.price),
+                    },
+                ]);
+
+            if (error) {
+                throw error;
+            }
+
+            dismissToast(toastId);
             showSuccess(`Evento "${formData.title}" criado com sucesso!`);
-            setIsLoading(false);
             navigate('/manager/dashboard');
-        }, 1500);
+
+        } catch (error: any) {
+            dismissToast(toastId);
+            console.error("Erro ao criar evento:", error);
+            showError(`Falha ao publicar evento: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -62,6 +154,7 @@ const ManagerCreateEvent: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Linha 1: Título e Localização Geral */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label htmlFor="title" className="block text-sm font-medium text-white mb-2">Título do Evento *</label>
@@ -75,7 +168,7 @@ const ManagerCreateEvent: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="location" className="block text-sm font-medium text-white mb-2">Localização *</label>
+                                <label htmlFor="location" className="block text-sm font-medium text-white mb-2">Localização (Nome do Local) *</label>
                                 <Input 
                                     id="location" 
                                     value={formData.location} 
@@ -87,6 +180,20 @@ const ManagerCreateEvent: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Linha 2: Endereço Detalhado */}
+                        <div>
+                            <label htmlFor="address" className="block text-sm font-medium text-white mb-2">Endereço Detalhado (Rua, Número, Cidade) *</label>
+                            <Input 
+                                id="address" 
+                                value={formData.address} 
+                                onChange={handleChange} 
+                                placeholder="Ex: Praça Ramos de Azevedo, s/n - República, São Paulo - SP"
+                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                required
+                            />
+                        </div>
+
+                        {/* Linha 3: Descrição */}
                         <div>
                             <label htmlFor="description" className="block text-sm font-medium text-white mb-2">Descrição Detalhada *</label>
                             <Textarea 
@@ -98,7 +205,22 @@ const ManagerCreateEvent: React.FC = () => {
                                 required
                             />
                         </div>
+                        
+                        {/* Linha 4: Imagem/Banner */}
+                        <div>
+                            <label htmlFor="image_url" className="block text-sm font-medium text-white mb-2">URL da Imagem/Banner *</label>
+                            <Input 
+                                id="image_url" 
+                                value={formData.image_url} 
+                                onChange={handleChange} 
+                                placeholder="Ex: https://readdy.ai/api/search-image?query=..."
+                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                required
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Use uma URL de imagem pública para o banner do evento.</p>
+                        </div>
 
+                        {/* Linha 5: Data, Horário, Categoria */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data *</label>
@@ -138,23 +260,42 @@ const ManagerCreateEvent: React.FC = () => {
                                 </Select>
                             </div>
                         </div>
-
-                        <div>
-                            <label htmlFor="price" className="block text-sm font-medium text-white mb-2">Preço Base (R$) *</label>
-                            <Input 
-                                id="price" 
-                                type="number"
-                                value={formData.price} 
-                                onChange={handleChange} 
-                                placeholder="0.00"
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
-                                required
-                            />
+                        
+                        {/* Linha 6: Preço Base e Idade Mínima */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label htmlFor="price" className="block text-sm font-medium text-white mb-2">Preço Base (R$) *</label>
+                                <Input 
+                                    id="price" 
+                                    type="number"
+                                    value={formData.price} 
+                                    onChange={handleChange} 
+                                    placeholder="0.00"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    min="0"
+                                    step="0.01"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="min_age" className="block text-sm font-medium text-white mb-2">Idade Mínima (Anos) *</label>
+                                <Input 
+                                    id="min_age" 
+                                    type="number"
+                                    value={formData.min_age} 
+                                    onChange={handleChange} 
+                                    placeholder="0 (Livre)"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    min="0"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Defina 0 para classificação livre.</p>
+                            </div>
                         </div>
 
                         <Button
                             type="submit"
-                            disabled={isLoading}
+                            disabled={isLoading || !userId}
                             className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                         >
                             {isLoading ? (
