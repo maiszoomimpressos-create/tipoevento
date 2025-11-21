@@ -87,9 +87,10 @@ const Register: React.FC = () => {
                 errors.birthDate = 'A data de nascimento não pode ser futura';
             }
         }
-        if (!formData.gender.trim()) {
-            errors.gender = 'Gênero é obrigatório';
-        }
+        // Gênero não é mais obrigatório
+        // if (!formData.gender.trim()) {
+        //     errors.gender = 'Gênero é obrigatório';
+        // }
         if (!formData.password) {
             errors.password = 'Senha é obrigatória';
         } else if (formData.password.length < 6) {
@@ -137,6 +138,7 @@ const Register: React.FC = () => {
         setIsLoading(true);
 
         const cleanCPF = formData.cpf.replace(/\D/g, '');
+        const genderToSave = formData.gender || null; // Salva como null se vazio
         
         try {
             const { data, error } = await supabase.auth.signUp({
@@ -147,7 +149,7 @@ const Register: React.FC = () => {
                         name: formData.name,
                         cpf: cleanCPF,
                         birth_date: formData.birthDate,
-                        gender: formData.gender, // Enviando Gênero
+                        gender: genderToSave, // Enviando Gênero (pode ser null)
                     },
                 },
             });
@@ -312,9 +314,9 @@ const Register: React.FC = () => {
                                 </div>
                                 <div>
                                     <label htmlFor="gender" className="block text-sm font-medium text-white mb-2">
-                                        Gênero *
+                                        Gênero (Opcional)
                                     </label>
-                                    <Select onValueChange={(value) => handleSelectChange('gender', value)} required>
+                                    <Select onValueChange={(value) => handleSelectChange('gender', value)} required={false}>
                                         <SelectTrigger 
                                             className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white focus:ring-2 transition-all duration-300 ${formErrors.gender
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
@@ -324,6 +326,9 @@ const Register: React.FC = () => {
                                             <SelectValue placeholder="Selecione seu gênero" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                            <SelectItem value="" className="text-gray-500">
+                                                Não especificado
+                                            </SelectItem>
                                             {GENDER_OPTIONS.map(option => (
                                                 <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
                                                     {option}

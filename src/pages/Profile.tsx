@@ -31,11 +31,11 @@ const validateCPF = (cpf: string) => {
 const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    gender: z.string().min(1, { message: "Gênero é obrigatório." }),
+    gender: z.string().optional().nullable(), // Tornando Gênero opcional e permitindo nulo
     
-    // Adicionando CPF e RG ao esquema para validação e submissão
+    // CPF é obrigatório, mas RG é opcional
     cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
-    rg: z.string().optional(), // RG é opcional, mas pode ser validado se preenchido
+    rg: z.string().optional().nullable(), 
 });
 
 interface ProfileData {
@@ -138,16 +138,20 @@ const Profile: React.FC = () => {
 
         // Remove formatação antes de salvar no banco de dados
         const cleanCPF = values.cpf.replace(/\D/g, '');
+        // Se RG for vazio ou nulo após a formatação, salva como null
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
+        
+        // Se Gênero for vazio, salva como null
+        const genderToSave = values.gender || null;
 
         const { error } = await supabase
             .from('profiles')
             .update({ 
                 first_name: values.first_name,
                 birth_date: values.birth_date,
-                gender: values.gender,
-                cpf: cleanCPF, // Salvando CPF limpo
-                rg: cleanRG, // Salvando RG limpo
+                gender: genderToSave, // Salvando Gênero (pode ser null)
+                cpf: cleanCPF, 
+                rg: cleanRG, // Salvando RG (pode ser null)
             })
             .eq('id', session.user.id);
 
@@ -155,12 +159,11 @@ const Profile: React.FC = () => {
             showError("Erro ao atualizar o perfil.");
         } else {
             showSuccess("Perfil atualizado com sucesso!");
-            // Atualiza o estado local com os dados limpos (ou formatados, dependendo da necessidade)
             setProfile(prev => prev ? { 
                 ...prev, 
                 first_name: values.first_name, 
                 birth_date: values.birth_date, 
-                gender: values.gender,
+                gender: genderToSave,
                 cpf: cleanCPF,
                 rg: cleanRG,
             } : null);
@@ -363,8 +366,12 @@ const Profile: React.FC = () => {
                                                     name="gender"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Gênero</FormLabel>
-                                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isEditing}>
+                                                            <FormLabel className="text-white">Gênero (Opcional)</FormLabel>
+                                                            <Select 
+                                                                onValueChange={(value) => field.onChange(value === "" ? null : value)} 
+                                                                defaultValue={field.value || ""} 
+                                                                disabled={!isEditing}
+                                                            >
                                                                 <FormControl>
                                                                     <SelectTrigger 
                                                                         className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed"
@@ -373,6 +380,9 @@ const Profile: React.FC = () => {
                                                                     </SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                                                    <SelectItem value="" className="text-gray-500">
+                                                                        Não especificado
+                                                                    </SelectItem>
                                                                     {GENDER_OPTIONS.map(option => (
                                                                         <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
                                                                             {option}
