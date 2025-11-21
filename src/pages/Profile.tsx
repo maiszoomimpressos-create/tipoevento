@@ -189,9 +189,17 @@ const Profile: React.FC = () => {
                                 <CardHeader>
                                     <CardTitle className="text-white text-2xl">Meus Ingressos</CardTitle>
                                 </CardHeader>
-                                <CardContent className="text-center text-gray-400">
+                                <CardContent className="text-center p-6">
                                     <i className="fas fa-ticket-alt text-4xl text-yellow-500 mb-4"></i>
-                                    <p>Você ainda não possui ingressos para eventos futuros.</p>
+                                    <p className="text-gray-400 mb-4">
+                                        Visualize e gerencie todos os seus ingressos comprados.
+                                    </p>
+                                    <Button 
+                                        onClick={() => navigate('/tickets')}
+                                        className="w-full bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer"
+                                    >
+                                        Ver Meus Ingressos
+                                    </Button>
                                 </CardContent>
                             </Card>
                         </div>
