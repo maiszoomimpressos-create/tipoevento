@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
-import AvatarUpload from '@/components/AvatarUpload'; // Importando o novo componente
+import AvatarUpload from '@/components/AvatarUpload';
 
 const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
@@ -20,6 +20,7 @@ const profileSchema = z.object({
 interface ProfileData {
     first_name: string;
     avatar_url: string | null;
+    cpf: string | null;
 }
 
 const Profile: React.FC = () => {
@@ -36,6 +37,16 @@ const Profile: React.FC = () => {
         },
     });
 
+    const formatCPF = (value: string) => {
+        if (!value) return '';
+        const cleanValue = value.replace(/\D/g, '');
+        return cleanValue
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+            .replace(/(-\d{2})\d+?$/, '$1');
+    };
+
     useEffect(() => {
         const getSessionAndProfile = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -47,7 +58,7 @@ const Profile: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('first_name, avatar_url')
+                .select('first_name, avatar_url, cpf')
                 .eq('id', session.user.id)
                 .single();
 
@@ -82,7 +93,6 @@ const Profile: React.FC = () => {
 
     const handleAvatarUpload = (newUrl: string) => {
         setProfile(prev => prev ? { ...prev, avatar_url: newUrl } : null);
-        // O AuthStatusMenu (no header) deve reagir a essa mudança automaticamente via listener do Supabase ou re-renderização.
     };
 
     if (loading) {
@@ -103,6 +113,8 @@ const Profile: React.FC = () => {
                                     <Skeleton className="h-4 w-64" />
                                 </div>
                             </div>
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
                             <Skeleton className="h-10 w-full" />
                             <Skeleton className="h-12 w-32" />
                         </CardContent>
@@ -161,10 +173,6 @@ const Profile: React.FC = () => {
                                                 onUpload={handleAvatarUpload}
                                                 initials={initials}
                                             />
-                                            <div className="mt-4">
-                                                <h2 className="text-2xl font-bold text-white">{profile?.first_name}</h2>
-                                                <p className="text-gray-400">{session?.user?.email}</p>
-                                            </div>
                                         </div>
                                     )}
                                     <Form {...form}>
@@ -182,6 +190,26 @@ const Profile: React.FC = () => {
                                                     </FormItem>
                                                 )}
                                             />
+                                            <FormItem>
+                                                <FormLabel className="text-white">E-mail</FormLabel>
+                                                <FormControl>
+                                                    <Input 
+                                                        value={session?.user?.email || ''} 
+                                                        disabled 
+                                                        className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                            <FormItem>
+                                                <FormLabel className="text-white">CPF</FormLabel>
+                                                <FormControl>
+                                                    <Input 
+                                                        value={profile?.cpf ? formatCPF(profile.cpf) : ''} 
+                                                        disabled 
+                                                        className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
                                             <Button type="submit" disabled={formLoading} className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer">
                                                 {formLoading ? 'Salvando...' : 'Salvar Alterações'}
                                             </Button>
