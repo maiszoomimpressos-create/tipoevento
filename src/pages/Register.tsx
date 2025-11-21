@@ -17,6 +17,8 @@ const Register: React.FC = () => {
     const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const validateCPF = (cpf: string) => {
         const cleanCPF = cpf.replace(/\D/g, '');
@@ -71,7 +73,6 @@ const Register: React.FC = () => {
             const today = new Date();
             const birthDate = new Date(formData.birthDate);
             
-            // Validação para garantir que a data não é futura
             if (birthDate > today) {
                 errors.birthDate = 'A data de nascimento não pode ser futura';
             }
@@ -84,7 +85,7 @@ const Register: React.FC = () => {
         if (!formData.confirmPassword) {
             errors.confirmPassword = 'Confirmação de senha é obrigatória';
         } else if (formData.password !== formData.confirmPassword) {
-            errors.confirmPassword = 'Senhas não conferem';
+            errors.confirmPassword = 'As senhas não conferem';
         }
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
@@ -98,6 +99,16 @@ const Register: React.FC = () => {
         if (formErrors[field]) {
             setFormErrors(prev => ({ ...prev, [field]: '' }));
         }
+    };
+
+    const translateSupabaseError = (message: string): string => {
+        if (message.includes('User already registered')) {
+            return 'Já existe uma conta com este e-mail.';
+        }
+        if (message.includes('Password should be at least 6 characters')) {
+            return 'A senha deve ter no mínimo 6 caracteres.';
+        }
+        return 'Ocorreu um erro ao processar seu cadastro. Tente novamente.';
     };
 
     const handleSubmitRegistration = async (e: React.FormEvent) => {
@@ -121,27 +132,16 @@ const Register: React.FC = () => {
             });
 
             if (error) {
-                showError(`Erro ao cadastrar: ${error.message}`);
+                showError(translateSupabaseError(error.message));
                 setIsLoading(false);
                 return;
             }
 
-            if (data.user) {
+            if (data.user || data.session) {
                 showSuccess("Cadastro realizado! Verifique seu e-mail para ativar sua conta.");
                 setShowSuccessMessage(true);
                 setTimeout(() => {
                     navigate('/login');
-                    setShowSuccessMessage(false);
-                    setFormData({ name: '', email: '', cpf: '', birthDate: '', password: '', confirmPassword: '' });
-                }, 3000);
-            } else {
-                // Caso o Supabase retorne sucesso, mas sem usuário (e-mail de confirmação enviado)
-                showSuccess("Cadastro realizado! Verifique seu e-mail para ativar sua conta.");
-                setShowSuccessMessage(true);
-                setTimeout(() => {
-                    navigate('/login');
-                    setShowSuccessMessage(false);
-                    setFormData({ name: '', email: '', cpf: '', birthDate: '', password: '', confirmPassword: '' });
                 }, 3000);
             }
 
@@ -293,7 +293,7 @@ const Register: React.FC = () => {
                                 </label>
                                 <div className="relative">
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         id="password"
                                         value={formData.password}
                                         onChange={(e) => handleInputChange('password', e.target.value)}
@@ -304,7 +304,9 @@ const Register: React.FC = () => {
                                         placeholder="Mínimo 6 caracteres"
                                         maxLength={50}
                                     />
-                                    <i className="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 hover:text-yellow-500 transition-colors">
+                                        <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
                                 </div>
                                 {formErrors.password && (
                                     <p className="text-red-400 text-sm mt-1 flex items-center">
@@ -319,7 +321,7 @@ const Register: React.FC = () => {
                                 </label>
                                 <div className="relative">
                                     <input
-                                        type="password"
+                                        type={showConfirmPassword ? 'text' : 'password'}
                                         id="confirmPassword"
                                         value={formData.confirmPassword}
                                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
@@ -330,7 +332,9 @@ const Register: React.FC = () => {
                                         placeholder="Repita sua senha"
                                         maxLength={50}
                                     />
-                                    <i className="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
+                                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 hover:text-yellow-500 transition-colors">
+                                        <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                    </button>
                                 </div>
                                 {formErrors.confirmPassword && (
                                     <p className="text-red-400 text-sm mt-1 flex items-center">
