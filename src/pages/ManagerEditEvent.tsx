@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ImageOff } from 'lucide-react';
 
 // Define the structure for the form data
 interface EventFormData {
@@ -202,7 +202,7 @@ const ManagerEditEvent: React.FC = () => {
 
             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
                 <CardHeader>
-                    <CardTitle className="text-white text-xl sm:text-2xl font-semibold">ID do Evento: {id}</CardTitle>
+                    <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Detalhes do Evento</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -258,18 +258,45 @@ const ManagerEditEvent: React.FC = () => {
                             />
                         </div>
                         
-                        {/* Linha 4: Imagem/Banner */}
-                        <div>
-                            <label htmlFor="image_url" className="block text-sm font-medium text-white mb-2">URL da Imagem/Banner *</label>
-                            <Input 
-                                id="image_url" 
-                                value={formData.image_url} 
-                                onChange={handleChange} 
-                                placeholder="Ex: https://readdy.ai/api/search-image?query=..."
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
-                                required
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Use uma URL de imagem pública para o banner do evento.</p>
+                        {/* Linha 4: Imagem/Banner Preview */}
+                        <div className="space-y-4 pt-4 border-t border-yellow-500/20">
+                            <h3 className="text-xl font-semibold text-white">Banner do Evento</h3>
+                            
+                            {/* Preview da Imagem */}
+                            <div className="w-full h-48 bg-black/60 border border-yellow-500/30 rounded-xl overflow-hidden flex items-center justify-center">
+                                {formData.image_url ? (
+                                    <img 
+                                        src={formData.image_url} 
+                                        alt="Preview do Banner" 
+                                        className="w-full h-full object-cover object-center"
+                                        onError={(e) => {
+                                            // Fallback se a URL da imagem estiver quebrada
+                                            e.currentTarget.onerror = null; 
+                                            e.currentTarget.src = 'placeholder.svg'; // Usar um placeholder local
+                                            e.currentTarget.className = "w-16 h-16 text-gray-500";
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="text-center text-gray-500">
+                                        <ImageOff className="h-8 w-8 mx-auto mb-2" />
+                                        Nenhuma URL de imagem fornecida.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Campo URL da Imagem */}
+                            <div>
+                                <label htmlFor="image_url" className="block text-sm font-medium text-white mb-2">URL da Imagem/Banner *</label>
+                                <Input 
+                                    id="image_url" 
+                                    value={formData.image_url} 
+                                    onChange={handleChange} 
+                                    placeholder="Ex: https://readdy.ai/api/search-image?query=..."
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Cole a URL da imagem do banner aqui para pré-visualizar acima.</p>
+                            </div>
                         </div>
 
                         {/* Linha 5: Data, Horário, Categoria */}
@@ -345,23 +372,34 @@ const ManagerEditEvent: React.FC = () => {
                             </div>
                         </div>
 
-                        <Button
-                            type="submit"
-                            disabled={isLoading || !userId}
-                            className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
-                        >
-                            {isLoading ? (
-                                <div className="flex items-center justify-center">
-                                    <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2"></div>
-                                    Salvando Alterações...
-                                </div>
-                            ) : (
-                                <>
-                                    <i className="fas fa-save mr-2"></i>
-                                    Salvar Alterações
-                                </>
-                            )}
-                        </Button>
+                        <div className="flex items-center space-x-4 pt-4">
+                            <Button
+                                type="submit"
+                                disabled={isLoading || !userId}
+                                className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 flex-1"
+                            >
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center">
+                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                        Salvando Alterações...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-save mr-2"></i>
+                                        Salvar Alterações
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => navigate('/manager/events')}
+                                variant="outline"
+                                className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer flex-1"
+                            >
+                                <i className="fas fa-arrow-left mr-2"></i>
+                                Voltar para a Lista
+                            </Button>
+                        </div>
                     </form>
                 </CardContent>
             </Card>
