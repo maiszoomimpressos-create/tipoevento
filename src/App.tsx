@@ -20,7 +20,8 @@ import ManagerCompanyProfile from "./pages/ManagerCompanyProfile";
 import ManagerNotifications from "./pages/ManagerNotifications";
 import ManagerAdvancedSettings from "./pages/ManagerAdvancedSettings"; 
 import ManagerPaymentSettings from "./pages/ManagerPaymentSettings"; 
-import ManagerCreateWristband from "./pages/ManagerCreateWristband"; // Importando a nova página
+import ManagerCreateWristband from "./pages/ManagerCreateWristband"; 
+import ManagerWristbandsList from "./pages/ManagerWristbandsList"; // Importando a nova página
 import ManagerLayout from "./components/layouts/ManagerLayout";
 import ForgotPassword from "./pages/ForgotPassword";
 
@@ -47,7 +48,8 @@ const App = () => (
             <Route path="/manager/events" element={<ManagerEventsList />} />
             <Route path="/manager/events/create" element={<ManagerCreateEvent />} />
             <Route path="/manager/events/edit/:id" element={<ManagerEditEvent />} />
-            <Route path="/manager/wristbands/create" element={<ManagerCreateWristband />} /> {/* Nova Rota */}
+            <Route path="/manager/wristbands" element={<ManagerWristbandsList />} /> {/* Rota da Lista */}
+            <Route path="/manager/wristbands/create" element={<ManagerCreateWristband />} /> 
             <Route path="/manager/settings" element={<ManagerSettings />} />
             <Route path="/manager/settings/company-profile" element={<ManagerCompanyProfile />} />
             <Route path="/manager/settings/notifications" element={<ManagerNotifications />} />

@@ -1,0 +1,177 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, Search, Loader2, QrCode, Tag, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useManagerWristbands, WristbandData } from '@/hooks/use-manager-wristbands';
+
+const ManagerWristbandsList: React.FC = () => {
+    const navigate = useNavigate();
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUserId(user?.id);
+        });
+    }, []);
+
+    const { wristbands, isLoading, isError, invalidateWristbands } = useManagerWristbands(userId);
+
+    const filteredWristbands = wristbands.filter(wristband =>
+        wristband.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        wristband.events?.title?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getStatusClasses = (status: WristbandData['status']) => {
+        switch (status) {
+            case 'active':
+                return 'bg-green-500/20 text-green-400';
+            case 'used':
+                return 'bg-gray-500/20 text-gray-400';
+            case 'lost':
+                return 'bg-red-500/20 text-red-400';
+            case 'cancelled':
+                return 'bg-red-500/20 text-red-400';
+            default:
+                return 'bg-yellow-500/20 text-yellow-400';
+        }
+    };
+
+    const getStatusText = (status: WristbandData['status']) => {
+        switch (status) {
+            case 'active': return 'Ativa';
+            case 'used': return 'Utilizada';
+            case 'lost': return 'Perdida';
+            case 'cancelled': return 'Cancelada';
+            default: return 'Desconhecido';
+        }
+    };
+
+    // Estado de carregamento inicial (antes de saber se o usuário está logado)
+    if (userId === undefined) {
+        return (
+            <div className="max-w-7xl mx-auto text-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
+                <p className="text-gray-400">Verificando autenticação...</p>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="text-red-400 text-center py-10 flex flex-col items-center">
+                <AlertTriangle className="h-10 w-10 mb-4" />
+                Erro ao carregar pulseiras. Verifique se o Perfil da Empresa está cadastrado corretamente.
+            </div>
+        );
+    }
+
+    const handleRowClick = (wristbandId: string) => {
+        // Futuramente, navegar para a página de edição/detalhes da pulseira
+        alert(`Visualizando detalhes da pulseira ID: ${wristbandId}`);
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+                <h1 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-0 flex items-center">
+                    <QrCode className="h-7 w-7 mr-3" />
+                    Gestão de Pulseiras ({wristbands.length})
+                </h1>
+                <Button 
+                    onClick={() => navigate('/manager/wristbands/create')}
+                    className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-base font-semibold transition-all duration-300 cursor-pointer"
+                >
+                    <Plus className="mr-2 h-5 w-5" />
+                    Cadastrar Nova Pulseira
+                </Button>
+            </div>
+
+            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
+                <div className="relative mb-6">
+                    <Input 
+                        type="search" 
+                        placeholder="Pesquisar por código ou evento..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-full pl-10 py-3 rounded-xl"
+                    />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-yellow-500/60" />
+                </div>
+
+                {isLoading ? (
+                    <div className="text-center py-10">
+                        <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
+                        <p className="text-gray-400">Carregando pulseiras...</p>
+                    </div>
+                ) : filteredWristbands.length === 0 ? (
+                    <div className="text-center py-10">
+                        <Tag className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                        <p className="text-gray-400 text-lg">Nenhuma pulseira encontrada.</p>
+                        <p className="text-gray-500 text-sm mt-2">Cadastre a primeira pulseira para começar a gerenciar.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <Table className="w-full min-w-[700px]">
+                            <TableHeader>
+                                <TableRow className="border-b border-yellow-500/20 text-sm hover:bg-black/40">
+                                    <TableHead className="text-left text-gray-400 font-semibold py-3">Código</TableHead>
+                                    <TableHead className="text-left text-gray-400 font-semibold py-3">Evento</TableHead>
+                                    <TableHead className="text-center text-gray-400 font-semibold py-3">Tipo de Acesso</TableHead>
+                                    <TableHead className="text-center text-gray-400 font-semibold py-3">Status</TableHead>
+                                    <TableHead className="text-right text-gray-400 font-semibold py-3">Data Criação</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredWristbands.map((wristband) => {
+                                    const createdAtDate = new Date(wristband.created_at).toLocaleDateString('pt-BR');
+                                    return (
+                                        <TableRow 
+                                            key={wristband.id} 
+                                            className="border-b border-yellow-500/10 hover:bg-black/40 transition-colors text-sm cursor-pointer"
+                                            onClick={() => handleRowClick(wristband.id)}
+                                        >
+                                            <TableCell className="py-4">
+                                                <div className="text-white font-medium">{wristband.code}</div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="text-gray-300 truncate max-w-[200px]">{wristband.events?.title || 'Evento Removido'}</div>
+                                            </TableCell>
+                                            <TableCell className="text-center py-4">
+                                                <span className="text-yellow-500 font-medium">{wristband.access_type}</span>
+                                            </TableCell>
+                                            <TableCell className="text-center py-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusClasses(wristband.status)}`}>
+                                                    {getStatusText(wristband.status)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-right py-4">
+                                                <span className="text-gray-400 text-xs">{createdAtDate}</span>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </Card>
+            
+            <div className="mt-10 text-center">
+                <Button 
+                    onClick={() => navigate('/manager/wristbands/create')}
+                    className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 px-8 text-lg font-semibold transition-all duration-300 cursor-pointer shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50"
+                >
+                    <Plus className="mr-2 h-6 w-6" />
+                    Cadastrar Nova Pulseira
+                </Button>
+            </div>
+        </div>
+    );
+};
+
+export default ManagerWristbandsList;
