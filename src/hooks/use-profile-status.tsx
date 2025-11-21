@@ -21,6 +21,13 @@ const ADDRESS_FIELDS = [
     'numero',
 ];
 
+// Função auxiliar para verificar se um valor é considerado vazio
+const isValueEmpty = (value: any): boolean => {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') return value.trim() === '';
+    return false;
+};
+
 export function useProfileStatus(userId: string | undefined): ProfileStatus {
     const [status, setStatus] = useState<ProfileStatus>({
         isComplete: true,
@@ -57,7 +64,7 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
 
             // 1. Verificar campos essenciais
             for (const field of ESSENTIAL_FIELDS) {
-                if (!data[field] || String(data[field]).trim() === '') {
+                if (isValueEmpty(data[field])) {
                     missingEssential = true;
                     break;
                 }
@@ -65,9 +72,10 @@ export function useProfileStatus(userId: string | undefined): ProfileStatus {
 
             // 2. Verificar campos de endereço se o CEP estiver preenchido
             const cep = data.cep ? String(data.cep).replace(/\D/g, '') : null;
+            
             if (cep && cep.length === 8) {
                 // Se o CEP está preenchido, verificamos se Rua e Número estão preenchidos
-                if (!data.rua || String(data.rua).trim() === '' || !data.numero || String(data.numero).trim() === '') {
+                if (isValueEmpty(data.rua) || isValueEmpty(data.numero)) {
                     missingAddressDetail = true;
                 }
             }
