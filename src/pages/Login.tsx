@@ -8,6 +8,7 @@ const Login: React.FC = () => {
     const navigate = useNavigate();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -116,7 +117,7 @@ const Login: React.FC = () => {
                             </label>
                             <div className="relative">
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     id="password"
                                     value={loginData.password}
                                     onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
@@ -124,7 +125,9 @@ const Login: React.FC = () => {
                                     placeholder="Digite sua senha"
                                     required
                                 />
-                                <i className="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 hover:text-yellow-500 transition-colors">
+                                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
                             </div>
                         </div>
                         <div className="flex items-center justify-between">
