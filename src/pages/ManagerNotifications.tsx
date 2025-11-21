@@ -1,26 +1,124 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail, System, ArrowLeft } from 'lucide-react';
+import { Bell, Mail, System, ArrowLeft, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
+
+interface SettingsState {
+    newSaleEmail: boolean;
+    newSaleSystem: boolean;
+    eventUpdateEmail: boolean;
+    eventUpdateSystem: boolean;
+    lowStockEmail: boolean;
+    lowStockSystem: boolean;
+}
+
+const DEFAULT_SETTINGS: SettingsState = {
+    newSaleEmail: true,
+    newSaleSystem: true,
+    eventUpdateEmail: false,
+    eventUpdateSystem: true,
+    lowStockEmail: true,
+    lowStockSystem: true,
+};
 
 const ManagerNotifications: React.FC = () => {
     const navigate = useNavigate();
-    const [settings, setSettings] = useState({
-        newSaleEmail: true,
-        newSaleSystem: true,
-        eventUpdateEmail: false,
-        eventUpdateSystem: true,
-        lowStockEmail: true,
-        lowStockSystem: true,
-    });
+    const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
 
-    const handleSwitchChange = (key: keyof typeof settings, checked: boolean) => {
+    // 1. Fetch User ID and Settings
+    useEffect(() => {
+        const fetchSettings = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                showError("Sessão expirada. Faça login novamente.");
+                navigate('/manager/login');
+                return;
+            }
+            setUserId(user.id);
+
+            const { data, error } = await supabase
+                .from('manager_settings')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+                console.error("Error fetching settings:", error);
+                showError("Erro ao carregar configurações de notificação.");
+            }
+
+            if (data) {
+                setSettings({
+                    newSaleEmail: data.new_sale_email ?? DEFAULT_SETTINGS.newSaleEmail,
+                    newSaleSystem: data.new_sale_system ?? DEFAULT_SETTINGS.newSaleSystem,
+                    eventUpdateEmail: data.event_update_email ?? DEFAULT_SETTINGS.eventUpdateEmail,
+                    eventUpdateSystem: data.event_update_system ?? DEFAULT_SETTINGS.eventUpdateSystem,
+                    lowStockEmail: data.low_stock_email ?? DEFAULT_SETTINGS.lowStockEmail,
+                    lowStockSystem: data.low_stock_system ?? DEFAULT_SETTINGS.lowStockSystem,
+                });
+            }
+            setIsLoading(false);
+        };
+        fetchSettings();
+    }, [navigate]);
+
+    const handleSwitchChange = (key: keyof SettingsState, checked: boolean) => {
         setSettings(prev => ({ ...prev, [key]: checked }));
-        // Em um app real, aqui você chamaria a API para salvar a preferência
-        console.log(`Setting ${key} updated to: ${checked}`);
     };
+
+    const handleSave = async () => {
+        if (!userId) return;
+        setIsSaving(true);
+        const toastId = showLoading("Salvando preferências...");
+
+        const dataToSave = {
+            user_id: userId,
+            new_sale_email: settings.newSaleEmail,
+            new_sale_system: settings.newSaleSystem,
+            event_update_email: settings.eventUpdateEmail,
+            event_update_system: settings.eventUpdateSystem,
+            low_stock_email: settings.lowStockEmail,
+            low_stock_system: settings.lowStockSystem,
+        };
+
+        try {
+            // Tenta atualizar (UPSERT)
+            const { error } = await supabase
+                .from('manager_settings')
+                .upsert(dataToSave, { onConflict: 'user_id' });
+
+            if (error) {
+                throw error;
+            }
+
+            dismissToast(toastId);
+            showSuccess("Preferências de notificação salvas com sucesso!");
+            navigate('/manager/settings');
+
+        } catch (e: any) {
+            dismissToast(toastId);
+            console.error("Supabase Save Error:", e);
+            showError(`Falha ao salvar preferências: ${e.message || 'Erro desconhecido'}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="max-w-4xl mx-auto px-4 sm:px-0 text-center py-20">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
+                <p className="text-gray-400">Carregando configurações...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-0">
@@ -64,6 +162,7 @@ const ManagerNotifications: React.FC = () => {
                                 checked={settings.newSaleEmail} 
                                 onCheckedChange={(checked) => handleSwitchChange('newSaleEmail', checked)}
                                 className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+                                disabled={isSaving}
                             />
                         </div>
 
@@ -76,6 +175,7 @@ const ManagerNotifications: React.FC = () => {
                                 checked={settings.newSaleSystem} 
                                 onCheckedChange={(checked) => handleSwitchChange('newSaleSystem', checked)}
                                 className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+                                disabled={isSaving}
                             />
                         </div>
                     </div>
@@ -96,6 +196,7 @@ const ManagerNotifications: React.FC = () => {
                                 checked={settings.eventUpdateEmail} 
                                 onCheckedChange={(checked) => handleSwitchChange('eventUpdateEmail', checked)}
                                 className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+                                disabled={isSaving}
                             />
                         </div>
                     </div>
@@ -116,17 +217,28 @@ const ManagerNotifications: React.FC = () => {
                                 checked={settings.lowStockSystem} 
                                 onCheckedChange={(checked) => handleSwitchChange('lowStockSystem', checked)}
                                 className="data-[state=checked]:bg-yellow-500 data-[state=unchecked]:bg-gray-700"
+                                disabled={isSaving}
                             />
                         </div>
                     </div>
 
                     <div className="pt-4">
                         <Button
-                            onClick={() => navigate('/manager/settings')}
-                            className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                         >
-                            <i className="fas fa-save mr-2"></i>
-                            Salvar Preferências
+                            {isSaving ? (
+                                <div className="flex items-center justify-center">
+                                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                    Salvando...
+                                </div>
+                            ) : (
+                                <>
+                                    <i className="fas fa-save mr-2"></i>
+                                    Salvar Preferências
+                                </>
+                            )}
                         </Button>
                     </div>
                 </CardContent>
