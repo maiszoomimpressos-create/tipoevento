@@ -36,6 +36,14 @@ const AuthStatusMenu: React.FC = () => {
     const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
 
     const handleLogout = async () => {
+        // Adiciona uma verificação para garantir que a sessão ainda existe antes de tentar o logout
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession) {
+            showError("Nenhuma sessão ativa para encerrar. A página será atualizada.");
+            window.location.reload(); // Recarrega a página para sincronizar o estado
+            return;
+        }
+
         const { error } = await supabase.auth.signOut();
         if (error) {
             showError("Erro ao sair: " + error.message);

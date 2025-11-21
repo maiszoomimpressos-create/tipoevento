@@ -3,10 +3,22 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { supabase } from '@/integrations/supabase/client';
+import { showSuccess, showError } from '@/utils/toast';
 
 const ManagerLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+
+    const handleLogout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            showError("Erro ao sair: " + error.message);
+        } else {
+            showSuccess("Sessão de gestor encerrada com sucesso.");
+            navigate('/');
+        }
+    };
 
     const navItems = [
         { path: '/manager/dashboard', label: 'Dashboard' },
@@ -65,7 +77,7 @@ const ManagerLayout: React.FC = () => {
                             </div>
                         </div>
                         <Button
-                            onClick={() => navigate('/')}
+                            onClick={handleLogout}
                             className="bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer px-3 py-1 h-8 text-sm hidden sm:block"
                         >
                             Sair
@@ -95,7 +107,7 @@ const ManagerLayout: React.FC = () => {
                                     <NavLinks onClick={() => {}} />
                                     <div className="border-t border-yellow-500/20 pt-4">
                                         <Button
-                                            onClick={() => navigate('/')}
+                                            onClick={handleLogout}
                                             className="w-full justify-start bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer"
                                         >
                                             <i className="fas fa-sign-out-alt mr-2"></i>
