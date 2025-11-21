@@ -22,6 +22,7 @@ const AuthStatusMenu: React.FC = () => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
             setSession(currentSession);
             if (currentSession) {
+                // Garante que o perfil é buscado ou atualizado em qualquer evento de sessão ativa
                 fetchProfile(currentSession.user.id);
             } else {
                 setProfile(null);
@@ -44,7 +45,8 @@ const AuthStatusMenu: React.FC = () => {
     }, []);
 
     const fetchProfile = async (userId: string) => {
-        setLoading(true);
+        // Não definimos loading=true aqui para evitar flicker em cada evento de auth,
+        // mas garantimos que o estado de loading inicial seja resolvido.
         const { data, error } = await supabase
             .from('profiles')
             .select('first_name, avatar_url, tipo_usuario_id')

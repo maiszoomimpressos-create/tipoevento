@@ -14,6 +14,7 @@ import ManagerLogin from "./pages/ManagerLogin";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import ManagerCreateEvent from "./pages/ManagerCreateEvent";
 import ManagerLayout from "./components/layouts/ManagerLayout";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/tickets" element={<MyTickets />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
