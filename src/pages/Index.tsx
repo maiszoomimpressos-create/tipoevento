@@ -35,13 +35,6 @@ const Index: React.FC = () => {
                     </nav>
                     <div className="flex items-center space-x-3">
                         <AuthStatusMenu />
-                        <Button
-                            onClick={() => navigate('/manager/login')}
-                            className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 cursor-pointer px-4 flex items-center hidden md:flex"
-                        >
-                            <i className="fas fa-crown mr-2"></i>
-                            Gestor PRO
-                        </Button>
                     </div>
                 </div>
             </header>
