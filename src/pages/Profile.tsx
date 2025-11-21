@@ -28,14 +28,28 @@ const validateCPF = (cpf: string) => {
     return cleanCPF.length === 11; // A validação completa é feita no backend (se necessário)
 };
 
+// Função de validação de CEP (apenas formato)
+const validateCEP = (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, '');
+    return cleanCEP.length === 8;
+};
+
 const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    gender: z.string().optional().nullable(), // Tornando Gênero opcional e permitindo nulo
+    gender: z.string().optional().nullable(),
     
-    // CPF é obrigatório, mas RG é opcional
     cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
     rg: z.string().optional().nullable(), 
+
+    // Campos de Endereço
+    cep: z.string().refine(validateCEP, { message: "CEP inválido (formato 00000-000)." }),
+    rua: z.string().optional().nullable(),
+    bairro: z.string().optional().nullable(),
+    cidade: z.string().optional().nullable(),
+    estado: z.string().optional().nullable(),
+    numero: z.string().optional().nullable(),
+    complemento: z.string().optional().nullable(),
 });
 
 interface ProfileData {
@@ -45,6 +59,14 @@ interface ProfileData {
     rg: string | null;
     birth_date: string | null;
     gender: string | null;
+    // Novos campos de endereço
+    cep: string | null;
+    rua: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    estado: string | null;
+    numero: string | null;
+    complemento: string | null;
 }
 
 const Profile: React.FC = () => {
@@ -76,6 +98,14 @@ const Profile: React.FC = () => {
             .replace(/(-\d{1})\d+?$/, '$1');
     };
 
+    const formatCEP = (value: string) => {
+        if (!value) return '';
+        const cleanValue = value.replace(/\D/g, '');
+        return cleanValue
+            .replace(/(\d{5})(\d)/, '$1-$2')
+            .replace(/(-\d{3})\d+?$/, '$1');
+    };
+
     const form = useForm<z.infer<typeof profileSchema>>({
         resolver: zodResolver(profileSchema),
         defaultValues: {
@@ -84,19 +114,31 @@ const Profile: React.FC = () => {
             gender: '',
             cpf: '',
             rg: '',
+            // Default values para endereço
+            cep: '',
+            rua: '',
+            bairro: '',
+            cidade: '',
+            estado: '',
+            numero: '',
+            complemento: '',
         },
     });
 
-    // Função para formatar CPF no input enquanto o usuário digita
+    // Funções de formatação no input
     const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const formattedCpf = formatCPF(e.target.value);
         form.setValue('cpf', formattedCpf, { shouldValidate: true });
     };
 
-    // Função para formatar RG no input enquanto o usuário digita
     const handleRgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const formattedRg = formatRG(e.target.value);
         form.setValue('rg', formattedRg, { shouldValidate: true });
+    };
+
+    const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const formattedCep = formatCEP(e.target.value);
+        form.setValue('cep', formattedCep, { shouldValidate: true });
     };
 
     useEffect(() => {
@@ -110,7 +152,7 @@ const Profile: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('first_name, avatar_url, cpf, rg, birth_date, gender')
+                .select('first_name, avatar_url, cpf, rg, birth_date, gender, cep, rua, bairro, cidade, estado, numero, complemento')
                 .eq('id', session.user.id)
                 .single();
 
@@ -123,8 +165,16 @@ const Profile: React.FC = () => {
                     first_name: data.first_name || '',
                     birth_date: data.birth_date || '',
                     gender: data.gender || '',
-                    cpf: data.cpf ? formatCPF(data.cpf) : '', // Formata para exibição
-                    rg: data.rg ? formatRG(data.rg) : '', // Formata para exibição
+                    cpf: data.cpf ? formatCPF(data.cpf) : '',
+                    rg: data.rg ? formatRG(data.rg) : '',
+                    // Reset para endereço
+                    cep: data.cep ? formatCEP(data.cep) : '',
+                    rua: data.rua || '',
+                    bairro: data.bairro || '',
+                    cidade: data.cidade || '',
+                    estado: data.estado || '',
+                    numero: data.numero || '',
+                    complemento: data.complemento || '',
                 });
             }
             setLoading(false);
@@ -136,12 +186,11 @@ const Profile: React.FC = () => {
         if (!session) return;
         setFormLoading(true);
 
-        // Remove formatação antes de salvar no banco de dados
+        // Limpeza e conversão para salvar no DB
         const cleanCPF = values.cpf.replace(/\D/g, '');
-        // Se RG for vazio ou nulo após a formatação, salva como null
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
+        const cleanCEP = values.cep.replace(/\D/g, '');
         
-        // Se Gênero for 'not_specified' ou vazio, salva como null
         const genderToSave = (values.gender === "not_specified" || !values.gender) ? null : values.gender;
 
         const { error } = await supabase
@@ -149,9 +198,17 @@ const Profile: React.FC = () => {
             .update({ 
                 first_name: values.first_name,
                 birth_date: values.birth_date,
-                gender: genderToSave, // Salvando Gênero (pode ser null)
+                gender: genderToSave,
                 cpf: cleanCPF, 
-                rg: cleanRG, // Salvando RG (pode ser null)
+                rg: cleanRG,
+                // Salvando endereço
+                cep: cleanCEP,
+                rua: values.rua || null,
+                bairro: values.bairro || null,
+                cidade: values.cidade || null,
+                estado: values.estado || null,
+                numero: values.numero || null,
+                complemento: values.complemento || null,
             })
             .eq('id', session.user.id);
 
@@ -166,6 +223,14 @@ const Profile: React.FC = () => {
                 gender: genderToSave,
                 cpf: cleanCPF,
                 rg: cleanRG,
+                // Atualizando estado local
+                cep: cleanCEP,
+                rua: values.rua || null,
+                bairro: values.bairro || null,
+                cidade: values.cidade || null,
+                estado: values.estado || null,
+                numero: values.numero || null,
+                complemento: values.complemento || null,
             } : null);
             setIsEditing(false);
         }
@@ -184,6 +249,14 @@ const Profile: React.FC = () => {
                 gender: profile.gender || '',
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
+                // Reset de endereço
+                cep: profile.cep ? formatCEP(profile.cep) : '',
+                rua: profile.rua || '',
+                bairro: profile.bairro || '',
+                cidade: profile.cidade || '',
+                estado: profile.estado || '',
+                numero: profile.numero || '',
+                complemento: profile.complemento || '',
             });
         }
         setIsEditing(false);
@@ -390,6 +463,120 @@ const Profile: React.FC = () => {
                                                                     ))}
                                                                 </SelectContent>
                                                             </Select>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            {/* --- Seção de Endereço --- */}
+                                            <div className="pt-4 border-t border-yellow-500/20">
+                                                <h3 className="text-xl font-semibold text-white mb-4">Endereço</h3>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="cep"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">CEP *</FormLabel>
+                                                            <FormControl>
+                                                                <Input 
+                                                                    placeholder="00000-000"
+                                                                    {...field} 
+                                                                    onChange={handleCepChange}
+                                                                    disabled={!isEditing} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                    maxLength={9}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="md:col-span-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="rua"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-white">Rua (Opcional)</FormLabel>
+                                                                <FormControl>
+                                                                    <Input placeholder="Ex: Av. Paulista" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="numero"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Número (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="123" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <FormField
+                                                control={form.control}
+                                                name="complemento"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Apto 101, Bloco B" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="md:col-span-1">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="bairro"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-white">Bairro (Opcional)</FormLabel>
+                                                                <FormControl>
+                                                                    <Input placeholder="Jardim Paulista" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="cidade"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Cidade (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="São Paulo" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="estado"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Estado (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="SP" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
