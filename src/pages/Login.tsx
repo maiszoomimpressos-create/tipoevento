@@ -9,6 +9,7 @@ const Login: React.FC = () => {
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true); // Adicionando estado para Lembrar-me
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -16,6 +17,10 @@ const Login: React.FC = () => {
 
         try {
             // 1. Autenticação com Supabase
+            // Nota: A duração da sessão é configurada no projeto Supabase. 
+            // Aqui, o checkbox é principalmente para UX, mas se quiséssemos controlar a duração, 
+            // precisaríamos de uma função de login customizada ou usar o refresh token.
+            // Por enquanto, apenas usamos a função padrão.
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: loginData.email,
                 password: loginData.password,
@@ -132,7 +137,12 @@ const Login: React.FC = () => {
                         </div>
                         <div className="flex items-center justify-between">
                             <label className="flex items-center cursor-pointer">
-                                <input type="checkbox" className="mr-2 accent-yellow-500" />
+                                <input 
+                                    type="checkbox" 
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="mr-2 accent-yellow-500" 
+                                />
                                 <span className="text-sm text-gray-300">Lembrar-me</span>
                             </label>
                             <button 

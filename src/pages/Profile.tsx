@@ -8,21 +8,66 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
 
+const GENDER_OPTIONS = [
+    "Masculino",
+    "Feminino",
+    "Não binário",
+    "Outro",
+    "Prefiro não dizer"
+];
+
+// Função de validação de CPF (simplificada para o frontend)
+const validateCPF = (cpf: string) => {
+    const cleanCPF = cpf.replace(/\D/g, '');
+    return cleanCPF.length === 11; // A validação completa é feita no backend (se necessário)
+};
+
+// Função de validação de CEP (apenas formato)
+const validateCEP = (cep: string) => {
+    const cleanCEP = cep.replace(/\D/g, '');
+    return cleanCEP.length === 8;
+};
+
 const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
+    gender: z.string().optional().nullable(),
+    
+    cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
+    rg: z.string().optional().nullable(), 
+
+    // Campos de Endereço
+    // CEP agora é opcional, mas se preenchido, deve ter 8 dígitos
+    cep: z.string().optional().nullable().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
+    rua: z.string().optional().nullable(),
+    bairro: z.string().optional().nullable(),
+    cidade: z.string().optional().nullable(),
+    estado: z.string().optional().nullable(),
+    numero: z.string().optional().nullable(),
+    complemento: z.string().optional().nullable(),
 });
 
 interface ProfileData {
     first_name: string;
     avatar_url: string | null;
     cpf: string | null;
+    rg: string | null;
     birth_date: string | null;
+    gender: string | null;
+    // Novos campos de endereço
+    cep: string | null;
+    rua: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    estado: string | null;
+    numero: string | null;
+    complemento: string | null;
 }
 
 const Profile: React.FC = () => {
@@ -32,14 +77,7 @@ const Profile: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [formLoading, setFormLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-
-    const form = useForm<z.infer<typeof profileSchema>>({
-        resolver: zodResolver(profileSchema),
-        defaultValues: {
-            first_name: '',
-            birth_date: '',
-        },
-    });
+    const [isCepLoading, setIsCepLoading] = useState(false);
 
     const formatCPF = (value: string) => {
         if (!value) return '';
@@ -49,6 +87,101 @@ const Profile: React.FC = () => {
             .replace(/(\d{3})(\d)/, '$1.$2')
             .replace(/(\d{3})(\d{1,2})/, '$1-$2')
             .replace(/(-\d{2})\d+?$/, '$1');
+    };
+
+    const formatRG = (value: string) => {
+        if (!value) return '';
+        const cleanValue = value.replace(/\D/g, '');
+        // Formato comum de RG (XX.XXX.XXX-X)
+        return cleanValue
+            .replace(/(\d{2})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1})/, '$1-$2')
+            .replace(/(-\d{1})\d+?$/, '$1');
+    };
+
+    const formatCEP = (value: string) => {
+        if (!value) return '';
+        const cleanValue = value.replace(/\D/g, '');
+        return cleanValue
+            .replace(/(\d{5})(\d)/, '$1-$2')
+            .replace(/(-\d{3})\d+?$/, '$1');
+    };
+
+    const form = useForm<z.infer<typeof profileSchema>>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: {
+            first_name: '',
+            birth_date: '',
+            gender: '',
+            cpf: '',
+            rg: '',
+            // Default values para endereço
+            cep: '',
+            rua: '',
+            bairro: '',
+            cidade: '',
+            estado: '',
+            numero: '',
+            complemento: '',
+        },
+    });
+
+    // Função para buscar endereço via ViaCEP
+    const fetchAddressByCep = async (cep: string) => {
+        const cleanCep = cep.replace(/\D/g, '');
+        if (cleanCep.length !== 8) return;
+
+        setIsCepLoading(true);
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+            const data = await response.json();
+
+            if (data.erro) {
+                showError("CEP não encontrado.");
+                form.setError('cep', { message: "CEP não encontrado." });
+                // Limpa campos de endereço se o CEP for inválido
+                form.setValue('rua', '');
+                form.setValue('bairro', '');
+                form.setValue('cidade', '');
+                form.setValue('estado', '');
+            } else {
+                form.clearErrors('cep');
+                form.setValue('rua', data.logradouro || '');
+                form.setValue('bairro', data.bairro || '');
+                form.setValue('cidade', data.localidade || '');
+                form.setValue('estado', data.uf || '');
+                // Foca no campo número após o preenchimento automático
+                document.getElementById('numero')?.focus();
+            }
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+            showError("Erro na comunicação com o serviço de CEP.");
+        } finally {
+            setIsCepLoading(false);
+        }
+    };
+
+    // Funções de formatação no input
+    const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const formattedCpf = formatCPF(e.target.value);
+        form.setValue('cpf', formattedCpf, { shouldValidate: true });
+    };
+
+    const handleRgChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const formattedRg = formatRG(e.target.value);
+        form.setValue('rg', formattedRg, { shouldValidate: true });
+    };
+
+    const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value;
+        const formattedCep = formatCEP(rawValue);
+        form.setValue('cep', formattedCep, { shouldValidate: true });
+
+        // Se o CEP atingir 8 dígitos (após formatação, 9 caracteres com hífen), busca o endereço
+        if (formattedCep.replace(/\D/g, '').length === 8) {
+            fetchAddressByCep(formattedCep);
+        }
     };
 
     useEffect(() => {
@@ -62,7 +195,7 @@ const Profile: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('first_name, avatar_url, cpf, birth_date')
+                .select('first_name, avatar_url, cpf, rg, birth_date, gender, cep, rua, bairro, cidade, estado, numero, complemento')
                 .eq('id', session.user.id)
                 .single();
 
@@ -73,7 +206,18 @@ const Profile: React.FC = () => {
                 setProfile(data);
                 form.reset({ 
                     first_name: data.first_name || '',
-                    birth_date: data.birth_date || ''
+                    birth_date: data.birth_date || '',
+                    gender: data.gender || '',
+                    cpf: data.cpf ? formatCPF(data.cpf) : '',
+                    rg: data.rg ? formatRG(data.rg) : '',
+                    // Reset para endereço
+                    cep: data.cep ? formatCEP(data.cep) : '',
+                    rua: data.rua || '',
+                    bairro: data.bairro || '',
+                    cidade: data.cidade || '',
+                    estado: data.estado || '',
+                    numero: data.numero || '',
+                    complemento: data.complemento || '',
                 });
             }
             setLoading(false);
@@ -84,11 +228,31 @@ const Profile: React.FC = () => {
     const onSubmit = async (values: z.infer<typeof profileSchema>) => {
         if (!session) return;
         setFormLoading(true);
+
+        // Limpeza e conversão para salvar no DB
+        const cleanCPF = values.cpf.replace(/\D/g, '');
+        const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
+        // CEP é opcional, se for string vazia ou nula, salva como null
+        const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
+        
+        const genderToSave = (values.gender === "not_specified" || !values.gender) ? null : values.gender;
+
         const { error } = await supabase
             .from('profiles')
             .update({ 
                 first_name: values.first_name,
-                birth_date: values.birth_date
+                birth_date: values.birth_date,
+                gender: genderToSave,
+                cpf: cleanCPF, 
+                rg: cleanRG,
+                // Salvando endereço
+                cep: cleanCEP,
+                rua: values.rua || null,
+                bairro: values.bairro || null,
+                cidade: values.cidade || null,
+                estado: values.estado || null,
+                numero: values.numero || null,
+                complemento: values.complemento || null,
             })
             .eq('id', session.user.id);
 
@@ -96,7 +260,22 @@ const Profile: React.FC = () => {
             showError("Erro ao atualizar o perfil.");
         } else {
             showSuccess("Perfil atualizado com sucesso!");
-            setProfile(prev => prev ? { ...prev, first_name: values.first_name, birth_date: values.birth_date } : null);
+            setProfile(prev => prev ? { 
+                ...prev, 
+                first_name: values.first_name, 
+                birth_date: values.birth_date, 
+                gender: genderToSave,
+                cpf: cleanCPF,
+                rg: cleanRG,
+                // Atualizando estado local
+                cep: cleanCEP,
+                rua: values.rua || null,
+                bairro: values.bairro || null,
+                cidade: values.cidade || null,
+                estado: values.estado || null,
+                numero: values.numero || null,
+                complemento: values.complemento || null,
+            } : null);
             setIsEditing(false);
         }
         setFormLoading(false);
@@ -110,7 +289,18 @@ const Profile: React.FC = () => {
         if (profile) {
             form.reset({
                 first_name: profile.first_name || '',
-                birth_date: profile.birth_date || ''
+                birth_date: profile.birth_date || '',
+                gender: profile.gender || '',
+                cpf: profile.cpf ? formatCPF(profile.cpf) : '',
+                rg: profile.rg ? formatRG(profile.rg) : '',
+                // Reset de endereço
+                cep: profile.cep ? formatCEP(profile.cep) : '',
+                rua: profile.rua || '',
+                bairro: profile.bairro || '',
+                cidade: profile.cidade || '',
+                estado: profile.estado || '',
+                numero: profile.numero || '',
+                complemento: profile.complemento || '',
             });
         }
         setIsEditing(false);
@@ -136,6 +326,10 @@ const Profile: React.FC = () => {
                             </div>
                             <Skeleton className="h-10 w-full" />
                             <Skeleton className="h-10 w-full" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
                             <Skeleton className="h-10 w-full" />
                             <Skeleton className="h-12 w-32" />
                         </CardContent>
@@ -221,34 +415,224 @@ const Profile: React.FC = () => {
                                                     />
                                                 </FormControl>
                                             </FormItem>
-                                            <FormItem>
-                                                <FormLabel className="text-white">CPF</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        value={profile?.cpf ? formatCPF(profile.cpf) : ''} 
-                                                        disabled 
-                                                        className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="cpf"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">CPF</FormLabel>
+                                                            <FormControl>
+                                                                <Input 
+                                                                    placeholder="000.000.000-00"
+                                                                    {...field} 
+                                                                    onChange={handleCpfChange}
+                                                                    disabled={!isEditing} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                    maxLength={14}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="rg"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">RG (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input 
+                                                                    placeholder="00.000.000-0"
+                                                                    {...field} 
+                                                                    onChange={handleRgChange}
+                                                                    disabled={!isEditing} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                    maxLength={12}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="birth_date"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Data de Nascimento</FormLabel>
+                                                            <FormControl>
+                                                                <Input 
+                                                                    type="date" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="gender"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Gênero (Opcional)</FormLabel>
+                                                            <Select 
+                                                                onValueChange={(value) => field.onChange(value === "not_specified" ? null : value)} 
+                                                                defaultValue={field.value || "not_specified"} 
+                                                                disabled={!isEditing}
+                                                            >
+                                                                <FormControl>
+                                                                    <SelectTrigger 
+                                                                        className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        <SelectValue placeholder="Selecione seu gênero" />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                                                    <SelectItem value="not_specified" className="text-gray-500">
+                                                                        Não especificado
+                                                                    </SelectItem>
+                                                                    {GENDER_OPTIONS.map(option => (
+                                                                        <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
+                                                                            {option}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            {/* --- Seção de Endereço --- */}
+                                            <div className="pt-4 border-t border-yellow-500/20">
+                                                <h3 className="text-xl font-semibold text-white mb-4">Endereço</h3>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="cep"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">CEP (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <div className="relative">
+                                                                    <Input 
+                                                                        placeholder="00000-000"
+                                                                        {...field} 
+                                                                        onChange={handleCepChange}
+                                                                        disabled={!isEditing || isCepLoading} 
+                                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed pr-10" 
+                                                                        maxLength={9}
+                                                                    />
+                                                                    {isCepLoading && (
+                                                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                                            <div className="w-4 h-4 border-2 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin"></div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="md:col-span-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="rua"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-white">Rua (Opcional)</FormLabel>
+                                                                <FormControl>
+                                                                    <Input id="rua" placeholder="Ex: Av. Paulista" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
                                                     />
-                                                </FormControl>
-                                            </FormItem>
+                                                </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="numero"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Número (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input id="numero" placeholder="123" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+
                                             <FormField
                                                 control={form.control}
-                                                name="birth_date"
+                                                name="complemento"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-white">Data de Nascimento</FormLabel>
+                                                        <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
                                                         <FormControl>
-                                                            <Input 
-                                                                type="date" 
-                                                                {...field} 
-                                                                disabled={!isEditing} 
-                                                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
-                                                            />
+                                                            <Input placeholder="Apto 101, Bloco B" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="md:col-span-1">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="bairro"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel className="text-white">Bairro (Opcional)</FormLabel>
+                                                                <FormControl>
+                                                                    <Input placeholder="Jardim Paulista" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="cidade"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Cidade (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="São Paulo" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="estado"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Estado (Opcional)</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="SP" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
                                             
                                             {isEditing ? (
                                                 <div className="flex items-center space-x-4 pt-4">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showSuccess, showError } from '@/utils/toast';
+import { useProfileStatus } from '@/hooks/use-profile-status';
 
 interface UserProfile {
     first_name: string;
@@ -18,11 +19,13 @@ const AuthStatusMenu: React.FC = () => {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const userId = session?.user?.id;
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(userId);
+
     useEffect(() => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
             setSession(currentSession);
             if (currentSession) {
-                // Garante que o perfil é buscado ou atualizado em qualquer evento de sessão ativa
                 fetchProfile(currentSession.user.id);
             } else {
                 setProfile(null);
@@ -45,8 +48,6 @@ const AuthStatusMenu: React.FC = () => {
     }, []);
 
     const fetchProfile = async (userId: string) => {
-        // Não definimos loading=true aqui para evitar flicker em cada evento de auth,
-        // mas garantimos que o estado de loading inicial seja resolvido.
         const { data, error } = await supabase
             .from('profiles')
             .select('first_name, avatar_url, tipo_usuario_id')
@@ -73,7 +74,7 @@ const AuthStatusMenu: React.FC = () => {
         }
     };
 
-    if (loading) {
+    if (loading || statusLoading) {
         // Pode retornar um Skeleton ou null durante o carregamento inicial
         return <div className="w-10 h-10 bg-yellow-500/20 rounded-full animate-pulse"></div>;
     }
@@ -83,46 +84,68 @@ const AuthStatusMenu: React.FC = () => {
         const isManager = profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2;
 
         return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <div className="cursor-pointer p-1 rounded-full border-2 border-yellow-500/50 hover:border-yellow-500 transition-all duration-300">
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage src={profile.avatar_url || undefined} alt={profile.first_name} />
-                            <AvatarFallback className="bg-yellow-500 text-black font-bold text-sm">{initials}</AvatarFallback>
-                        </Avatar>
-                    </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
-                    <DropdownMenuLabel className="text-yellow-500">
-                        Olá, {profile.first_name}
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-yellow-500/20" />
-                    <DropdownMenuItem 
-                        onClick={() => navigate('/profile')} 
-                        className="cursor-pointer hover:bg-yellow-500/10"
-                    >
-                        <i className="fas fa-user-circle mr-2"></i>
-                        Editar Perfil
-                    </DropdownMenuItem>
-                    {isManager && (
-                        <DropdownMenuItem 
-                            onClick={() => navigate('/manager/dashboard')} 
-                            className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
-                        >
-                            <i className="fas fa-crown mr-2"></i>
-                            Dashboard PRO
-                        </DropdownMenuItem>
+            <div className="flex items-center space-x-4">
+                {/* Ícone de Notificação */}
+                <button 
+                    onClick={() => navigate('/profile')} // Redireciona para o perfil para completar os dados
+                    className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer"
+                    title={hasPendingNotifications ? "Perfil Incompleto" : "Notificações"}
+                >
+                    <i className="fas fa-bell text-lg"></i>
+                    {hasPendingNotifications && (
+                        <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></span>
                     )}
-                    <DropdownMenuSeparator className="bg-yellow-500/20" />
-                    <DropdownMenuItem 
-                        onClick={handleLogout} 
-                        className="cursor-pointer hover:bg-red-500/10 text-red-400"
-                    >
-                        <i className="fas fa-sign-out-alt mr-2"></i>
-                        Sair
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                </button>
+
+                {/* Menu de Perfil */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <div className="cursor-pointer p-1 rounded-full border-2 border-yellow-500/50 hover:border-yellow-500 transition-all duration-300">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={profile.avatar_url || undefined} alt={profile.first_name} />
+                                <AvatarFallback className="bg-yellow-500 text-black font-bold text-sm">{initials}</AvatarFallback>
+                            </Avatar>
+                        </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
+                        <DropdownMenuLabel className="text-yellow-500">
+                            Olá, {profile.first_name}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator className="bg-yellow-500/20" />
+                        <DropdownMenuItem 
+                            onClick={() => navigate('/profile')} 
+                            className="cursor-pointer hover:bg-yellow-500/10"
+                        >
+                            <i className="fas fa-user-circle mr-2"></i>
+                            Editar Perfil
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                            onClick={() => navigate('/tickets')} 
+                            className="cursor-pointer hover:bg-yellow-500/10"
+                        >
+                            <i className="fas fa-ticket-alt mr-2"></i>
+                            Meus Ingressos
+                        </DropdownMenuItem>
+                        {isManager && (
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/manager/dashboard')} 
+                                className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
+                            >
+                                <i className="fas fa-crown mr-2"></i>
+                                Dashboard PRO
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator className="bg-yellow-500/20" />
+                        <DropdownMenuItem 
+                            onClick={handleLogout} 
+                            className="cursor-pointer hover:bg-red-500/10 text-red-400"
+                        >
+                            <i className="fas fa-sign-out-alt mr-2"></i>
+                            Sair
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         );
     }
 
