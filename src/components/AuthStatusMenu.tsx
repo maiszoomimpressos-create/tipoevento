@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showSuccess, showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status';
+import NotificationBell from './NotificationBell'; // Importando o novo componente
 
 interface UserProfile {
     first_name: string;
@@ -74,17 +75,6 @@ const AuthStatusMenu: React.FC = () => {
         }
     };
 
-    // Função placeholder para o clique do sino
-    const handleNotificationClick = () => {
-        // Por enquanto, apenas exibe um alerta ou faz nada, conforme solicitado.
-        // Futuramente, pode abrir um modal de notificações.
-        if (hasPendingNotifications) {
-            alert("Você tem notificações pendentes! (Perfil Incompleto)");
-        } else {
-            alert("Nenhuma notificação nova.");
-        }
-    };
-
     if (loading || statusLoading) {
         // Pode retornar um Skeleton ou null durante o carregamento inicial
         return <div className="w-10 h-10 bg-yellow-500/20 rounded-full animate-pulse"></div>;
@@ -96,17 +86,11 @@ const AuthStatusMenu: React.FC = () => {
 
         return (
             <div className="flex items-center space-x-4">
-                {/* Ícone de Notificação - Agora não navega para /profile */}
-                <button 
-                    onClick={handleNotificationClick} 
-                    className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer"
-                    title={hasPendingNotifications ? "Perfil Incompleto" : "Notificações"}
-                >
-                    <i className="fas fa-bell text-lg"></i>
-                    {hasPendingNotifications && (
-                        <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></span>
-                    )}
-                </button>
+                {/* Ícone de Notificação (Agora é um Popover) */}
+                <NotificationBell 
+                    hasPendingNotifications={hasPendingNotifications} 
+                    loading={statusLoading} 
+                />
 
                 {/* Menu de Perfil */}
                 <DropdownMenu>
