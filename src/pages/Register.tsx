@@ -177,29 +177,29 @@ const Register: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-12">
+        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-12">
             <div className="absolute inset-0 opacity-10">
                 <div className="absolute inset-0" style={{
                     backgroundImage: 'radial-gradient(circle at 25% 25%, #fbbf24 0%, transparent 50%), radial-gradient(circle at 75% 75%, #fbbf24 0%, transparent 50%)',
                     backgroundSize: '400px 400px'
                 }}></div>
             </div>
-            <div className="relative z-10 w-full max-w-md">
-                <div className="text-center mb-8">
+            <div className="relative z-10 w-full max-w-sm sm:max-w-md">
+                <div className="text-center mb-6 sm:mb-8">
                     <div className="text-3xl font-serif text-yellow-500 font-bold mb-2">
                         Mazoy
                     </div>
-                    <h1 className="text-2xl font-semibold text-white mb-2">Criar Conta</h1>
-                    <p className="text-gray-400">Junte-se à nossa comunidade premium</p>
+                    <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">Criar Conta</h1>
+                    <p className="text-gray-400 text-sm sm:text-base">Junte-se à nossa comunidade premium</p>
                 </div>
-                <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8 shadow-2xl shadow-yellow-500/10">
+                <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-yellow-500/10">
                     {showSuccessMessage ? (
                         <div className="text-center py-8">
                             <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i className="fas fa-check text-green-500 text-2xl"></i>
                             </div>
                             <h3 className="text-xl font-semibold text-white mb-2">Cadastro Realizado!</h3>
-                            <p className="text-gray-400 mb-4">
+                            <p className="text-gray-400 text-sm mb-4">
                                 Enviamos um link de verificação para seu e-mail. Verifique sua caixa de entrada para ativar sua conta.
                             </p>
                             <div className="text-sm text-yellow-500">
@@ -207,7 +207,7 @@ const Register: React.FC = () => {
                             </div>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmitRegistration} className="space-y-6">
+                        <form onSubmit={handleSubmitRegistration} className="space-y-5 sm:space-y-6">
                             <div>
                                 <label htmlFor="name" className="block text-sm font-medium text-white mb-2">
                                     Nome Completo *
@@ -218,7 +218,7 @@ const Register: React.FC = () => {
                                         id="name"
                                         value={formData.name}
                                         onChange={(e) => handleInputChange('name', e.target.value)}
-                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.name
+                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.name
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                 : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                             }`}
@@ -228,7 +228,7 @@ const Register: React.FC = () => {
                                     <i className="fas fa-user absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
                                 </div>
                                 {formErrors.name && (
-                                    <p className="text-red-400 text-sm mt-1 flex items-center">
+                                    <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         {formErrors.name}
                                     </p>
@@ -244,7 +244,7 @@ const Register: React.FC = () => {
                                         id="email"
                                         value={formData.email}
                                         onChange={(e) => handleInputChange('email', e.target.value)}
-                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.email
+                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.email
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                 : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                             }`}
@@ -254,7 +254,7 @@ const Register: React.FC = () => {
                                     <i className="fas fa-envelope absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
                                 </div>
                                 {formErrors.email && (
-                                    <p className="text-red-400 text-sm mt-1 flex items-center">
+                                    <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         {formErrors.email}
                                     </p>
@@ -270,7 +270,7 @@ const Register: React.FC = () => {
                                         id="cpf"
                                         value={formData.cpf}
                                         onChange={(e) => handleInputChange('cpf', e.target.value)}
-                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.cpf
+                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.cpf
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                 : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                             }`}
@@ -280,7 +280,7 @@ const Register: React.FC = () => {
                                     <i className="fas fa-id-card absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
                                 </div>
                                 {formErrors.cpf && (
-                                    <p className="text-red-400 text-sm mt-1 flex items-center">
+                                    <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         {formErrors.cpf}
                                     </p>
@@ -298,7 +298,7 @@ const Register: React.FC = () => {
                                             id="birthDate"
                                             value={formData.birthDate}
                                             onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                                            className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.birthDate
+                                            className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.birthDate
                                                     ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                     : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                                 }`}
@@ -306,7 +306,7 @@ const Register: React.FC = () => {
                                         <i className="fas fa-calendar-alt absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
                                     </div>
                                     {formErrors.birthDate && (
-                                        <p className="text-red-400 text-sm mt-1 flex items-center">
+                                        <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                             <i className="fas fa-exclamation-circle mr-1"></i>
                                             {formErrors.birthDate}
                                         </p>
@@ -318,7 +318,7 @@ const Register: React.FC = () => {
                                     </label>
                                     <Select onValueChange={(value) => handleSelectChange('gender', value)} required={false}>
                                         <SelectTrigger 
-                                            className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white focus:ring-2 transition-all duration-300 ${formErrors.gender
+                                            className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white text-sm sm:text-base focus:ring-2 transition-all duration-300 ${formErrors.gender
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                 : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                             }`}
@@ -337,7 +337,7 @@ const Register: React.FC = () => {
                                         </SelectContent>
                                     </Select>
                                     {formErrors.gender && (
-                                        <p className="text-red-400 text-sm mt-1 flex items-center">
+                                        <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                             <i className="fas fa-exclamation-circle mr-1"></i>
                                             {formErrors.gender}
                                         </p>
@@ -355,7 +355,7 @@ const Register: React.FC = () => {
                                         id="password"
                                         value={formData.password}
                                         onChange={(e) => handleInputChange('password', e.target.value)}
-                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.password
+                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.password
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                 : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                             }`}
@@ -367,7 +367,7 @@ const Register: React.FC = () => {
                                     </button>
                                 </div>
                                 {formErrors.password && (
-                                    <p className="text-red-400 text-sm mt-1 flex items-center">
+                                    <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         {formErrors.password}
                                     </p>
@@ -383,7 +383,7 @@ const Register: React.FC = () => {
                                         id="confirmPassword"
                                         value={formData.confirmPassword}
                                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.confirmPassword
+                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 text-sm sm:text-base focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.confirmPassword
                                                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                                                 : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
                                             }`}
@@ -395,7 +395,7 @@ const Register: React.FC = () => {
                                     </button>
                                 </div>
                                 {formErrors.confirmPassword && (
-                                    <p className="text-red-400 text-sm mt-1 flex items-center">
+                                    <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         {formErrors.confirmPassword}
                                     </p>
@@ -408,7 +408,7 @@ const Register: React.FC = () => {
                                     required
                                     className="mt-1 accent-yellow-500"
                                 />
-                                <label htmlFor="terms" className="text-sm text-gray-300">
+                                <label htmlFor="terms" className="text-xs sm:text-sm text-gray-300">
                                     Li e aceito os{' '}
                                     <a href="#" className="text-yellow-500 hover:text-yellow-400 underline">
                                         Termos de Uso
@@ -423,7 +423,7 @@ const Register: React.FC = () => {
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                    className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                 >
                                     {isLoading ? (
                                         <div className="flex items-center justify-center">
@@ -437,13 +437,13 @@ const Register: React.FC = () => {
                                 <Button
                                     type="button"
                                     onClick={() => navigate('/')}
-                                    className="w-full bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
+                                    className="w-full bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer"
                                 >
                                     Voltar
                                 </Button>
                             </div>
                             <div className="text-center pt-4 border-t border-yellow-500/20">
-                                <p className="text-gray-400">
+                                <p className="text-gray-400 text-sm">
                                     Já tem uma conta?{' '}
                                     <button
                                         type="button"

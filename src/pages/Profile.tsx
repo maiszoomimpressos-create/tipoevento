@@ -229,14 +229,6 @@ const Profile: React.FC = () => {
         getSessionAndProfile();
     }, [navigate, form]);
 
-    // REMOVIDO: Efeito para forçar o modo de edição se o perfil estiver incompleto
-    // useEffect(() => {
-    //     if (!loading && !statusLoading && hasPendingNotifications && !isEditing) {
-    //         setIsEditing(true);
-    //         showError("Seu perfil está incompleto. Por favor, preencha os campos obrigatórios para continuar.");
-    //     }
-    // }, [loading, statusLoading, hasPendingNotifications, isEditing]);
-
 
     const onSubmit = async (values: z.infer<typeof profileSchema>) => {
         if (!session) return;
@@ -273,7 +265,7 @@ const Profile: React.FC = () => {
                 cep: cleanCEP,
                 rua: ruaToSave,
                 bairro: bairroToSave,
-                cidade: cidadeToSave,
+                cidade: cidadeToToSave,
                 estado: estadoToSave,
                 numero: numeroToSave,
                 complemento: complementoToSave,
@@ -375,9 +367,9 @@ const Profile: React.FC = () => {
     return (
         <div className="min-h-screen bg-black text-white">
              <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-8">
-                        <div className="text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
                             Mazoy
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
@@ -400,9 +392,9 @@ const Profile: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <main className="pt-24 pb-12 px-6">
+            <main className="pt-24 pb-12 px-4 sm:px-6">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
+                    <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
                     
                     {/* Alerta de Perfil Incompleto */}
                     {hasPendingNotifications && (
@@ -418,11 +410,11 @@ const Profile: React.FC = () => {
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 order-2 md:order-1">
                             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl">
                                 <CardHeader>
-                                    <CardTitle className="text-white text-2xl">Informações Pessoais</CardTitle>
-                                    <CardDescription className="text-gray-400">Atualize seus dados pessoais aqui.</CardDescription>
+                                    <CardTitle className="text-white text-xl sm:text-2xl">Informações Pessoais</CardTitle>
+                                    <CardDescription className="text-gray-400 text-sm">Atualize seus dados pessoais aqui.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     {session?.user?.id && (
@@ -461,7 +453,7 @@ const Profile: React.FC = () => {
                                                 </FormControl>
                                             </FormItem>
                                             
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 <FormField
                                                     control={form.control}
                                                     name="cpf"
@@ -504,7 +496,7 @@ const Profile: React.FC = () => {
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 <FormField
                                                     control={form.control}
                                                     name="birth_date"
@@ -590,8 +582,8 @@ const Profile: React.FC = () => {
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="md:col-span-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                                <div className="sm:col-span-2">
                                                     <FormField
                                                         control={form.control}
                                                         name="rua"
@@ -635,8 +627,8 @@ const Profile: React.FC = () => {
                                                 )}
                                             />
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="md:col-span-1">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                                <div className="sm:col-span-1">
                                                     <FormField
                                                         control={form.control}
                                                         name="bairro"
@@ -698,14 +690,14 @@ const Profile: React.FC = () => {
                                 </CardContent>
                             </Card>
                         </div>
-                        <div className="md:col-span-1">
+                        <div className="md:col-span-1 order-1 md:order-2">
                              <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl">
                                 <CardHeader>
-                                    <CardTitle className="text-white text-2xl">Meus Ingressos</CardTitle>
+                                    <CardTitle className="text-white text-xl sm:text-2xl">Meus Ingressos</CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-center p-6">
                                     <i className="fas fa-ticket-alt text-4xl text-yellow-500 mb-4"></i>
-                                    <p className="text-gray-400 mb-4">
+                                    <p className="text-gray-400 text-sm mb-4">
                                         Visualize e gerencie todos os seus ingressos comprados.
                                     </p>
                                     <Button 
