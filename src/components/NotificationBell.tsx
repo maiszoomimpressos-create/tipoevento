@@ -1,19 +1,68 @@
 import React from 'react';
-import { Bell, User } from 'lucide-react';
+import { Bell, User, AlertTriangle, Box } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '@/hooks/use-profile';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationBellProps {
     hasPendingNotifications: boolean;
     loading: boolean;
 }
 
+// Mock para simular notificações de sistema para o gestor
+const getManagerNotifications = (userId: string) => {
+    // Esta é uma simulação baseada na lógica de useProfileStatus
+    // Na vida real, buscaríamos notificações reais do DB.
+    
+    // Se o gestor tiver mais de 2 eventos (simulação de baixo estoque ativa)
+    if (userId && userId.length > 0) {
+        // Simulação de alerta de baixo estoque
+        return [
+            {
+                id: 1,
+                type: 'low_stock',
+                title: 'Alerta de Estoque Baixo',
+                message: 'O evento "Concerto Sinfônico" está com menos de 10% dos ingressos disponíveis. Verifique o estoque.',
+                link: '/manager/events/edit/1', // Link mock
+                icon: Box,
+                color: 'text-yellow-400',
+                bgColor: 'bg-yellow-500/10',
+                borderColor: 'border-yellow-500/30'
+            },
+            // Adicionar mais notificações de sistema aqui (ex: nova venda, atualização de evento)
+        ];
+    }
+    return [];
+};
+
 const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotifications, loading }) => {
     const navigate = useNavigate();
+    const [session, setSession] = React.useState<any>(null);
+    
+    // Carrega a sessão para obter o ID do usuário
+    React.useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+            setSession(currentSession);
+        });
+    }, []);
+
+    const userId = session?.user?.id;
+    const { profile } = useProfile(userId);
+    
+    const isManager = profile && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
+    
+    // Se for gestor e houver notificações pendentes (simuladas)
+    const managerNotifications = isManager && hasPendingNotifications ? getManagerNotifications(userId!) : [];
+    const showManagerAlert = managerNotifications.length > 0;
 
     if (loading) {
         return <div className="w-8 h-8 bg-yellow-500/20 rounded-full animate-pulse"></div>;
+    }
+
+    if (!userId) {
+        return null; // Não mostra o sino se não estiver logado
     }
 
     return (
@@ -21,7 +70,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
             <PopoverTrigger asChild>
                 <button 
                     className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer"
-                    title={hasPendingNotifications ? "Perfil Incompleto" : "Nenhuma notificação"}
+                    title={hasPendingNotifications ? "Notificações Pendentes" : "Nenhuma notificação"}
                 >
                     <i className="fas fa-bell text-lg"></i>
                     {hasPendingNotifications && (
@@ -34,10 +83,34 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
                     <h4 className="text-lg font-semibold text-yellow-500">Notificações</h4>
                 </div>
                 <div className="p-4 max-h-80 overflow-y-auto">
-                    {hasPendingNotifications ? (
+                    {/* Lógica para Gestor */}
+                    {isManager && showManagerAlert ? (
+                        <div className="space-y-3">
+                            {managerNotifications.map(notif => (
+                                <div key={notif.id} className={`flex items-start p-3 ${notif.bgColor} border ${notif.borderColor} rounded-lg`}>
+                                    <notif.icon className={`h-5 w-5 ${notif.color} mt-1 flex-shrink-0`} />
+                                    <div className="ml-3">
+                                        <p className="text-white font-medium text-sm">{notif.title}</p>
+                                        <p className="text-gray-400 text-xs mt-1">
+                                            {notif.message}
+                                        </p>
+                                        <Button 
+                                            variant="link" 
+                                            className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
+                                            onClick={() => navigate(notif.link)}
+                                        >
+                                            Ver Detalhes
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : 
+                    /* Lógica para Cliente (Perfil Incompleto) */
+                    !isManager && hasPendingNotifications ? (
                         <div className="space-y-3">
                             <div className="flex items-start p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                                <User className="h-5 w-5 text-red-400 mt-1 flex-shrink-0" />
+                                <AlertTriangle className="h-5 w-5 text-red-400 mt-1 flex-shrink-0" />
                                 <div className="ml-3">
                                     <p className="text-white font-medium text-sm">Perfil Incompleto</p>
                                     <p className="text-gray-400 text-xs mt-1">
@@ -52,7 +125,6 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
                                     </Button>
                                 </div>
                             </div>
-                            {/* Futuras notificações apareceriam aqui */}
                         </div>
                     ) : (
                         <div className="text-center py-6">

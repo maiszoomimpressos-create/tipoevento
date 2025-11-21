@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Bell, Mail, System, ArrowLeft, Loader2, Save } from 'lucide-react';
+import { Bell, Mail, System, ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 
@@ -181,6 +182,14 @@ const ManagerNotifications: React.FC = () => {
                         Voltar
                     </Button>
                 </div>
+                <Button 
+                    onClick={() => navigate('/manager/settings')}
+                    variant="outline"
+                    className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
+                >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar
+                </Button>
             </div>
 
             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
@@ -209,6 +218,23 @@ const ManagerNotifications: React.FC = () => {
                                     </Button>
                                 </p>
                             </div>
+                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0 animate-fadeInUp">
+                            <div className="flex items-start space-x-3">
+                                <i className="fas fa-exclamation-triangle text-xl mt-1 flex-shrink-0"></i>
+                                <div>
+                                    <h3 className="font-semibold text-white mb-1">E-mail da Empresa Ausente</h3>
+                                    <p className="text-sm text-gray-300">
+                                        Para receber notificações por e-mail, cadastre o E-mail da Empresa.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button 
+                                variant="default" 
+                                className="bg-yellow-500 text-black hover:bg-yellow-600 h-8 px-4 text-sm w-full sm:w-auto flex-shrink-0"
+                                onClick={() => navigate('/manager/settings/company-profile')}
+                            >
+                                Configurar E-mail
+                            </Button>
                         </div>
                     )}
 
@@ -306,6 +332,11 @@ const ManagerNotifications: React.FC = () => {
                             onClick={handleSave}
                             disabled={isSaving}
                             className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
+                    <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                         >
                             {isSaving ? (
                                 <div className="flex items-center justify-center">
@@ -318,6 +349,15 @@ const ManagerNotifications: React.FC = () => {
                                     Salvar Preferências
                                 </>
                             )}
+                        </Button>
+                        <Button
+                            onClick={() => navigate('/manager/settings')}
+                            variant="outline"
+                            className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
+                            disabled={isSaving}
+                        >
+                            <ArrowLeft className="mr-2 h-5 w-5" />
+                            Voltar para Configurações
                         </Button>
                     </div>
                 </CardContent>
