@@ -25,11 +25,13 @@ const FIELD_NAMES: Record<keyof ProfileData, string> = {
     complemento: 'Complemento',
 };
 
+// Lista definitiva de campos necessários para remover a notificação.
 const ALL_REQUIRED_FIELDS: (keyof ProfileData)[] = [
     'first_name', 'cpf', 'birth_date', 'rg', 'gender',
     'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero',
 ];
 
+// Função para verificar se um valor é nulo, indefinido ou uma string vazia.
 const isValueEmpty = (value: any): boolean => {
     if (value === null || value === undefined) return true;
     if (typeof value === 'string') return value.trim() === '';
@@ -52,8 +54,10 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
         const missing: string[] = [];
 
         if (!profile) {
+            // Se o perfil não existe, todos os campos estão faltando.
             missing.push(...ALL_REQUIRED_FIELDS.map(field => FIELD_NAMES[field]));
         } else {
+            // Itera sobre cada campo obrigatório para verificar se está preenchido.
             for (const field of ALL_REQUIRED_FIELDS) {
                 const value = profile[field];
                 if (isValueEmpty(value)) {
