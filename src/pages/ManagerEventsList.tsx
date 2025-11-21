@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, Loader2 } from 'lucide-react';
-import { useManagerEvents } from '@/hooks/use-manager-events';
+import { useManagerEvents, ManagerEvent } from '@/hooks/use-manager-events';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 
@@ -27,11 +27,16 @@ const ManagerEventsList: React.FC = () => {
     );
 
     // Simulação de dados de métricas (já que não temos a tabela de tickets)
-    const getSimulatedMetrics = (eventId: string) => {
+    const getSimulatedMetrics = (event: ManagerEvent) => {
+        // Adicionando verificação de segurança para garantir que o ID exista e seja uma string
+        if (!event || typeof event.id !== 'string' || event.id.length === 0) {
+            return { ticketsSold: 0, totalRevenue: 0 };
+        }
+        
         // Em um ambiente real, isso viria de um JOIN ou RPC
-        const seed = eventId.charCodeAt(0) + eventId.charCodeAt(eventId.length - 1);
+        const seed = event.id.charCodeAt(0) + event.id.charCodeAt(event.id.length - 1);
         const ticketsSold = 100 + (seed % 500);
-        const totalRevenue = ticketsSold * (events.find(e => e.id === eventId)?.price || 100);
+        const totalRevenue = ticketsSold * (event.price || 100);
         return {
             ticketsSold: ticketsSold,
             totalRevenue: totalRevenue,
@@ -92,7 +97,8 @@ const ManagerEventsList: React.FC = () => {
                             </TableHeader>
                             <TableBody>
                                 {filteredEvents.map((event) => {
-                                    const metrics = getSimulatedMetrics(event.id);
+                                    // Passamos o objeto event inteiro para a função de métricas
+                                    const metrics = getSimulatedMetrics(event);
                                     const formattedDate = new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
                                     
                                     return (
