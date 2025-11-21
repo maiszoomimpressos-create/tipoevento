@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail, System, ArrowLeft, Loader2 } from 'lucide-react';
+import { Bell, ArrowLeft, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 
@@ -160,14 +160,27 @@ const ManagerNotifications: React.FC = () => {
                     <Bell className="h-7 w-7 mr-3" />
                     Notificações e Alertas
                 </h1>
-                <Button 
-                    onClick={() => navigate('/manager/settings')}
-                    variant="outline"
-                    className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar
-                </Button>
+                <div className="flex space-x-3">
+                    <Button 
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="bg-yellow-500 text-black hover:bg-yellow-600 text-sm h-9 px-4"
+                    >
+                        {isSaving ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Save className="w-4 h-4" />
+                        )}
+                    </Button>
+                    <Button 
+                        onClick={() => navigate('/manager/settings')}
+                        variant="outline"
+                        className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm h-9 px-4"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Voltar
+                    </Button>
+                </div>
             </div>
 
             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
