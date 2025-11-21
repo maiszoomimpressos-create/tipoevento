@@ -22,6 +22,7 @@ interface ProfileData {
     first_name: string;
     avatar_url: string | null;
     cpf: string | null;
+    rg: string | null; // Adicionado RG
     birth_date: string | null;
 }
 
@@ -51,6 +52,17 @@ const Profile: React.FC = () => {
             .replace(/(-\d{2})\d+?$/, '$1');
     };
 
+    const formatRG = (value: string) => {
+        if (!value) return '';
+        const cleanValue = value.replace(/\D/g, '');
+        // Formato comum de RG (XX.XXX.XXX-X)
+        return cleanValue
+            .replace(/(\d{2})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1})/, '$1-$2')
+            .replace(/(-\d{1})\d+?$/, '$1');
+    };
+
     useEffect(() => {
         const getSessionAndProfile = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -62,7 +74,7 @@ const Profile: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('first_name, avatar_url, cpf, birth_date')
+                .select('first_name, avatar_url, cpf, rg, birth_date') // Incluindo RG
                 .eq('id', session.user.id)
                 .single();
 
@@ -136,6 +148,10 @@ const Profile: React.FC = () => {
                             </div>
                             <Skeleton className="h-10 w-full" />
                             <Skeleton className="h-10 w-full" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
                             <Skeleton className="h-10 w-full" />
                             <Skeleton className="h-12 w-32" />
                         </CardContent>
@@ -221,16 +237,30 @@ const Profile: React.FC = () => {
                                                     />
                                                 </FormControl>
                                             </FormItem>
-                                            <FormItem>
-                                                <FormLabel className="text-white">CPF</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        value={profile?.cpf ? formatCPF(profile.cpf) : ''} 
-                                                        disabled 
-                                                        className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
-                                                    />
-                                                </FormControl>
-                                            </FormItem>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <FormItem>
+                                                    <FormLabel className="text-white">CPF</FormLabel>
+                                                    <FormControl>
+                                                        <Input 
+                                                            value={profile?.cpf ? formatCPF(profile.cpf) : ''} 
+                                                            disabled 
+                                                            className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel className="text-white">RG</FormLabel>
+                                                    <FormControl>
+                                                        <Input 
+                                                            value={profile?.rg ? formatRG(profile.rg) : ''} 
+                                                            disabled 
+                                                            className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            </div>
+
                                             <FormField
                                                 control={form.control}
                                                 name="birth_date"
