@@ -8,7 +8,7 @@ const ManagerSettings: React.FC = () => {
     const navigate = useNavigate();
 
     const settingsOptions = [
-        { icon: <User className="h-6 w-6 text-yellow-500" />, title: "Perfil da Empresa", description: "Atualize informações de contato e dados corporativos.", path: "#" },
+        { icon: <User className="h-6 w-6 text-yellow-500" />, title: "Perfil da Empresa", description: "Atualize informações de contato e dados corporativos.", path: "/manager/settings/company-profile" },
         { icon: <CreditCard className="h-6 w-6 text-yellow-500" />, title: "Configurações de Pagamento", description: "Gerencie contas bancárias e gateways de pagamento.", path: "#" },
         { icon: <Bell className="h-6 w-6 text-yellow-500" />, title: "Notificações e Alertas", description: "Defina preferências de notificação por e-mail e sistema.", path: "#" },
         { icon: <Settings className="h-6 w-6 text-yellow-500" />, title: "Configurações Avançadas", description: "Ajustes de sistema, segurança e integrações.", path: "#" },
@@ -26,7 +26,7 @@ const ManagerSettings: React.FC = () => {
                     <Card 
                         key={index}
                         className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer"
-                        onClick={() => alert(`Funcionalidade ${option.title} em desenvolvimento.`)}
+                        onClick={() => option.path !== '#' ? navigate(option.path) : alert(`Funcionalidade ${option.title} em desenvolvimento.`)}
                     >
                         <CardHeader className="p-0 mb-4">
                             <div className="flex items-center space-x-4">
