@@ -85,6 +85,7 @@ const ManagerCreateEvent: React.FC = () => {
         if (!formData.price || Number(formData.price) <= 0) errors.push("Preço Base é obrigatório e deve ser maior que zero.");
 
         if (errors.length > 0) {
+            // Exibe um único toast de erro para todos os campos
             showError(`Por favor, preencha todos os campos obrigatórios.`);
             return false;
         }
