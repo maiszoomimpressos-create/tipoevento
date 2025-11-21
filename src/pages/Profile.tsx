@@ -21,6 +21,7 @@ interface ProfileData {
     first_name: string;
     avatar_url: string | null;
     cpf: string | null;
+    birth_date: string | null;
 }
 
 const Profile: React.FC = () => {
@@ -47,6 +48,15 @@ const Profile: React.FC = () => {
             .replace(/(-\d{2})\d+?$/, '$1');
     };
 
+    const formatBirthDate = (dateString: string | null | undefined) => {
+        if (!dateString) return '';
+        const [year, month, day] = dateString.split('-');
+        if (day && month && year) {
+            return `${day}/${month}/${year}`;
+        }
+        return '';
+    };
+
     useEffect(() => {
         const getSessionAndProfile = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -58,7 +68,7 @@ const Profile: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('first_name, avatar_url, cpf')
+                .select('first_name, avatar_url, cpf, birth_date')
                 .eq('id', session.user.id)
                 .single();
 
@@ -205,6 +215,16 @@ const Profile: React.FC = () => {
                                                 <FormControl>
                                                     <Input 
                                                         value={profile?.cpf ? formatCPF(profile.cpf) : ''} 
+                                                        disabled 
+                                                        className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                            <FormItem>
+                                                <FormLabel className="text-white">Data de Nascimento</FormLabel>
+                                                <FormControl>
+                                                    <Input 
+                                                        value={formatBirthDate(profile?.birth_date)} 
                                                         disabled 
                                                         className="bg-black/60 border-yellow-500/30 text-gray-400 cursor-not-allowed" 
                                                     />
