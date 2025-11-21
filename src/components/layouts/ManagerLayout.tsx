@@ -10,10 +10,10 @@ const ManagerLayout: React.FC = () => {
 
     const navItems = [
         { path: '/manager/dashboard', label: 'Dashboard' },
-        { path: '/manager/events', label: 'Eventos' }, // Rota atualizada para a lista
+        { path: '/manager/events', label: 'Eventos' },
         { path: '#', label: 'Pulseiras' },
         { path: '#', label: 'Relatórios' },
-        { path: '#', label: 'Configurações' },
+        { path: '/manager/settings', label: 'Configurações' }, // Rota atualizada
     ];
 
     const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
@@ -26,7 +26,7 @@ const ManagerLayout: React.FC = () => {
                         if (onClick) onClick();
                     }} 
                     className={`transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left ${
-                        location.pathname.startsWith(item.path) && item.path !== '#' // Usar startsWith para incluir /manager/events/create
+                        location.pathname.startsWith(item.path) && item.path !== '#'
                         ? 'text-yellow-500 md:border-b-2 border-yellow-500 font-semibold' 
                         : 'text-white hover:text-yellow-500'
                     }`}
