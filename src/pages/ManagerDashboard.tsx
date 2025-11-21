@@ -16,8 +16,8 @@ const ManagerDashboard: React.FC = () => {
                             <span className="ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-3 py-1 rounded-lg text-sm font-bold">PRO</span>
                         </div>
                         <nav className="hidden md:flex items-center space-x-6">
-                            <button className="text-yellow-500 border-b-2 border-yellow-500 pb-1 font-semibold">Dashboard</button>
-                            <button className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</button>
+                            <button onClick={() => navigate('/manager/dashboard')} className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Dashboard</button>
+                            <button onClick={() => navigate('/manager/events/create')} className="text-yellow-500 border-b-2 border-yellow-500 pb-1 font-semibold">Eventos</button>
                             <button className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Pulseiras</button>
                             <button className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Relatórios</button>
                             <button className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Configurações</button>
@@ -219,7 +219,10 @@ const ManagerDashboard: React.FC = () => {
                         <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
                             <h3 className="text-xl font-semibold text-white mb-6">Ações Rápidas</h3>
                             <div className="space-y-4">
-                                <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center">
+                                <Button 
+                                    onClick={() => navigate('/manager/events/create')}
+                                    className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center"
+                                >
                                     <i className="fas fa-plus mr-2"></i>
                                     Criar Novo Evento
                                 </Button>
