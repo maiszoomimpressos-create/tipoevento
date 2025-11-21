@@ -551,11 +551,11 @@ const ManagerCompanyProfile: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="pt-4">
+                            <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                                 <Button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
+                                    className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                                 >
                                     {isSaving ? (
                                         <div className="flex items-center justify-center">
@@ -568,6 +568,16 @@ const ManagerCompanyProfile: React.FC = () => {
                                             Salvar Perfil da Empresa
                                         </>
                                     )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => navigate('/manager/settings')}
+                                    variant="outline"
+                                    className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
+                                    disabled={isSaving}
+                                >
+                                    <ArrowLeft className="mr-2 h-5 w-5" />
+                                    Voltar para Configurações
                                 </Button>
                             </div>
                         </form>
