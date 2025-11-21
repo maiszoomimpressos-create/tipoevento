@@ -124,11 +124,12 @@ const ManagerCreateEvent: React.FC = () => {
                             </div>
                             <div>
                                 <label htmlFor="category" className="block text-sm font-medium text-white mb-2">Categoria *</label>
-                                <Select onValueChange={handleSelectChange} required>
+                                <Select onValueChange={handleSelectChange} value={formData.category}>
                                     <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
                                         <SelectValue placeholder="Selecione a Categoria" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                        {/* Adicionando um item de placeholder com valor não vazio, se necessário, mas aqui vamos confiar no placeholder do SelectValue */}
                                         {categories.map(cat => (
                                             <SelectItem key={cat.id} value={cat.name} className="hover:bg-yellow-500/10 cursor-pointer">
                                                 {cat.name}
