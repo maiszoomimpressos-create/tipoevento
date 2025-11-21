@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
+import AvatarUpload from '@/components/AvatarUpload'; // Importando o novo componente
 
 const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
@@ -78,6 +78,11 @@ const Profile: React.FC = () => {
             setProfile(prev => prev ? { ...prev, first_name: values.first_name } : null);
         }
         setFormLoading(false);
+    };
+
+    const handleAvatarUpload = (newUrl: string) => {
+        setProfile(prev => prev ? { ...prev, avatar_url: newUrl } : null);
+        // O AuthStatusMenu (no header) deve reagir a essa mudança automaticamente via listener do Supabase ou re-renderização.
     };
 
     if (loading) {
@@ -148,19 +153,20 @@ const Profile: React.FC = () => {
                                     <CardDescription className="text-gray-400">Atualize seus dados pessoais aqui.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex items-center space-x-6 mb-8">
-                                        <Avatar className="h-24 w-24 border-2 border-yellow-500/50">
-                                            <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.first_name} />
-                                            <AvatarFallback className="bg-yellow-500 text-black font-bold text-4xl">{initials}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-white">{profile?.first_name}</h2>
-                                            <p className="text-gray-400">{session?.user?.email}</p>
-                                            <Button variant="outline" className="mt-2 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm h-8">
-                                                Alterar Foto
-                                            </Button>
+                                    {session?.user?.id && (
+                                        <div className="mb-8">
+                                            <AvatarUpload
+                                                userId={session.user.id}
+                                                url={profile?.avatar_url || null}
+                                                onUpload={handleAvatarUpload}
+                                                initials={initials}
+                                            />
+                                            <div className="mt-4">
+                                                <h2 className="text-2xl font-bold text-white">{profile?.first_name}</h2>
+                                                <p className="text-gray-400">{session?.user?.email}</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                     <Form {...form}>
                                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                                             <FormField
