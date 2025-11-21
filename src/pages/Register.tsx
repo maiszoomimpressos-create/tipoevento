@@ -10,6 +10,7 @@ const Register: React.FC = () => {
         name: '',
         email: '',
         cpf: '',
+        birthDate: '',
         password: '',
         confirmPassword: ''
     });
@@ -64,6 +65,20 @@ const Register: React.FC = () => {
         } else if (!validateCPF(formData.cpf)) {
             errors.cpf = 'CPF inválido';
         }
+        if (!formData.birthDate.trim()) {
+            errors.birthDate = 'Data de nascimento é obrigatória';
+        } else {
+            const today = new Date();
+            const birthDate = new Date(formData.birthDate);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            if (age < 18) {
+                errors.birthDate = 'Você deve ter pelo menos 18 anos';
+            }
+        }
         if (!formData.password) {
             errors.password = 'Senha é obrigatória';
         } else if (formData.password.length < 6) {
@@ -103,6 +118,7 @@ const Register: React.FC = () => {
                     data: {
                         name: formData.name,
                         cpf: cleanCPF,
+                        birth_date: formData.birthDate,
                     },
                 },
             });
@@ -119,7 +135,7 @@ const Register: React.FC = () => {
                 setTimeout(() => {
                     navigate('/login');
                     setShowSuccessMessage(false);
-                    setFormData({ name: '', email: '', cpf: '', password: '', confirmPassword: '' });
+                    setFormData({ name: '', email: '', cpf: '', birthDate: '', password: '', confirmPassword: '' });
                 }, 3000);
             } else {
                 // Caso o Supabase retorne sucesso, mas sem usuário (e-mail de confirmação enviado)
@@ -128,7 +144,7 @@ const Register: React.FC = () => {
                 setTimeout(() => {
                     navigate('/login');
                     setShowSuccessMessage(false);
-                    setFormData({ name: '', email: '', cpf: '', password: '', confirmPassword: '' });
+                    setFormData({ name: '', email: '', cpf: '', birthDate: '', password: '', confirmPassword: '' });
                 }, 3000);
             }
 
@@ -247,6 +263,30 @@ const Register: React.FC = () => {
                                     <p className="text-red-400 text-sm mt-1 flex items-center">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
                                         {formErrors.cpf}
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="birthDate" className="block text-sm font-medium text-white mb-2">
+                                    Data de Nascimento *
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="date"
+                                        id="birthDate"
+                                        value={formData.birthDate}
+                                        onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                                        className={`w-full bg-black/60 border rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-300 ${formErrors.birthDate
+                                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                                                : 'border-yellow-500/30 focus:border-yellow-500 focus:ring-yellow-500/20'
+                                            }`}
+                                    />
+                                    <i className="fas fa-calendar-alt absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
+                                </div>
+                                {formErrors.birthDate && (
+                                    <p className="text-red-400 text-sm mt-1 flex items-center">
+                                        <i className="fas fa-exclamation-circle mr-1"></i>
+                                        {formErrors.birthDate}
                                     </p>
                                 )}
                             </div>
