@@ -6,41 +6,23 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { showSuccess, showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status';
-import NotificationBell from './NotificationBell'; // Importando o novo componente
-
-interface UserProfile {
-    first_name: string;
-    avatar_url: string | null;
-    tipo_usuario_id: number;
-}
+import { useProfile, ProfileData } from '@/hooks/use-profile';
+import NotificationBell from './NotificationBell';
 
 const AuthStatusMenu: React.FC = () => {
     const navigate = useNavigate();
     const [session, setSession] = useState<any>(null);
-    const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    const userId = session?.user?.id;
-    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(userId);
+    const [loadingSession, setLoadingSession] = useState(true);
 
     useEffect(() => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
             setSession(currentSession);
-            if (currentSession) {
-                fetchProfile(currentSession.user.id);
-            } else {
-                setProfile(null);
-                setLoading(false);
-            }
+            setLoadingSession(false);
         });
 
         supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
             setSession(initialSession);
-            if (initialSession) {
-                fetchProfile(initialSession.user.id);
-            } else {
-                setLoading(false);
-            }
+            setLoadingSession(false);
         });
 
         return () => {
@@ -48,22 +30,10 @@ const AuthStatusMenu: React.FC = () => {
         };
     }, []);
 
-    const fetchProfile = async (userId: string) => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('first_name, avatar_url, tipo_usuario_id')
-            .eq('id', userId)
-            .single();
-
-        if (error) {
-            console.error("Error fetching profile:", error);
-            setProfile(null);
-            showError("Não foi possível carregar o perfil.");
-        } else if (data) {
-            setProfile(data);
-        }
-        setLoading(false);
-    };
+    const userId = session?.user?.id;
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+    
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -75,7 +45,7 @@ const AuthStatusMenu: React.FC = () => {
         }
     };
 
-    if (loading || statusLoading) {
+    if (loadingSession || isLoadingProfile || statusLoading) {
         // Pode retornar um Skeleton ou null durante o carregamento inicial
         return <div className="w-10 h-10 bg-yellow-500/20 rounded-full animate-pulse"></div>;
     }

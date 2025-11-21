@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { ProfileData } from './use-profile'; // Importando o tipo de dado
 
 interface ProfileStatus {
     isComplete: boolean;
@@ -16,7 +16,6 @@ const ESSENTIAL_FIELDS = [
 
 // Campos de endereço que, se o CEP for preenchido, devem ser verificados
 const ADDRESS_FIELDS = [
-    'cep',
     'rua',
     'numero',
 ];
@@ -28,69 +27,59 @@ const isValueEmpty = (value: any): boolean => {
     return false;
 };
 
-export function useProfileStatus(userId: string | undefined): ProfileStatus {
+export function useProfileStatus(profile: ProfileData | null | undefined, isLoading: boolean): ProfileStatus {
     const [status, setStatus] = useState<ProfileStatus>({
         isComplete: true,
         hasPendingNotifications: false,
-        loading: true,
+        loading: isLoading,
     });
 
     useEffect(() => {
-        if (!userId) {
-            setStatus({ isComplete: true, hasPendingNotifications: false, loading: false });
+        setStatus(prev => ({ ...prev, loading: isLoading }));
+
+        if (isLoading) return;
+
+        if (!profile) {
+            // Se não há perfil (usuário logado, mas perfil não carregado), consideramos incompleto/pendente
+            setStatus({ isComplete: false, hasPendingNotifications: true, loading: false });
             return;
         }
 
-        const checkProfile = async () => {
-            setStatus(prev => ({ ...prev, loading: true }));
+        let missingEssential = false;
+        let missingAddressDetail = false;
 
-            const { data, error } = await supabase
-                .from('profiles')
-                .select(`
-                    ${ESSENTIAL_FIELDS.join(', ')},
-                    ${ADDRESS_FIELDS.join(', ')}
-                `)
-                .eq('id', userId)
-                .single();
-
-            if (error || !data) {
-                console.error("Error fetching profile status:", error);
-                setStatus({ isComplete: false, hasPendingNotifications: true, loading: false });
-                return;
+        // 1. Verificar campos essenciais
+        for (const field of ESSENTIAL_FIELDS) {
+            // Usamos a indexação segura e garantimos que o valor seja limpo (se for string)
+            const value = profile[field as keyof ProfileData];
+            if (isValueEmpty(value)) {
+                missingEssential = true;
+                break;
             }
+        }
 
-            let missingEssential = false;
-            let missingAddressDetail = false;
-
-            // 1. Verificar campos essenciais
-            for (const field of ESSENTIAL_FIELDS) {
-                if (isValueEmpty(data[field])) {
-                    missingEssential = true;
+        // 2. Verificar campos de endereço se o CEP estiver preenchido
+        const cep = profile.cep ? String(profile.cep).replace(/\D/g, '') : null;
+        
+        if (cep && cep.length === 8) {
+            // Se o CEP está preenchido, verificamos se Rua e Número estão preenchidos
+            for (const field of ADDRESS_FIELDS) {
+                const value = profile[field as keyof ProfileData];
+                if (isValueEmpty(value)) {
+                    missingAddressDetail = true;
                     break;
                 }
             }
+        }
 
-            // 2. Verificar campos de endereço se o CEP estiver preenchido
-            const cep = data.cep ? String(data.cep).replace(/\D/g, '') : null;
-            
-            if (cep && cep.length === 8) {
-                // Se o CEP está preenchido, verificamos se Rua e Número estão preenchidos
-                if (isValueEmpty(data.rua) || isValueEmpty(data.numero)) {
-                    missingAddressDetail = true;
-                }
-            }
-
-            const profileIsComplete = !missingEssential && !missingAddressDetail;
-            
-            setStatus({
-                isComplete: profileIsComplete,
-                hasPendingNotifications: !profileIsComplete,
-                loading: false,
-            });
-        };
-
-        checkProfile();
-    }, [userId]);
+        const profileIsComplete = !missingEssential && !missingAddressDetail;
+        
+        setStatus({
+            isComplete: profileIsComplete,
+            hasPendingNotifications: !profileIsComplete,
+            loading: false,
+        });
+    }, [profile, isLoading]);
 
     return status;
 }

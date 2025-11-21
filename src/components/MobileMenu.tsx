@@ -5,42 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from '@/integrations/supabase/client';
 import { useProfileStatus } from '@/hooks/use-profile-status';
+import { useProfile } from '@/hooks/use-profile';
 import { showSuccess, showError } from '@/utils/toast';
-
-interface UserProfile {
-    first_name: string;
-    avatar_url: string | null;
-    tipo_usuario_id: number;
-}
 
 const MobileMenu: React.FC = () => {
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [session, setSession] = useState<any>(null);
-    const [profile, setProfile] = useState<UserProfile | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    const userId = session?.user?.id;
-    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(userId);
+    const [loadingSession, setLoadingSession] = useState(true);
 
     useEffect(() => {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
             setSession(currentSession);
-            if (currentSession) {
-                fetchProfile(currentSession.user.id);
-            } else {
-                setProfile(null);
-                setLoading(false);
-            }
+            setLoadingSession(false);
         });
 
         supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
             setSession(initialSession);
-            if (initialSession) {
-                fetchProfile(initialSession.user.id);
-            } else {
-                setLoading(false);
-            }
+            setLoadingSession(false);
         });
 
         return () => {
@@ -48,21 +30,9 @@ const MobileMenu: React.FC = () => {
         };
     }, []);
 
-    const fetchProfile = async (userId: string) => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('first_name, avatar_url, tipo_usuario_id')
-            .eq('id', userId)
-            .single();
-
-        if (error) {
-            console.error("Error fetching profile:", error);
-            setProfile(null);
-        } else if (data) {
-            setProfile(data);
-        }
-        setLoading(false);
-    };
+    const userId = session?.user?.id;
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
 
     const handleNavigation = (path: string) => {
         setIsOpen(false);
@@ -86,7 +56,7 @@ const MobileMenu: React.FC = () => {
         { path: '/#contato', label: 'Contato', icon: 'fas fa-envelope' },
     ];
 
-    const isUserLoading = loading || statusLoading;
+    const isUserLoading = loadingSession || isLoadingProfile || statusLoading;
     const isLoggedIn = session && profile;
     const isManager = isLoggedIn && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
 

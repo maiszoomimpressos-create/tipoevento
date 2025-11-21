@@ -13,7 +13,9 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
-import { useProfileStatus } from '@/hooks/use-profile-status'; // Importando o hook
+import { useProfileStatus } from '@/hooks/use-profile-status';
+import { useProfile, ProfileData } from '@/hooks/use-profile';
+import { useQueryClient } from '@tanstack/react-query';
 
 const GENDER_OPTIONS = [
     "Masculino",
@@ -26,7 +28,7 @@ const GENDER_OPTIONS = [
 // Função de validação de CPF (simplificada para o frontend)
 const validateCPF = (cpf: string) => {
     const cleanCPF = cpf.replace(/\D/g, '');
-    return cleanCPF.length === 11; // A validação completa é feita no backend (se necessário)
+    return cleanCPF.length === 11;
 };
 
 // Função de validação de CEP (apenas formato)
@@ -44,7 +46,6 @@ const profileSchema = z.object({
     rg: z.string().optional().nullable(), 
 
     // Campos de Endereço
-    // CEP agora é opcional, mas se preenchido, deve ter 8 dígitos
     cep: z.string().optional().nullable().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
     rua: z.string().optional().nullable(),
     bairro: z.string().optional().nullable(),
@@ -54,34 +55,33 @@ const profileSchema = z.object({
     complemento: z.string().optional().nullable(),
 });
 
-interface ProfileData {
-    first_name: string;
-    avatar_url: string | null;
-    cpf: string | null;
-    rg: string | null;
-    birth_date: string | null;
-    gender: string | null;
-    // Novos campos de endereço
-    cep: string | null;
-    rua: string | null;
-    bairro: string | null;
-    cidade: string | null;
-    estado: string | null;
-    numero: string | null;
-    complemento: string | null;
-}
-
 const Profile: React.FC = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [session, setSession] = useState<any>(null);
-    const [profile, setProfile] = useState<ProfileData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loadingSession, setLoadingSession] = useState(true);
     const [formLoading, setFormLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isCepLoading, setIsCepLoading] = useState(false);
 
+    useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                navigate('/login');
+                return;
+            }
+            setSession(session);
+            setLoadingSession(false);
+        };
+        checkSession();
+    }, [navigate]);
+
     const userId = session?.user?.id;
-    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(userId);
+    const { profile, isLoading: isLoadingProfile, refetch } = useProfile(userId);
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
+
+    const loading = loadingSession || isLoadingProfile;
 
     const formatCPF = (value: string) => {
         if (!value) return '';
@@ -120,7 +120,6 @@ const Profile: React.FC = () => {
             gender: '',
             cpf: '',
             rg: '',
-            // Default values para endereço
             cep: '',
             rua: '',
             bairro: '',
@@ -129,7 +128,42 @@ const Profile: React.FC = () => {
             numero: '',
             complemento: '',
         },
+        values: {
+            first_name: profile?.first_name || '',
+            birth_date: profile?.birth_date || '',
+            gender: profile?.gender || '',
+            cpf: profile?.cpf ? formatCPF(profile.cpf) : '',
+            rg: profile?.rg ? formatRG(profile.rg) : '',
+            cep: profile?.cep ? formatCEP(profile.cep) : '',
+            rua: profile?.rua || '',
+            bairro: profile?.bairro || '',
+            cidade: profile?.cidade || '',
+            estado: profile?.estado || '',
+            numero: profile?.numero || '',
+            complemento: profile?.complemento || '',
+        },
     });
+
+    useEffect(() => {
+        if (profile) {
+            // Resetar o formulário com os dados do perfil sempre que o perfil for carregado/atualizado
+            form.reset({
+                first_name: profile.first_name || '',
+                birth_date: profile.birth_date || '',
+                gender: profile.gender || '',
+                cpf: profile.cpf ? formatCPF(profile.cpf) : '',
+                rg: profile.rg ? formatRG(profile.rg) : '',
+                cep: profile.cep ? formatCEP(profile.cep) : '',
+                rua: profile.rua || '',
+                bairro: profile.bairro || '',
+                cidade: profile.cidade || '',
+                estado: profile.estado || '',
+                numero: profile.numero || '',
+                complemento: profile.complemento || '',
+            });
+        }
+    }, [profile, form]);
+
 
     // Função para buscar endereço via ViaCEP
     const fetchAddressByCep = async (cep: string) => {
@@ -188,58 +222,13 @@ const Profile: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        const getSessionAndProfile = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                navigate('/login');
-                return;
-            }
-            setSession(session);
-
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('first_name, avatar_url, cpf, rg, birth_date, gender, cep, rua, bairro, cidade, estado, numero, complemento')
-                .eq('id', session.user.id)
-                .single();
-
-            if (error) {
-                showError("Não foi possível carregar seu perfil.");
-                console.error(error);
-            } else if (data) {
-                setProfile(data);
-                form.reset({ 
-                    first_name: data.first_name || '',
-                    birth_date: data.birth_date || '',
-                    gender: data.gender || '',
-                    cpf: data.cpf ? formatCPF(data.cpf) : '',
-                    rg: data.rg ? formatRG(data.rg) : '',
-                    // Reset para endereço
-                    cep: data.cep ? formatCEP(data.cep) : '',
-                    rua: data.rua || '',
-                    bairro: data.bairro || '',
-                    cidade: data.cidade || '',
-                    estado: data.estado || '',
-                    numero: data.numero || '',
-                    complemento: data.complemento || '',
-                });
-            }
-            setLoading(false);
-        };
-        getSessionAndProfile();
-    }, [navigate, form]);
-
-
     const onSubmit = async (values: z.infer<typeof profileSchema>) => {
         if (!session) return;
         setFormLoading(true);
 
         // Limpeza e conversão para salvar no DB
         const cleanCPF = values.cpf.replace(/\D/g, '');
-        // Se o RG for uma string vazia (após formatação), salva como null
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
-        
-        // CEP é opcional, se for string vazia ou nula, salva como null
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
         
         const genderToSave = (values.gender === "not_specified" || !values.gender) ? null : values.gender;
@@ -265,7 +254,7 @@ const Profile: React.FC = () => {
                 cep: cleanCEP,
                 rua: ruaToSave,
                 bairro: bairroToSave,
-                cidade: cidadeToSave, // Corrigido para usar cidadeToSave
+                cidade: cidadeToSave,
                 estado: estadoToSave,
                 numero: numeroToSave,
                 complemento: complementoToSave,
@@ -277,22 +266,8 @@ const Profile: React.FC = () => {
             console.error("Supabase Update Error:", error);
         } else {
             showSuccess("Perfil atualizado com sucesso!");
-            setProfile(prev => prev ? { 
-                ...prev, 
-                first_name: values.first_name, 
-                birth_date: values.birth_date, 
-                gender: genderToSave,
-                cpf: cleanCPF,
-                rg: cleanRG,
-                // Atualizando estado local
-                cep: cleanCEP,
-                rua: ruaToSave,
-                bairro: bairroToSave,
-                cidade: cidadeToSave,
-                estado: estadoToSave,
-                numero: numeroToSave,
-                complemento: complementoToSave,
-            } : null);
+            // Invalida a query para forçar a re-busca e atualização imediata do status de notificação em todos os componentes
+            queryClient.invalidateQueries({ queryKey: ['profile', userId] });
             setIsEditing(false);
         }
         setFormLoading(false);
@@ -301,35 +276,26 @@ const Profile: React.FC = () => {
     const onInvalid = (errors: any) => {
         console.error("Form Validation Errors:", errors);
         showError("Por favor, corrija os erros no formulário antes de salvar.");
-        setFormLoading(false); // Garantir que o loading seja desativado se a validação falhar
+        setFormLoading(false);
     };
 
     const handleAvatarUpload = (newUrl: string) => {
-        setProfile(prev => prev ? { ...prev, avatar_url: newUrl } : null);
+        // Atualiza o cache localmente para refletir a mudança imediatamente
+        queryClient.setQueryData(['profile', userId], (oldData: ProfileData | undefined) => {
+            if (oldData) {
+                return { ...oldData, avatar_url: newUrl };
+            }
+            return oldData;
+        });
     };
 
     const handleCancelEdit = () => {
-        if (profile) {
-            form.reset({
-                first_name: profile.first_name || '',
-                birth_date: profile.birth_date || '',
-                gender: profile.gender || '',
-                cpf: profile.cpf ? formatCPF(profile.cpf) : '',
-                rg: profile.rg ? formatRG(profile.rg) : '',
-                // Reset de endereço
-                cep: profile.cep ? formatCEP(profile.cep) : '',
-                rua: profile.rua || '',
-                bairro: profile.bairro || '',
-                cidade: profile.cidade || '',
-                estado: profile.estado || '',
-                numero: profile.numero || '',
-                complemento: profile.complemento || '',
-            });
-        }
+        // O reset agora usa os valores do 'profile' carregado pelo useQuery
+        form.reset();
         setIsEditing(false);
     };
 
-    if (loading || statusLoading) {
+    if (loading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <div className="w-full max-w-4xl p-6 space-y-8">
