@@ -372,23 +372,34 @@ const ManagerEditEvent: React.FC = () => {
                             </div>
                         </div>
 
-                        <Button
-                            type="submit"
-                            disabled={isLoading || !userId}
-                            className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
-                        >
-                            {isLoading ? (
-                                <div className="flex items-center justify-center">
-                                    <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2"></div>
-                                    Salvando Alterações...
-                                </div>
-                            ) : (
-                                <>
-                                    <i className="fas fa-save mr-2"></i>
-                                    Salvar Alterações
-                                </>
-                            )}
-                        </Button>
+                        <div className="flex items-center space-x-4 pt-4">
+                            <Button
+                                type="submit"
+                                disabled={isLoading || !userId}
+                                className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 flex-1"
+                            >
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center">
+                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                        Salvando Alterações...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-save mr-2"></i>
+                                        Salvar Alterações
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => navigate('/manager/events')}
+                                variant="outline"
+                                className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer flex-1"
+                            >
+                                <i className="fas fa-arrow-left mr-2"></i>
+                                Voltar para a Lista
+                            </Button>
+                        </div>
                     </form>
                 </CardContent>
             </Card>
