@@ -58,6 +58,10 @@ const ManagerEventsList: React.FC = () => {
         return <div className="text-red-400 text-center py-10">Erro ao carregar eventos. Tente recarregar a página.</div>;
     }
 
+    const handleRowClick = (eventId: string) => {
+        navigate(`/manager/events/edit/${eventId}`);
+    };
+
     return (
         <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
@@ -112,10 +116,13 @@ const ManagerEventsList: React.FC = () => {
                                     const formattedDate = new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
                                     
                                     return (
-                                        <TableRow key={event.id} className="border-b border-yellow-500/10 hover:bg-black/40 transition-colors text-sm">
+                                        <TableRow 
+                                            key={event.id} 
+                                            className="border-b border-yellow-500/10 hover:bg-black/40 transition-colors text-sm cursor-pointer"
+                                            onClick={() => handleRowClick(event.id)} // Adiciona o clique na linha
+                                        >
                                             <TableCell className="py-4">
                                                 <div className="text-white font-medium truncate max-w-[300px]">{event.title}</div>
-                                                <div className="text-gray-500 text-xs mt-1">ID: {event.id.substring(0, 8)}...</div>
                                             </TableCell>
                                             <TableCell className="text-center py-4">
                                                 <span className="text-white">{formattedDate}</span>
@@ -126,15 +133,12 @@ const ManagerEventsList: React.FC = () => {
                                             <TableCell className="text-center py-4">
                                                 <span className="text-green-400 font-bold">R$ {metrics.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                             </TableCell>
-                                            <TableCell className="text-center py-4 flex items-center justify-center">
+                                            <TableCell className="text-center py-4 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm"
                                                     className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 h-8 px-3"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigate(`/manager/events/edit/${event.id}`);
-                                                    }}
+                                                    onClick={() => handleRowClick(event.id)}
                                                 >
                                                     <i className="fas fa-edit mr-2"></i>
                                                     Gerenciar
