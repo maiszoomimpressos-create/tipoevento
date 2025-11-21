@@ -8,22 +8,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
 
+const GENDER_OPTIONS = [
+    "Masculino",
+    "Feminino",
+    "Não binário",
+    "Outro",
+    "Prefiro não dizer"
+];
+
 const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
+    gender: z.string().min(1, { message: "Gênero é obrigatório." }), // Adicionado Gênero ao esquema
 });
 
 interface ProfileData {
     first_name: string;
     avatar_url: string | null;
     cpf: string | null;
-    rg: string | null; // Adicionado RG
+    rg: string | null;
     birth_date: string | null;
+    gender: string | null; // Adicionado Gênero
 }
 
 const Profile: React.FC = () => {
@@ -39,6 +50,7 @@ const Profile: React.FC = () => {
         defaultValues: {
             first_name: '',
             birth_date: '',
+            gender: '',
         },
     });
 
@@ -74,7 +86,7 @@ const Profile: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('profiles')
-                .select('first_name, avatar_url, cpf, rg, birth_date') // Incluindo RG
+                .select('first_name, avatar_url, cpf, rg, birth_date, gender') // Incluindo Gênero
                 .eq('id', session.user.id)
                 .single();
 
@@ -85,7 +97,8 @@ const Profile: React.FC = () => {
                 setProfile(data);
                 form.reset({ 
                     first_name: data.first_name || '',
-                    birth_date: data.birth_date || ''
+                    birth_date: data.birth_date || '',
+                    gender: data.gender || '', // Definindo valor padrão para o formulário
                 });
             }
             setLoading(false);
@@ -100,7 +113,8 @@ const Profile: React.FC = () => {
             .from('profiles')
             .update({ 
                 first_name: values.first_name,
-                birth_date: values.birth_date
+                birth_date: values.birth_date,
+                gender: values.gender, // Salvando Gênero
             })
             .eq('id', session.user.id);
 
@@ -108,7 +122,7 @@ const Profile: React.FC = () => {
             showError("Erro ao atualizar o perfil.");
         } else {
             showSuccess("Perfil atualizado com sucesso!");
-            setProfile(prev => prev ? { ...prev, first_name: values.first_name, birth_date: values.birth_date } : null);
+            setProfile(prev => prev ? { ...prev, first_name: values.first_name, birth_date: values.birth_date, gender: values.gender } : null);
             setIsEditing(false);
         }
         setFormLoading(false);
@@ -122,7 +136,8 @@ const Profile: React.FC = () => {
         if (profile) {
             form.reset({
                 first_name: profile.first_name || '',
-                birth_date: profile.birth_date || ''
+                birth_date: profile.birth_date || '',
+                gender: profile.gender || '',
             });
         }
         setIsEditing(false);
@@ -261,24 +276,52 @@ const Profile: React.FC = () => {
                                                 </FormItem>
                                             </div>
 
-                                            <FormField
-                                                control={form.control}
-                                                name="birth_date"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="text-white">Data de Nascimento</FormLabel>
-                                                        <FormControl>
-                                                            <Input 
-                                                                type="date" 
-                                                                {...field} 
-                                                                disabled={!isEditing} 
-                                                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="birth_date"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Data de Nascimento</FormLabel>
+                                                            <FormControl>
+                                                                <Input 
+                                                                    type="date" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="gender"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-white">Gênero</FormLabel>
+                                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isEditing}>
+                                                                <FormControl>
+                                                                    <SelectTrigger 
+                                                                        className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        <SelectValue placeholder="Selecione seu gênero" />
+                                                                    </SelectTrigger>
+                                                                </FormControl>
+                                                                <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                                                    {GENDER_OPTIONS.map(option => (
+                                                                        <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
+                                                                            {option}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
                                             
                                             {isEditing ? (
                                                 <div className="flex items-center space-x-4 pt-4">
