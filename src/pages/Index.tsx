@@ -22,12 +22,31 @@ const Index: React.FC = () => {
         navigate(`/events/${event.id}`);
     };
 
+    // Função para determinar a transformação do carrossel (simplificada para mobile)
+    const getTransform = (pos: number) => {
+        if (pos === 0) return 'translateX(-50%) scale(1)';
+        if (pos === -1) return 'translateX(calc(-50% - 18rem)) scale(0.85)';
+        if (pos === 1) return 'translateX(calc(-50% + 18rem)) scale(0.85)';
+        // Esconde slides mais distantes em telas menores
+        return 'translateX(-50%) scale(0.5)';
+    };
+    
+    const getOpacity = (pos: number) => {
+        if (pos === 0) return 1;
+        if (Math.abs(pos) === 1) return 0.9;
+        return 0; // Esconde slides mais distantes
+    };
+    
+    const getZIndex = (pos: number) => {
+        return 50 - Math.abs(pos);
+    };
+
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-8">
-                        <div className="text-2xl font-serif text-yellow-500 font-bold">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-4 sm:space-x-8">
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold">
                             Mazoy
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
@@ -37,12 +56,12 @@ const Index: React.FC = () => {
                             <a href="#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
                         </nav>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3 sm:space-x-4">
                         <div className="relative hidden lg:block">
                             <Input 
                                 type="search" 
                                 placeholder="Buscar eventos..." 
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-64 pl-4 pr-10 py-2 rounded-xl"
+                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-48 md:w-64 pl-4 pr-10 py-2 rounded-xl"
                             />
                             <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
                         </div>
@@ -53,45 +72,32 @@ const Index: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <section id="home" className="pt-20 pb-8 px-6">
+            <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="relative h-[500px] overflow-hidden">
+                    <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] overflow-hidden">
                         <div className="flex items-center justify-center h-full">
                             {eventSlides.map((slide, index) => {
                                 let position = (index - currentSlide + eventSlides.length) % eventSlides.length;
                                 if (position > eventSlides.length / 2) position -= eventSlides.length;
-                                const getTransform = (pos: number) => {
-                                    if (pos === 0) return 'translateX(-50%) scale(1)';
-                                    if (pos === -1) return 'translateX(calc(-50% - 18rem)) scale(0.85)';
-                                    if (pos === 1) return 'translateX(calc(-50% + 18rem)) scale(0.85)';
-                                    if (pos === -2) return 'translateX(calc(-50% - 35rem)) scale(0.7)';
-                                    if (pos === 2) return 'translateX(calc(-50% + 35rem)) scale(0.7)';
-                                    if (pos === -3) return 'translateX(calc(-50% - 50rem)) scale(0.6)';
-                                    if (pos === 3) return 'translateX(calc(-50% + 50rem)) scale(0.6)';
-                                    return 'translateX(-50%) scale(0.5)';
-                                };
-                                const getOpacity = (pos: number) => {
-                                    if (pos === 0) return 1;
-                                    if (Math.abs(pos) === 1) return 0.9;
-                                    if (Math.abs(pos) === 2) return 0.7;
-                                    if (Math.abs(pos) === 3) return 0.5;
-                                    return 0.3;
-                                };
-                                const getZIndex = (pos: number) => {
-                                    return 50 - Math.abs(pos);
-                                };
+                                
+                                // Lógica de transformação simplificada para mobile
+                                const isCenter = position === 0;
+                                const isVisible = Math.abs(position) <= 1;
+
                                 return (
                                     <div
                                         key={slide.id}
-                                        className="absolute transition-all duration-1000 ease-in-out"
+                                        className={`absolute transition-all duration-1000 ease-in-out ${isCenter ? 'w-full max-w-md sm:max-w-xl lg:max-w-[750px]' : 'w-full max-w-xs sm:max-w-sm lg:max-w-[750px] hidden lg:block'}`}
                                         style={{
                                             left: '50%',
-                                            transform: getTransform(position),
-                                            opacity: getOpacity(position),
-                                            zIndex: getZIndex(position)
+                                            transform: isCenter ? 'translateX(-50%) scale(1)' : getTransform(position),
+                                            opacity: isCenter ? 1 : getOpacity(position),
+                                            zIndex: getZIndex(position),
+                                            // Força a visibilidade apenas do slide central em telas pequenas
+                                            ...(window.innerWidth < 1024 && !isCenter && { display: 'none' })
                                         }}
                                     >
-                                        <div className="relative w-[750px] h-[450px] bg-black rounded-2xl overflow-hidden shadow-2xl shadow-yellow-500/20 cursor-pointer" onClick={() => handleEventClick(slide)}>
+                                        <div className="relative h-[300px] sm:h-[450px] bg-black rounded-2xl overflow-hidden shadow-2xl shadow-yellow-500/20 cursor-pointer" onClick={() => handleEventClick(slide)}>
                                             <img
                                                 src={slide.image}
                                                 alt={slide.title}
@@ -99,17 +105,17 @@ const Index: React.FC = () => {
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent"></div>
                                             <div className="absolute inset-0 flex items-center">
-                                                <div className="px-12 py-8 max-w-2xl">
-                                                    <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-semibold mb-3">
+                                                <div className="px-6 sm:px-12 py-8 max-w-full lg:max-w-2xl">
+                                                    <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold mb-2 sm:mb-3">
                                                         {slide.category}
                                                     </div>
-                                                    <h2 className="text-4xl font-serif text-white mb-3 leading-tight">
+                                                    <h2 className="text-2xl sm:text-4xl font-serif text-white mb-2 sm:mb-3 leading-tight">
                                                         {slide.title}
                                                     </h2>
-                                                    <p className="text-lg text-gray-200 mb-4 font-light">
+                                                    <p className="text-sm sm:text-lg text-gray-200 mb-3 sm:mb-4 font-light line-clamp-2 hidden sm:block">
                                                         {slide.description}
                                                     </p>
-                                                    <div className="flex items-center space-x-6 mb-6">
+                                                    <div className="flex flex-wrap items-center space-x-4 sm:space-x-6 mb-4 sm:mb-6 text-sm">
                                                         <div className="flex items-center text-yellow-500">
                                                             <i className="fas fa-calendar-alt mr-2"></i>
                                                             <span className="text-white">{slide.date}</span>
@@ -120,11 +126,11 @@ const Index: React.FC = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center space-x-4">
-                                                        <span className="text-2xl font-bold text-yellow-500">
+                                                        <span className="text-xl sm:text-2xl font-bold text-yellow-500">
                                                             {slide.price}
                                                         </span>
                                                         <Button
-                                                            className="bg-yellow-500 text-black hover:bg-yellow-600 px-6 py-3 font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
+                                                            className="bg-yellow-500 text-black hover:bg-yellow-600 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
                                                             onClick={() => handleEventClick(slide)}
                                                         >
                                                             Ver Evento
@@ -139,22 +145,22 @@ const Index: React.FC = () => {
                         </div>
                         <button
                             onClick={() => setCurrentSlide((prev) => (prev - 1 + eventSlides.length) % eventSlides.length)}
-                            className="absolute left-4 top-1/2 transform -translate-y-1/2 z-50 w-14 h-14 bg-black/80 border-2 border-yellow-500/60 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 hover:scale-110 transition-all duration-300 cursor-pointer shadow-lg shadow-black/50"
+                            className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-50 w-10 h-10 sm:w-14 sm:h-14 bg-black/80 border-2 border-yellow-500/60 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 hover:scale-110 transition-all duration-300 cursor-pointer shadow-lg shadow-black/50"
                         >
-                            <i className="fas fa-chevron-left text-lg"></i>
+                            <i className="fas fa-chevron-left text-sm sm:text-lg"></i>
                         </button>
                         <button
                             onClick={() => setCurrentSlide((prev) => (prev + 1) % eventSlides.length)}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 z-50 w-14 h-14 bg-black/80 border-2 border-yellow-500/60 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 hover:scale-110 transition-all duration-300 cursor-pointer shadow-lg shadow-black/50"
+                            className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-50 w-10 h-10 sm:w-14 sm:h-14 bg-black/80 border-2 border-yellow-500/60 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 hover:scale-110 transition-all duration-300 cursor-pointer shadow-lg shadow-black/50"
                         >
-                            <i className="fas fa-chevron-right text-lg"></i>
+                            <i className="fas fa-chevron-right text-sm sm:text-lg"></i>
                         </button>
-                        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex space-x-3 bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full border border-yellow-500/30">
+                        <div className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex space-x-2 sm:space-x-3 bg-black/70 backdrop-blur-sm px-4 sm:px-6 py-2 sm:py-3 rounded-full border border-yellow-500/30">
                             {eventSlides.map((_, index) => (
                                 <button
                                     key={index}
                                     onClick={() => setCurrentSlide(index)}
-                                    className={`w-4 h-4 rounded-full transition-all duration-300 cursor-pointer ${currentSlide === index
+                                    className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300 cursor-pointer ${currentSlide === index
                                             ? 'bg-yellow-500 scale-125 shadow-lg shadow-yellow-500/50'
                                             : 'bg-yellow-500/40 hover:bg-yellow-500/70 hover:scale-110'
                                         }`}
@@ -164,11 +170,11 @@ const Index: React.FC = () => {
                     </div>
                 </div>
             </section>
-            <section id="eventos" className="py-20 px-6">
+            <section id="eventos" className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-5xl font-serif text-yellow-500 mb-4">Lista de Eventos</h2>
-                        <div className="w-24 h-px bg-yellow-500 mx-auto"></div>
+                    <div className="text-center mb-10 sm:mb-16">
+                        <h2 className="text-3xl sm:text-5xl font-serif text-yellow-500 mb-4">Lista de Eventos</h2>
+                        <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
                     </div>
                     <div className="mb-12">
                         <div className="flex flex-col lg:flex-row gap-6 mb-8">
@@ -177,13 +183,13 @@ const Index: React.FC = () => {
                                     <input
                                         type="text"
                                         placeholder="Buscar eventos..."
-                                        className="w-full bg-black/60 border border-yellow-500/30 rounded-xl px-6 py-4 text-white placeholder-gray-400 text-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20 transition-all duration-300"
+                                        className="w-full bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white placeholder-gray-400 text-base sm:text-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20 transition-all duration-300"
                                     />
-                                    <i className="fas fa-search absolute right-6 top-1/2 transform -translate-y-1/2 text-yellow-500 text-xl"></i>
+                                    <i className="fas fa-search absolute right-4 sm:right-6 top-1/2 transform -translate-y-1/2 text-yellow-500 text-lg"></i>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-4">
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-6 py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer">
+                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
                                     <option value="">Todas as Categorias</option>
                                     <option value="musica">Música</option>
                                     <option value="negocios">Negócios</option>
@@ -191,14 +197,14 @@ const Index: React.FC = () => {
                                     <option value="gastronomia">Gastronomia</option>
                                     <option value="tecnologia">Tecnologia</option>
                                 </select>
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-6 py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer">
+                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
                                     <option value="">Todas as Cidades</option>
                                     <option value="sao-paulo">São Paulo</option>
                                     <option value="rio-janeiro">Rio de Janeiro</option>
                                     <option value="belo-horizonte">Belo Horizonte</option>
                                     <option value="brasilia">Brasília</option>
                                 </select>
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-6 py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer">
+                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
                                     <option value="">Todas as Datas</option>
                                     <option value="hoje">Hoje</option>
                                     <option value="semana">Esta Semana</option>
@@ -209,7 +215,7 @@ const Index: React.FC = () => {
                         </div>
                         <div className="flex flex-col lg:flex-row gap-8">
                             <div className="lg:w-80">
-                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sticky top-24">
+                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 lg:sticky lg:top-24">
                                     <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
                                         <i className="fas fa-filter text-yellow-500 mr-3"></i>
                                         Filtros Avançados
@@ -271,18 +277,18 @@ const Index: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                                     {eventSlides.slice(0, 12).map((event) => (
                                         <Card
                                             key={event.id}
-                                            className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-105 group"
+                                            className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
                                             onClick={() => handleEventClick(event)}
                                         >
                                             <div className="relative overflow-hidden">
                                                 <img
                                                     src={event.image}
                                                     alt={event.title}
-                                                    className="w-full h-56 object-cover object-top group-hover:scale-110 transition-transform duration-500"
+                                                    className="w-full h-48 sm:h-56 object-cover object-top group-hover:scale-110 transition-transform duration-500"
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                                 <div className="absolute top-4 left-4">
@@ -325,7 +331,7 @@ const Index: React.FC = () => {
                                                         </span>
                                                     </div>
                                                     <Button
-                                                        className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-6"
+                                                        className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
                                                     >
                                                         Ver Detalhes
                                                     </Button>
@@ -335,13 +341,13 @@ const Index: React.FC = () => {
                                     ))}
                                 </div>
                                 <div className="flex items-center justify-center mt-12 space-x-2">
-                                    <button className="w-12 h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer">
+                                    <button className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer">
                                         <i className="fas fa-chevron-left"></i>
                                     </button>
                                     {[1, 2, 3, 4, 5].map((page) => (
                                         <button
                                             key={page}
-                                            className={`w-12 h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 cursor-pointer ${page === 1
+                                            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 cursor-pointer text-sm sm:text-base ${page === 1
                                                     ? 'bg-yellow-500 text-black'
                                                     : 'bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500'
                                                 }`}
@@ -349,12 +355,12 @@ const Index: React.FC = () => {
                                             {page}
                                         </button>
                                     ))}
-                                    <button className="w-12 h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer">
+                                    <button className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer">
                                         <i className="fas fa-chevron-right"></i>
                                     </button>
                                 </div>
                                 <div className="text-center mt-8">
-                                    <p className="text-gray-400">
+                                    <p className="text-gray-400 text-sm sm:text-base">
                                         Mostrando <span className="text-yellow-500 font-semibold">1-12</span> de <span className="text-yellow-500 font-semibold">127</span> eventos
                                     </p>
                                 </div>
@@ -363,56 +369,56 @@ const Index: React.FC = () => {
                     </div>
                 </div>
             </section>
-            <section id="categorias" className="py-20 px-6 bg-black/50">
+            <section id="categorias" className="py-12 sm:py-20 px-4 sm:px-6 bg-black/50">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-5xl font-serif text-yellow-500 mb-4">Categorias</h2>
-                        <div className="w-24 h-px bg-yellow-500 mx-auto"></div>
+                    <div className="text-center mb-10 sm:mb-16">
+                        <h2 className="text-3xl sm:text-5xl font-serif text-yellow-500 mb-4">Categorias</h2>
+                        <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
                         {categories.map((category) => (
                             <div
                                 key={category.id}
-                                className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-105"
+                                className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-4 sm:p-6 text-center hover:border-yellow-500/60 hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-105"
                             >
-                                <div className="text-4xl text-yellow-500 mb-4">
+                                <div className="text-3xl sm:text-4xl text-yellow-500 mb-2 sm:mb-4">
                                     <i className={category.icon}></i>
                                 </div>
-                                <h3 className="text-white font-semibold mb-2">{category.name}</h3>
-                                <span className="text-gray-400 text-sm">{category.count} eventos</span>
+                                <h3 className="text-white font-semibold text-sm sm:text-base mb-1">{category.name}</h3>
+                                <span className="text-gray-400 text-xs sm:text-sm">{category.count} eventos</span>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
-            <section className="py-20 px-6">
+            <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-5xl font-serif text-yellow-500 mb-6">Seja um Promotor</h2>
-                    <p className="text-xl text-gray-300 mb-8 leading-relaxed">
+                    <h2 className="text-3xl sm:text-5xl font-serif text-yellow-500 mb-4 sm:mb-6">Seja um Promotor</h2>
+                    <p className="text-base sm:text-xl text-gray-300 mb-6 sm:mb-8 leading-relaxed">
                         Transforme suas ideias em eventos extraordinários. Junte-se à nossa plataforma premium
                         e crie experiências inesquecíveis para seu público.
                     </p>
                     <Button
-                        className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 px-12 py-4 text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
+                        className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 px-8 sm:px-12 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
                     >
                         Começar Agora
                     </Button>
                 </div>
             </section>
-            <footer className="bg-black border-t border-yellow-500/20 py-16 px-6">
+            <footer id="contato" className="bg-black border-t border-yellow-500/20 py-12 sm:py-16 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-                        <div>
-                            <div className="text-2xl font-serif text-yellow-500 font-bold mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10 sm:mb-12">
+                        <div className="col-span-2 md:col-span-1">
+                            <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold mb-4">
                                 Mazoy
                             </div>
-                            <p className="text-gray-400 leading-relaxed">
+                            <p className="text-gray-400 text-sm leading-relaxed">
                                 A plataforma premium para eventos exclusivos e experiências inesquecíveis.
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4">Links Úteis</h4>
-                            <ul className="space-y-2">
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
+                            <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Termos de Uso</a></li>
@@ -420,8 +426,8 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4">Suporte</h4>
-                            <ul className="space-y-2">
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Suporte</h4>
+                            <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">FAQ</a></li>
@@ -429,25 +435,25 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4">Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-instagram text-2xl"></i>
+                                    <i className="fab fa-instagram text-xl sm:text-2xl"></i>
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-facebook text-2xl"></i>
+                                    <i className="fab fa-facebook text-xl sm:text-2xl"></i>
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-twitter text-2xl"></i>
+                                    <i className="fab fa-twitter text-xl sm:text-2xl"></i>
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-linkedin text-2xl"></i>
+                                    <i className="fab fa-linkedin text-xl sm:text-2xl"></i>
                                 </a>
                             </div>
                         </div>
                     </div>
-                    <div className="border-t border-yellow-500/20 pt-8 text-center">
-                        <p className="text-gray-400">
+                    <div className="border-t border-yellow-500/20 pt-6 text-center">
+                        <p className="text-gray-400 text-sm">
                             © 2025 Mazoy. Todos os direitos reservados.
                         </p>
                     </div>

@@ -13,6 +13,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
+import { useProfileStatus } from '@/hooks/use-profile-status'; // Importando o hook
 
 const GENDER_OPTIONS = [
     "Masculino",
@@ -78,6 +79,9 @@ const Profile: React.FC = () => {
     const [formLoading, setFormLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isCepLoading, setIsCepLoading] = useState(false);
+
+    const userId = session?.user?.id;
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(userId);
 
     const formatCPF = (value: string) => {
         if (!value) return '';
@@ -225,17 +229,29 @@ const Profile: React.FC = () => {
         getSessionAndProfile();
     }, [navigate, form]);
 
+
     const onSubmit = async (values: z.infer<typeof profileSchema>) => {
         if (!session) return;
         setFormLoading(true);
 
         // Limpeza e conversão para salvar no DB
         const cleanCPF = values.cpf.replace(/\D/g, '');
+        // Se o RG for uma string vazia (após formatação), salva como null
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
+        
         // CEP é opcional, se for string vazia ou nula, salva como null
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
         
         const genderToSave = (values.gender === "not_specified" || !values.gender) ? null : values.gender;
+
+        // Certifique-se de que campos de endereço vazios sejam salvos como null, não como strings vazias
+        const ruaToSave = values.rua || null;
+        const bairroToSave = values.bairro || null;
+        const cidadeToSave = values.cidade || null;
+        const estadoToSave = values.estado || null;
+        const numeroToSave = values.numero || null;
+        const complementoToSave = values.complemento || null;
+
 
         const { error } = await supabase
             .from('profiles')
@@ -247,17 +263,18 @@ const Profile: React.FC = () => {
                 rg: cleanRG,
                 // Salvando endereço
                 cep: cleanCEP,
-                rua: values.rua || null,
-                bairro: values.bairro || null,
-                cidade: values.cidade || null,
-                estado: values.estado || null,
-                numero: values.numero || null,
-                complemento: values.complemento || null,
+                rua: ruaToSave,
+                bairro: bairroToSave,
+                cidade: cidadeToToSave,
+                estado: estadoToSave,
+                numero: numeroToSave,
+                complemento: complementoToSave,
             })
             .eq('id', session.user.id);
 
         if (error) {
             showError("Erro ao atualizar o perfil.");
+            console.error("Supabase Update Error:", error);
         } else {
             showSuccess("Perfil atualizado com sucesso!");
             setProfile(prev => prev ? { 
@@ -269,16 +286,22 @@ const Profile: React.FC = () => {
                 rg: cleanRG,
                 // Atualizando estado local
                 cep: cleanCEP,
-                rua: values.rua || null,
-                bairro: values.bairro || null,
-                cidade: values.cidade || null,
-                estado: values.estado || null,
-                numero: values.numero || null,
-                complemento: values.complemento || null,
+                rua: ruaToSave,
+                bairro: bairroToSave,
+                cidade: cidadeToSave,
+                estado: estadoToSave,
+                numero: numeroToSave,
+                complemento: complementoToSave,
             } : null);
             setIsEditing(false);
         }
         setFormLoading(false);
+    };
+
+    const onInvalid = (errors: any) => {
+        console.error("Form Validation Errors:", errors);
+        showError("Por favor, corrija os erros no formulário antes de salvar.");
+        setFormLoading(false); // Garantir que o loading seja desativado se a validação falhar
     };
 
     const handleAvatarUpload = (newUrl: string) => {
@@ -306,7 +329,7 @@ const Profile: React.FC = () => {
         setIsEditing(false);
     };
 
-    if (loading) {
+    if (loading || statusLoading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <div className="w-full max-w-4xl p-6 space-y-8">
@@ -344,9 +367,9 @@ const Profile: React.FC = () => {
     return (
         <div className="min-h-screen bg-black text-white">
              <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-8">
-                        <div className="text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
                             Mazoy
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
@@ -369,15 +392,29 @@ const Profile: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <main className="pt-24 pb-12 px-6">
+            <main className="pt-24 pb-12 px-4 sm:px-6">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
+                    <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
+                    
+                    {/* Alerta de Perfil Incompleto */}
+                    {hasPendingNotifications && (
+                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
+                            <i className="fas fa-exclamation-triangle text-xl mt-1"></i>
+                            <div>
+                                <h3 className="font-semibold text-white mb-1">Atenção: Perfil Incompleto</h3>
+                                <p className="text-sm">
+                                    Por favor, preencha seu Nome, CPF e Data de Nascimento. Se você preencheu o CEP, certifique-se de que a Rua e o Número também estejam preenchidos.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 order-2 md:order-1">
                             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl">
                                 <CardHeader>
-                                    <CardTitle className="text-white text-2xl">Informações Pessoais</CardTitle>
-                                    <CardDescription className="text-gray-400">Atualize seus dados pessoais aqui.</CardDescription>
+                                    <CardTitle className="text-white text-xl sm:text-2xl">Informações Pessoais</CardTitle>
+                                    <CardDescription className="text-gray-400 text-sm">Atualize seus dados pessoais aqui.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     {session?.user?.id && (
@@ -391,7 +428,7 @@ const Profile: React.FC = () => {
                                         </div>
                                     )}
                                     <Form {...form}>
-                                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
                                             <FormField
                                                 control={form.control}
                                                 name="first_name"
@@ -416,7 +453,7 @@ const Profile: React.FC = () => {
                                                 </FormControl>
                                             </FormItem>
                                             
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 <FormField
                                                     control={form.control}
                                                     name="cpf"
@@ -459,7 +496,7 @@ const Profile: React.FC = () => {
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 <FormField
                                                     control={form.control}
                                                     name="birth_date"
@@ -545,8 +582,8 @@ const Profile: React.FC = () => {
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="md:col-span-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                                <div className="sm:col-span-2">
                                                     <FormField
                                                         control={form.control}
                                                         name="rua"
@@ -590,8 +627,8 @@ const Profile: React.FC = () => {
                                                 )}
                                             />
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                <div className="md:col-span-1">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                                <div className="sm:col-span-1">
                                                     <FormField
                                                         control={form.control}
                                                         name="bairro"
@@ -653,14 +690,14 @@ const Profile: React.FC = () => {
                                 </CardContent>
                             </Card>
                         </div>
-                        <div className="md:col-span-1">
+                        <div className="md:col-span-1 order-1 md:order-2">
                              <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl">
                                 <CardHeader>
-                                    <CardTitle className="text-white text-2xl">Meus Ingressos</CardTitle>
+                                    <CardTitle className="text-white text-xl sm:text-2xl">Meus Ingressos</CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-center p-6">
                                     <i className="fas fa-ticket-alt text-4xl text-yellow-500 mb-4"></i>
-                                    <p className="text-gray-400 mb-4">
+                                    <p className="text-gray-400 text-sm mb-4">
                                         Visualize e gerencie todos os seus ingressos comprados.
                                     </p>
                                     <Button 

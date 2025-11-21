@@ -43,13 +43,13 @@ const ManagerCreateEvent: React.FC = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-serif text-yellow-500">Criar Novo Evento</h1>
+        <div className="max-w-4xl mx-auto px-4 sm:px-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
+                <h1 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-0">Criar Novo Evento</h1>
                 <Button 
                     onClick={() => navigate('/manager/dashboard')}
                     variant="outline"
-                    className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                    className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
                 >
                     <i className="fas fa-arrow-left mr-2"></i>
                     Voltar ao Dashboard
@@ -58,7 +58,7 @@ const ManagerCreateEvent: React.FC = () => {
 
             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
                 <CardHeader>
-                    <CardTitle className="text-white text-2xl font-semibold">Detalhes do Evento Premium</CardTitle>
+                    <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Detalhes do Evento Premium</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">

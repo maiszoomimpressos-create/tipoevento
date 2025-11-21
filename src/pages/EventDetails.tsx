@@ -38,9 +38,9 @@ const EventDetails: React.FC = () => {
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-8">
-                        <div className="text-2xl font-serif text-yellow-500 font-bold">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-4 sm:space-x-8">
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold">
                             Mazoy
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
@@ -50,7 +50,7 @@ const EventDetails: React.FC = () => {
                             <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
                         </nav>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3 sm:space-x-4">
                         <div className="relative hidden lg:block">
                             <Input 
                                 type="search" 
@@ -60,14 +60,14 @@ const EventDetails: React.FC = () => {
                             <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
                         </div>
                         <AuthStatusMenu />
-                        <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer">
+                        <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer px-3 sm:px-4">
                             Voltar
                         </Button>
                     </div>
                 </div>
             </header>
             <section className="pt-20 pb-0">
-                <div className="relative h-[600px] overflow-hidden">
+                <div className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
                     <img
                         src={selectedEvent.image}
                         alt={selectedEvent.title}
@@ -75,45 +75,45 @@ const EventDetails: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40"></div>
                     <div className="absolute inset-0 flex items-center">
-                        <div className="max-w-7xl mx-auto px-6 w-full">
-                            <div className="max-w-3xl">
-                                <div className="inline-block bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
+                            <div className="max-w-full lg:max-w-3xl">
+                                <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold mb-2 sm:mb-4">
                                     {selectedEvent.category}
                                 </div>
-                                <h1 className="text-6xl font-serif text-white mb-6 leading-tight">
+                                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif text-white mb-3 sm:mb-6 leading-tight">
                                     {selectedEvent.title}
                                 </h1>
-                                <p className="text-xl text-gray-200 mb-8 leading-relaxed">
+                                <p className="text-base sm:text-xl text-gray-200 mb-4 sm:mb-8 leading-relaxed line-clamp-3">
                                     {selectedEvent.description}
                                 </p>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                                     <div className="flex items-center">
-                                        <i className="fas fa-calendar-alt text-yellow-500 text-2xl mr-4"></i>
+                                        <i className="fas fa-calendar-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
                                         <div>
-                                            <div className="text-sm text-gray-400">Data</div>
-                                            <div className="text-lg font-semibold text-white">{selectedEvent.date}</div>
+                                            <div className="text-xs sm:text-sm text-gray-400">Data</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{selectedEvent.date}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center">
-                                        <i className="fas fa-clock text-yellow-500 text-2xl mr-4"></i>
+                                        <i className="fas fa-clock text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
                                         <div>
-                                            <div className="text-sm text-gray-400">Horário</div>
-                                            <div className="text-lg font-semibold text-white">{selectedEvent.time}</div>
+                                            <div className="text-xs sm:text-sm text-gray-400">Horário</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{selectedEvent.time}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center">
-                                        <i className="fas fa-map-marker-alt text-yellow-500 text-2xl mr-4"></i>
+                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
                                         <div>
-                                            <div className="text-sm text-gray-400">Local</div>
-                                            <div className="text-lg font-semibold text-white">{selectedEvent.location}</div>
+                                            <div className="text-xs sm:text-sm text-gray-400">Local</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{selectedEvent.location}</div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center space-x-6">
-                                    <span className="text-4xl font-bold text-yellow-500">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                                    <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
                                         A partir de {selectedEvent.price}
                                     </span>
-                                    <Button className="bg-yellow-500 text-black hover:bg-yellow-600 px-8 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
+                                    <Button className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
                                         Comprar Ingressos
                                     </Button>
                                 </div>
@@ -123,33 +123,33 @@ const EventDetails: React.FC = () => {
                 </div>
             </section>
             <div className="w-full h-px bg-yellow-500"></div>
-            <section className="py-20 px-6">
+            <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                        <div className="lg:col-span-2 space-y-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+                        <div className="lg:col-span-2 space-y-8 sm:space-y-12 order-2 lg:order-1">
                             <div>
-                                <h2 className="text-3xl font-serif text-yellow-500 mb-6">Sobre o Evento</h2>
-                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8">
-                                    <p className="text-gray-300 text-lg leading-relaxed mb-6">
+                                <h2 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-6">Sobre o Evento</h2>
+                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
+                                    <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-6">
                                         {selectedEvent.description}
                                     </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
-                                            <div className="flex items-center">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-users text-yellow-500 mr-3"></i>
                                                 <span className="text-white">Capacidade: {selectedEvent.capacity} pessoas</span>
                                             </div>
-                                            <div className="flex items-center">
+                                            <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-clock text-yellow-500 mr-3"></i>
                                                 <span className="text-white">Duração: {selectedEvent.duration}</span>
                                             </div>
-                                            <div className="flex items-center">
+                                        </div>
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-user-check text-yellow-500 mr-3"></i>
                                                 <span className="text-white">Classificação: {selectedEvent.ageRating}</span>
                                             </div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div className="flex items-center">
+                                            <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-user-tie text-yellow-500 mr-3"></i>
                                                 <span className="text-white">Organizador: {selectedEvent.organizer}</span>
                                             </div>
@@ -158,12 +158,12 @@ const EventDetails: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-2xl font-serif text-yellow-500 mb-6">Destaques do Evento</h3>
-                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Destaques do Evento</h3>
+                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                                         {selectedEvent.highlights.map((highlight: string, index: number) => (
-                                            <div key={index} className="flex items-center">
-                                                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-4"></div>
+                                            <div key={index} className="flex items-center text-sm sm:text-base">
+                                                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-500 rounded-full mr-3 sm:mr-4 flex-shrink-0"></div>
                                                 <span className="text-white">{highlight}</span>
                                             </div>
                                         ))}
@@ -171,56 +171,56 @@ const EventDetails: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-2xl font-serif text-yellow-500 mb-6">Localização</h3>
-                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8">
+                                <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Localização</h3>
+                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <div className="flex items-start space-x-4 mb-6">
-                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl mt-1"></i>
+                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl mt-1 flex-shrink-0"></i>
                                         <div>
-                                            <h4 className="text-white font-semibold text-lg mb-2">{selectedEvent.location}</h4>
-                                            <p className="text-gray-300">{selectedEvent.address}</p>
+                                            <h4 className="text-white font-semibold text-base sm:text-lg mb-2">{selectedEvent.location}</h4>
+                                            <p className="text-gray-300 text-sm sm:text-base">{selectedEvent.address}</p>
                                         </div>
                                     </div>
-                                    <div className="bg-black/40 rounded-xl h-64 flex items-center justify-center">
+                                    <div className="bg-black/40 rounded-xl h-48 sm:h-64 flex items-center justify-center">
                                         <div className="text-center">
-                                            <i className="fas fa-map text-yellow-500 text-4xl mb-4"></i>
-                                            <p className="text-gray-400">Mapa interativo em breve</p>
+                                            <i className="fas fa-map text-yellow-500 text-3xl sm:text-4xl mb-4"></i>
+                                            <p className="text-gray-400 text-sm">Mapa interativo em breve</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="lg:col-span-1">
-                            <div className="sticky top-24">
-                                <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8">
-                                    <h3 className="text-2xl font-serif text-yellow-500 mb-6">Selecionar Ingressos</h3>
+                        <div className="lg:col-span-1 order-1 lg:order-2">
+                            <div className="lg:sticky lg:top-24">
+                                <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
+                                    <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-6">Selecionar Ingressos</h3>
                                     <div className="space-y-6">
                                         {selectedEvent.ticketTypes.map((ticket: any) => (
-                                            <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-6">
+                                            <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6">
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div>
-                                                        <h4 className="text-white font-semibold text-lg">{ticket.name}</h4>
-                                                        <p className="text-gray-400 text-sm mt-1">{ticket.description}</p>
+                                                        <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
+                                                        <p className="text-gray-400 text-xs sm:text-sm mt-1">{ticket.description}</p>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="text-2xl font-bold text-yellow-500">R$ {ticket.price}</div>
-                                                        <div className="text-sm text-gray-400">{ticket.available} disponíveis</div>
+                                                    <div className="text-right flex-shrink-0 ml-4">
+                                                        <div className="text-xl sm:text-2xl font-bold text-yellow-500">R$ {ticket.price}</div>
+                                                        <div className="text-xs sm:text-sm text-gray-400">{ticket.available} disponíveis</div>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-white">Quantidade:</span>
+                                                    <span className="text-white text-sm sm:text-base">Quantidade:</span>
                                                     <div className="flex items-center space-x-3">
                                                         <button
                                                             onClick={() => handleTicketChange(ticket.id.toString(), (selectedTickets[ticket.id.toString()] || 0) - 1)}
-                                                            className="w-8 h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
+                                                            className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
                                                         >
                                                             <i className="fas fa-minus text-xs"></i>
                                                         </button>
-                                                        <span className="text-white font-semibold w-8 text-center">
+                                                        <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
                                                             {selectedTickets[ticket.id.toString()] || 0}
                                                         </span>
                                                         <button
                                                             onClick={() => handleTicketChange(ticket.id.toString(), (selectedTickets[ticket.id.toString()] || 0) + 1)}
-                                                            className="w-8 h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
+                                                            className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
                                                         >
                                                             <i className="fas fa-plus text-xs"></i>
                                                         </button>
@@ -233,15 +233,15 @@ const EventDetails: React.FC = () => {
                                         <>
                                             <div className="border-t border-yellow-500/20 pt-6 mt-6">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-white">Total de Ingressos:</span>
-                                                    <span className="text-white font-semibold">{getTotalTickets()}</span>
+                                                    <span className="text-white text-base">Total de Ingressos:</span>
+                                                    <span className="text-white font-semibold text-base">{getTotalTickets()}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center mb-6">
-                                                    <span className="text-white text-lg">Total a Pagar:</span>
-                                                    <span className="text-yellow-500 text-2xl font-bold">R$ {getTotalPrice()}</span>
+                                                    <span className="text-white text-lg sm:text-xl">Total a Pagar:</span>
+                                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {getTotalPrice()}</span>
                                                 </div>
                                             </div>
-                                            <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-4 text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
+                                            <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
                                                 Finalizar Compra
                                             </Button>
                                         </>
@@ -262,20 +262,20 @@ const EventDetails: React.FC = () => {
                 </div>
             </section>
             <div className="w-full h-px bg-yellow-500"></div>
-            <section className="py-20 px-6">
+            <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl font-serif text-yellow-500 mb-4">Eventos Relacionados</h2>
-                        <div className="w-24 h-px bg-yellow-500 mx-auto"></div>
+                    <div className="text-center mb-10 sm:mb-16">
+                        <h2 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-4">Eventos Relacionados</h2>
+                        <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
                         {eventSlides
                             .filter(event => event.category === selectedEvent.category && event.id !== selectedEvent.id)
                             .slice(0, 4)
                             .map((event) => (
                                 <Card
                                     key={event.id}
-                                    className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-105 group"
+                                    className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
                                     onClick={() => navigate(`/events/${event.id}`)}
                                 >
                                     <div className="relative overflow-hidden">
@@ -286,7 +286,7 @@ const EventDetails: React.FC = () => {
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                         <div className="absolute top-4 left-4">
-                                            <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-semibold">
+                                            <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold">
                                                 {event.category}
                                             </span>
                                         </div>
@@ -321,20 +321,20 @@ const EventDetails: React.FC = () => {
                     </div>
                 </div>
             </section>
-            <footer className="bg-black border-t border-yellow-500/20 py-16 px-6">
+            <footer className="bg-black border-t border-yellow-500/20 py-12 sm:py-16 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-                        <div>
-                            <div className="text-2xl font-serif text-yellow-500 font-bold mb-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10 sm:mb-12">
+                        <div className="col-span-2 md:col-span-1">
+                            <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold mb-4">
                                 Mazoy
                             </div>
-                            <p className="text-gray-400 leading-relaxed">
+                            <p className="text-gray-400 text-sm leading-relaxed">
                                 A plataforma premium para eventos exclusivos e experiências inesquecíveis.
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4">Links Úteis</h4>
-                            <ul className="space-y-2">
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
+                            <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Termos de Uso</a></li>
@@ -342,8 +342,8 @@ const EventDetails: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4">Suporte</h4>
-                            <ul className="space-y-2">
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Suporte</h4>
+                            <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">FAQ</a></li>
@@ -351,25 +351,25 @@ const EventDetails: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4">Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-instagram text-2xl"></i>
+                                    <i className="fab fa-instagram text-xl sm:text-2xl"></i>
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-facebook text-2xl"></i>
+                                    <i className="fab fa-facebook text-xl sm:text-2xl"></i>
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-twitter text-2xl"></i>
+                                    <i className="fab fa-twitter text-xl sm:text-2xl"></i>
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-linkedin text-2xl"></i>
+                                    <i className="fab fa-linkedin text-xl sm:text-2xl"></i>
                                 </a>
                             </div>
                         </div>
                     </div>
-                    <div className="border-t border-yellow-500/20 pt-8 text-center">
-                        <p className="text-gray-400">
+                    <div className="border-t border-yellow-500/20 pt-6 text-center">
+                        <p className="text-gray-400 text-sm">
                             © 2025 Mazoy. Todos os direitos reservados.
                         </p>
                     </div>
