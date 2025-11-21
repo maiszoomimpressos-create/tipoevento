@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { eventSlides, categories } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from '@/components/ui/input';
+import MobileMenu from '@/components/MobileMenu'; // Importando o novo componente
 
 const Index: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -45,7 +46,10 @@ const Index: React.FC = () => {
                             />
                             <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
                         </div>
-                        <AuthStatusMenu />
+                        <div className="hidden md:block">
+                            <AuthStatusMenu />
+                        </div>
+                        <MobileMenu /> {/* Menu Hambúrguer para Mobile */}
                     </div>
                 </div>
             </header>
