@@ -7,9 +7,10 @@ import { useNavigate } from 'react-router-dom';
 interface NotificationBellProps {
     hasPendingNotifications: boolean;
     loading: boolean;
+    missingFields: string[];
 }
 
-const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotifications, loading }) => {
+const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotifications, loading, missingFields }) => {
     const navigate = useNavigate();
 
     if (loading) {
@@ -41,8 +42,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
                                 <div className="ml-3">
                                     <p className="text-white font-medium text-sm">Perfil Incompleto</p>
                                     <p className="text-gray-400 text-xs mt-1">
-                                        Seu perfil está incompleto. Preencha os dados essenciais (CPF, Data de Nascimento, etc.) para liberar todas as funcionalidades.
+                                        Para aproveitar todas as funcionalidades, por favor, preencha os seguintes campos:
                                     </p>
+                                    <ul className="list-disc list-inside text-yellow-500 text-xs mt-2 space-y-1">
+                                        {missingFields.map(field => <li key={field}>{field}</li>)}
+                                    </ul>
                                     <Button 
                                         variant="link" 
                                         className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
@@ -52,7 +56,6 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
                                     </Button>
                                 </div>
                             </div>
-                            {/* Futuras notificações apareceriam aqui */}
                         </div>
                     ) : (
                         <div className="text-center py-6">
