@@ -11,14 +11,20 @@ import { showSuccess, showError } from '@/utils/toast';
 
 const ManagerEventsList: React.FC = () => {
     const navigate = useNavigate();
-    const [userId, setUserId] = useState<string | undefined>(undefined);
+    const [userId, setUserId] = useState<string | undefined | null>(undefined); // null means not logged in
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
-            setUserId(user?.id);
+            // Se o usuário não estiver logado, redireciona para o login do gestor
+            if (!user) {
+                navigate('/manager/login');
+                setUserId(null);
+            } else {
+                setUserId(user.id);
+            }
         });
-    }, []);
+    }, [navigate]);
 
     const { events, isLoading, isError } = useManagerEvents(userId);
 
@@ -42,6 +48,16 @@ const ManagerEventsList: React.FC = () => {
             totalRevenue: totalRevenue,
         };
     };
+
+    // Estado de carregamento inicial (antes de saber se o usuário está logado)
+    if (userId === undefined) {
+        return (
+            <div className="max-w-7xl mx-auto text-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
+                <p className="text-gray-400">Verificando autenticação...</p>
+            </div>
+        );
+    }
 
     if (isError) {
         return <div className="text-red-400 text-center py-10">Erro ao carregar eventos. Tente recarregar a página.</div>;
