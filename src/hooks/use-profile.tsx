@@ -5,17 +5,17 @@ import { showError } from '@/utils/toast';
 interface ProfileData {
     first_name: string;
     avatar_url: string | null;
-    cpf: string | null;
-    rg: string | null;
-    birth_date: string | null;
-    gender: string | null;
-    cep: string | null;
-    rua: string | null;
-    bairro: string | null;
-    cidade: string | null;
-    estado: string | null;
-    numero: string | null;
-    complemento: string | null;
+    cpf: string; // Alterado para string, será '' se for null no DB
+    rg: string; // Alterado para string, será '' se for null no DB
+    birth_date: string; // Alterado para string, será '' se for null no DB
+    gender: string; // Alterado para string, será '' se for null no DB
+    cep: string; // Alterado para string, será '' se for null no DB
+    rua: string; // Alterado para string, será '' se for null no DB
+    bairro: string; // Alterado para string, será '' se for null no DB
+    cidade: string; // Alterado para string, será '' se for null no DB
+    estado: string; // Alterado para string, será '' se for null no DB
+    numero: string; // Alterado para string, será '' se for null no DB
+    complemento: string; // Alterado para string, será '' se for null no DB
     tipo_usuario_id: number;
 }
 
@@ -34,11 +34,26 @@ const fetchProfile = async (userId: string): Promise<ProfileData | null> => {
 
     if (error) {
         console.error("Error fetching profile:", error);
-        // Não mostramos toast de erro aqui para evitar spam, o componente de login/perfil deve lidar com isso.
         return null;
     }
     
-    return data as ProfileData;
+    // Mapeia dados para garantir que campos que podem ser NULL no DB sejam strings vazias no frontend
+    return {
+        first_name: data.first_name || '',
+        avatar_url: data.avatar_url || null,
+        cpf: data.cpf || '',
+        rg: data.rg || '',
+        birth_date: data.birth_date || '',
+        gender: data.gender || '',
+        cep: data.cep || '',
+        rua: data.rua || '',
+        bairro: data.bairro || '',
+        cidade: data.cidade || '',
+        estado: data.estado || '',
+        numero: data.numero || '',
+        complemento: data.complemento || '',
+        tipo_usuario_id: data.tipo_usuario_id,
+    } as ProfileData;
 };
 
 export const useProfile = (userId: string | undefined) => {

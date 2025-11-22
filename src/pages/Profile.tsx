@@ -369,13 +369,13 @@ const Profile: React.FC = () => {
                     <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
                     
                     {/* Alerta de Perfil Incompleto */}
-                    {hasPendingNotifications && (
+                    {hasPendingNotifications && profile?.tipo_usuario_id === 3 && (
                         <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
                             <i className="fas fa-exclamation-triangle text-xl mt-1"></i>
                             <div>
                                 <h3 className="font-semibold text-white mb-1">Atenção: Perfil Incompleto</h3>
                                 <p className="text-sm">
-                                    Por favor, preencha seu Nome, CPF e Data de Nascimento. Se você preencheu o CEP, certifique-se de que a Rua e o Número também estejam preenchidos.
+                                    Por favor, preencha todos os campos do seu perfil (incluindo RG, Gênero e Endereço completo) para liberar todas as funcionalidades e garantir a emissão correta de ingressos.
                                 </p>
                             </div>
                         </div>

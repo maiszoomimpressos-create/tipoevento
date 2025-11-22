@@ -8,26 +8,36 @@ interface ProfileStatus {
     loading: boolean;
 }
 
-// Campos considerados essenciais para o perfil do CLIENTE
+// Campos considerados essenciais para o perfil (Nome, CPF, Data de Nascimento)
 const ESSENTIAL_FIELDS = [
     'first_name', 
     'cpf', 
     'birth_date',
 ];
 
-// Campos de endereço que, se preenchidos, exigem atenção
-const ADDRESS_FIELDS_TO_CHECK = [
-    'rua',
-    'numero',
-    'bairro',
-    'cidade',
-    'estado',
+// Todos os campos que, se vazios, tornam o perfil 'incompleto' para o cliente (Tipo 3)
+const ALL_CLIENT_FIELDS_TO_CHECK = [
+    ...ESSENTIAL_FIELDS,
+    'rg', 
+    'gender', 
+    'cep', 
+    'rua', 
+    'bairro', 
+    'cidade', 
+    'estado', 
+    'numero', 
+    'complemento',
 ];
 
 // Função auxiliar para verificar se um valor é considerado vazio
 const isValueEmpty = (value: any): boolean => {
     if (value === null || value === undefined) return true;
-    if (typeof value === 'string') return value.trim() === '';
+    if (typeof value === 'string') {
+        const trimmedValue = value.trim();
+        if (trimmedValue === '') return true;
+        // Verifica placeholders comuns de data/documentos que podem ter sido salvos
+        if (trimmedValue === '0000-00-00' || trimmedValue === '00.000.000-0' || trimmedValue === '00000-000') return true;
+    }
     return false;
 };
 
@@ -37,7 +47,7 @@ const checkManagerSystemNotifications = async (userId: string, settings: any): P
 
     // Exemplo 1: Alerta de Baixo Estoque (se a configuração estiver ativa)
     if (settings.low_stock_system) {
-        // Simulação: Se o gestor tiver mais de 5 eventos, simulamos que um deles está com baixo estoque.
+        // Simulação: Se o gestor tiver mais de 2 eventos cadastrados, simulamos um alerta de baixo estoque.
         const { count, error } = await supabase
             .from('events')
             .select('id', { count: 'exact', head: true })
@@ -48,15 +58,11 @@ const checkManagerSystemNotifications = async (userId: string, settings: any): P
             return false;
         }
 
-        // Se o gestor tiver mais de 2 eventos cadastrados, simulamos um alerta de baixo estoque.
         if (count && count > 2) {
             console.log("[ProfileStatus] Manager has active low stock system notification.");
             return true;
         }
     }
-
-    // Exemplo 2: Outras notificações de sistema (aqui iriam outras verificações)
-    // ...
 
     return false;
 };
@@ -71,11 +77,11 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
     useEffect(() => {
         setStatus(prev => ({ ...prev, loading: isLoading }));
 
-        if (isLoading || !profile) {
-            if (!isLoading && !profile) {
-                // Usuário logado, mas perfil não carregado (erro ou inicialização)
-                setStatus({ isComplete: false, hasPendingNotifications: true, loading: false });
-            }
+        if (isLoading) return;
+
+        if (!profile) {
+            // Se não há perfil (usuário logado, mas perfil não carregado), consideramos incompleto/pendente
+            setStatus({ isComplete: false, hasPendingNotifications: true, loading: false });
             return;
         }
 
@@ -85,32 +91,38 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
 
             // --- Lógica de Cliente (Tipo 3) ---
             if (profile.tipo_usuario_id === 3) {
-                let missingEssential = false;
-                let missingAddressDetail = false;
+                let missingEssentialField = false;
+                let missingOptionalField = false;
 
-                // 1. Verificar campos essenciais (Nome, CPF, Data de Nascimento)
+                // 1. Verificar campos ESSENCIAIS (Nome, CPF, Data de Nascimento)
                 for (const field of ESSENTIAL_FIELDS) {
                     const value = profile[field as keyof ProfileData];
                     if (isValueEmpty(value)) {
-                        missingEssential = true;
+                        missingEssentialField = true;
+                        break;
+                    }
+                }
+                
+                // 2. Verificar TODOS os campos (para determinar se o perfil está 100% completo)
+                for (const field of ALL_CLIENT_FIELDS_TO_CHECK) {
+                    const value = profile[field as keyof ProfileData];
+                    if (isValueEmpty(value)) {
+                        missingOptionalField = true;
                         break;
                     }
                 }
 
-                // 2. Verificar a consistência do endereço
-                const cep = profile.cep ? String(profile.cep).replace(/\D/g, '') : null;
-                const hasAnyAddressFieldFilled = ADDRESS_FIELDS_TO_CHECK.some(field => 
-                    !isValueEmpty(profile[field as keyof ProfileData])
-                );
-
-                if (hasAnyAddressFieldFilled) {
-                    if (!cep || cep.length !== 8 || isValueEmpty(profile.rua) || isValueEmpty(profile.numero)) {
-                        missingAddressDetail = true;
-                    }
-                }
-
-                isComplete = !missingEssential && !missingAddressDetail;
+                // O perfil só é considerado 100% completo se NENHUM campo estiver faltando.
+                isComplete = !missingOptionalField;
+                
+                // A notificação (sino vermelho) é acionada se faltar qualquer campo (essencial ou opcional), 
+                // pois a mensagem no Profile.tsx diz que todos são necessários para liberar TUDO.
                 hasPendingNotifications = !isComplete;
+                
+                // Se o usuário insiste que está completo, mas a notificação aparece, 
+                // é porque ele não preencheu os campos opcionais (RG, Endereço, Gênero).
+                // Vamos manter a lógica de que a notificação aparece se qualquer campo estiver faltando, 
+                // mas a mensagem no Profile.tsx deve ser clara.
                 
             } 
             // --- Lógica de Gestor (Tipo 1 ou 2) ---
@@ -131,6 +143,8 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
                 // Para gestores, o perfil é considerado 'completo' se o perfil base estiver ok, mas focamos nas notificações de sistema
                 isComplete = true; 
             }
+
+            console.log(`[ProfileStatus] Profile Complete: ${isComplete}. Notifications Active: ${hasPendingNotifications}`);
 
             setStatus({
                 isComplete: isComplete,

@@ -5,11 +5,21 @@ import { Card } from "@/components/ui/card";
 import { eventSlides, categories } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from '@/components/ui/input';
-import MobileMenu from '@/components/MobileMenu'; // Importando o novo componente
+import MobileMenu from '@/components/MobileMenu';
+import { supabase } from '@/integrations/supabase/client';
+import { trackAdvancedFilterUse } from '@/utils/metrics';
 
 const Index: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const navigate = useNavigate();
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+
+    // Fetch user ID on mount
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUserId(user?.id);
+        });
+    }, []);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -20,6 +30,15 @@ const Index: React.FC = () => {
 
     const handleEventClick = (event: any) => {
         navigate(`/events/${event.id}`);
+    };
+    
+    const handleApplyFilters = () => {
+        // Track the usage if the user is logged in
+        if (userId) {
+            trackAdvancedFilterUse(userId);
+        }
+        // Placeholder for actual filtering logic
+        console.log("Aplicando filtros avançados...");
     };
 
     // Função para determinar a transformação do carrossel (simplificada para mobile)
@@ -271,7 +290,10 @@ const Index: React.FC = () => {
                                             </label>
                                         </div>
                                     </div>
-                                    <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer">
+                                    <Button 
+                                        onClick={handleApplyFilters}
+                                        className="w-full bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer"
+                                    >
                                         Aplicar Filtros
                                     </Button>
                                 </div>
