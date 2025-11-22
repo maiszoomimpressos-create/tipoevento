@@ -219,7 +219,8 @@ const ManagerManageWristband: React.FC = () => {
                                 <span className="text-gray-400">Criação:</span>
                                 <span className="text-gray-300">{new Date(details.created_at).toLocaleDateString('pt-BR')}</span>
                             </div>
-                            <div className="flex justify-between pt-2">
+                            {/* Ajuste de espaçamento: removendo pt-2 e usando space-y-2 no container pai */}
+                            <div className="flex justify-between">
                                 <span className="text-gray-400">Cadastrado por:</span>
                                 <span className="text-gray-300 truncate max-w-[150px]">{details.manager_user_id.substring(0, 8)}...</span>
                             </div>
@@ -227,7 +228,7 @@ const ManagerManageWristband: React.FC = () => {
 
                         {/* Gerenciamento de Status (Integrado) */}
                         <div className="space-y-4 pt-4">
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center mb-2">
                                 <span className="text-gray-400 text-sm flex items-center">
                                     <RefreshCw className="h-4 w-4 mr-2 text-yellow-500" />
                                     Status Atual:
