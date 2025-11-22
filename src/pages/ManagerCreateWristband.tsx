@@ -98,7 +98,7 @@ const ManagerCreateWristband: React.FC = () => {
                 code: baseCodeClean, // Usando o Código Base como o código principal
                 access_type: formData.accessType,
                 status: 'active',
-                client_user_id: null, // Inicialmente nulo
+                // client_user_id removido daqui
             };
 
             const { data: insertedWristband, error: insertError } = await supabase
@@ -122,6 +122,8 @@ const ManagerCreateWristband: React.FC = () => {
                 analyticsToInsert.push({
                     wristband_id: wristbandId,
                     event_type: 'creation',
+                    // client_user_id será NULL por enquanto, mas a coluna existe
+                    client_user_id: null, 
                     event_data: {
                         code: insertedWristband.code, // Código da pulseira
                         access_type: formData.accessType, // Tipo de acesso
@@ -295,14 +297,14 @@ const ManagerCreateWristband: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Associação de Cliente (Manter o aviso) */}
+                        {/* Associação de Cliente (Aviso atualizado) */}
                         <div className="pt-4 border-t border-yellow-500/10">
                             <div className="flex items-start p-3 bg-black/40 rounded-xl border border-yellow-500/20">
                                 <User className="h-5 w-5 mr-3 text-yellow-500 flex-shrink-0" />
                                 <div>
                                     <p className="text-white font-medium text-sm">Associação de Cliente</p>
                                     <p className="text-gray-400 text-xs mt-1">
-                                        A coluna para associação de cliente foi criada no banco de dados. A interface para associar a um cliente será implementada em uma próxima atualização.
+                                        A coluna para associação de cliente foi criada na tabela de analytics. A interface para associar a um cliente será implementada em uma próxima atualização.
                                     </p>
                                 </div>
                             </div>
