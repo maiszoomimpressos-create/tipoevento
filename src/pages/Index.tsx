@@ -53,15 +53,14 @@ const Index: React.FC = () => {
         if (page >= 1 && page <= totalPages) {
             setCurrentPage(page);
             
-            // Rola para o topo da seção de eventos, ajustando para o cabeçalho fixo
+            // Rola para o topo da seção de eventos, ajustando para o cabeçalho fixo e a barra de filtros
             const eventsSection = document.getElementById('eventos');
             if (eventsSection) {
-                // O cabeçalho tem uma altura de aproximadamente 64px (py-4) + 20px de padding superior da seção
-                // Vamos usar getBoundingClientRect para obter a posição exata e subtrair o offset do cabeçalho.
-                const headerHeight = 80; // Estimativa segura para o cabeçalho fixo
+                // O cabeçalho fixo + a barra de pesquisa/filtros rápidos ocupam cerca de 180px no topo da seção #eventos
+                const offset = 180; 
                 
-                // Calcula a posição absoluta do elemento e subtrai a altura do cabeçalho
-                const topPosition = eventsSection.getBoundingClientRect().top + window.scrollY - headerHeight;
+                // Calcula a posição absoluta do elemento e subtrai o offset
+                const topPosition = eventsSection.getBoundingClientRect().top + window.scrollY - offset;
                 
                 window.scrollTo({
                     top: topPosition,
