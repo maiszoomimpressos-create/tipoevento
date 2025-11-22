@@ -5,9 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+    AlertDialog, 
+    AlertDialogAction, 
+    AlertDialogCancel, 
+    AlertDialogContent, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogHeader, 
+    AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Plus, ArrowLeft } from 'lucide-react';
 
 // Define the structure for the form data
 interface EventFormData {
@@ -39,6 +50,10 @@ const ManagerCreateEvent: React.FC = () => {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
+    
+    // Estado para o modal de pulseiras
+    const [showWristbandModal, setShowWristbandModal] = useState(false);
+    const [newEventId, setNewEventId] = useState<string | null>(null);
 
     useEffect(() => {
         // Fetch current user ID
@@ -100,7 +115,7 @@ const ManagerCreateEvent: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('events')
                 .insert([
                     {
@@ -116,7 +131,9 @@ const ManagerCreateEvent: React.FC = () => {
                         category: formData.category,
                         price: Number(formData.price),
                     },
-                ]);
+                ])
+                .select('id')
+                .single();
 
             if (error) {
                 throw error;
@@ -124,7 +141,10 @@ const ManagerCreateEvent: React.FC = () => {
 
             dismissToast(toastId);
             showSuccess(`Evento "${formData.title}" criado com sucesso!`);
-            navigate('/manager/dashboard');
+            
+            // Armazena o ID e abre o modal de confirmação
+            setNewEventId(data.id);
+            setShowWristbandModal(true);
 
         } catch (error: any) {
             dismissToast(toastId);
@@ -133,6 +153,18 @@ const ManagerCreateEvent: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+    
+    const handleEmitirPulseiras = () => {
+        setShowWristbandModal(false);
+        // Redireciona para a tela de cadastro de pulseiras
+        navigate('/manager/wristbands/create');
+    };
+
+    const handleNaoEmitir = () => {
+        setShowWristbandModal(false);
+        // Redireciona para o Dashboard
+        navigate('/manager/dashboard');
     };
 
     return (
@@ -144,7 +176,7 @@ const ManagerCreateEvent: React.FC = () => {
                     variant="outline"
                     className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
                 >
-                    <i className="fas fa-arrow-left mr-2"></i>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
                     Voltar ao Dashboard
                 </Button>
             </div>
@@ -314,6 +346,33 @@ const ManagerCreateEvent: React.FC = () => {
                     </form>
                 </CardContent>
             </Card>
+            
+            {/* Modal de Confirmação de Pulseiras */}
+            <AlertDialog open={showWristbandModal} onOpenChange={setShowWristbandModal}>
+                <AlertDialogContent className="bg-black/90 border border-yellow-500/30 text-white">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-yellow-500 text-xl">Próxima Etapa: Pulseiras</AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-400">
+                            O evento "{formData.title}" foi criado com sucesso! Você deseja cadastrar as pulseiras de acesso agora?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel 
+                            onClick={handleNaoEmitir}
+                            className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
+                        >
+                            Não, Voltar ao Dashboard
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleEmitirPulseiras} 
+                            className="bg-yellow-500 text-black hover:bg-yellow-600"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Emitir Pulseiras
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
