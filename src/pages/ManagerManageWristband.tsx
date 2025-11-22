@@ -203,6 +203,14 @@ const ManagerManageWristband: React.FC = () => {
         JSON.stringify(entry.event_data).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Componente auxiliar para exibir a linha de informação
+    const InfoRow: React.FC<{ label: string, value: React.ReactNode }> = ({ label, value }) => (
+        <div className="flex justify-between items-center">
+            <span className="text-gray-400">{label}:</span>
+            <span className="text-white font-medium text-right truncate max-w-[60%]">{value}</span>
+        </div>
+    );
+
     return (
         <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
@@ -229,24 +237,12 @@ const ManagerManageWristband: React.FC = () => {
                             Informações e Status
                         </CardTitle>
                         
-                        {/* Informações Básicas (Espaçamento reduzido) */}
-                        <div className="space-y-2 text-sm pb-4 border-b border-yellow-500/10 mb-4">
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Evento:</span>
-                                <span className="text-white font-medium truncate max-w-[150px]">{details.events?.title || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Tipo de Acesso:</span>
-                                <span className="text-yellow-500 font-medium">{details.access_type}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Criação:</span>
-                                <span className="text-gray-300">{new Date(details.created_at).toLocaleDateString('pt-BR')}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">Cadastrado por:</span>
-                                <span className="text-gray-300 truncate max-w-[150px]">{details.manager_user_id.substring(0, 8)}...</span>
-                            </div>
+                        {/* Informações Básicas (Layout ajustado) */}
+                        <div className="space-y-3 text-sm pb-4 border-b border-yellow-500/10 mb-4">
+                            <InfoRow label="Evento" value={details.events?.title || 'N/A'} />
+                            <InfoRow label="Tipo de Acesso" value={<span className="text-yellow-500">{details.access_type}</span>} />
+                            <InfoRow label="Criação" value={new Date(details.created_at).toLocaleDateString('pt-BR')} />
+                            <InfoRow label="Cadastrado por" value={`${details.manager_user_id.substring(0, 8)}...`} />
                         </div>
 
                         {/* Gerenciamento de Status (Integrado) */}
