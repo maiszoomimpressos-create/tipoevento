@@ -101,9 +101,10 @@ const ManagerManageWristband: React.FC = () => {
     }, [data]);
 
     const handleStatusUpdate = async () => {
-        if (!id || !newStatus) return;
+        if (!id || !newStatus || !data?.details) return;
         
-        const statusChanged = newStatus !== data?.details.status;
+        const statusChanged = newStatus !== data.details.status;
+        const isDeactivating = data.details.status === 'active' && newStatus !== 'active';
 
         if (!statusChanged) {
             showError("Nenhuma alteração detectada. Selecione um novo status.");
@@ -114,25 +115,59 @@ const ManagerManageWristband: React.FC = () => {
         const toastId = showLoading("Gravando alterações...");
 
         try {
-            // 1. Atualizar Status
-            const { error } = await supabase
+            // --- 1. VERIFICAÇÃO DE VENDA (Se estiver desativando) ---
+            if (isDeactivating) {
+                // Verifica se existe algum registro de analytics com client_user_id preenchido
+                const { data: soldCheck, error: checkError } = await supabase
+                    .from('wristband_analytics')
+                    .select('client_user_id')
+                    .eq('wristband_id', id)
+                    .not('client_user_id', 'is', null)
+                    .limit(1);
+
+                if (checkError) throw checkError;
+
+                if (soldCheck && soldCheck.length > 0) {
+                    dismissToast(toastId);
+                    showError("Não é possível desativar esta pulseira. Ela já foi vendida e associada a um cliente.");
+                    // Reverte o status selecionado no frontend para o status atual
+                    setNewStatus(data.details.status); 
+                    setIsUpdatingStatus(false);
+                    return;
+                }
+            }
+            
+            // --- 2. ATUALIZAÇÃO DO STATUS NA TABELA PRINCIPAL (wristbands) ---
+            const { error: updateWristbandError } = await supabase
                 .from('wristbands')
                 .update({ status: newStatus })
                 .eq('id', id);
 
-            if (error) throw error;
+            if (updateWristbandError) throw updateWristbandError;
 
-            // 2. Inserir registro de analytics para a mudança de status
+            // --- 3. ATUALIZAÇÃO DO STATUS NA TABELA DE ANALYTICS (wristband_analytics) ---
+            // Atualiza o campo 'status' em TODOS os registros de analytics associados a esta pulseira
+            const { error: updateAnalyticsError } = await supabase
+                .from('wristband_analytics')
+                .update({ status: newStatus })
+                .eq('wristband_id', id);
+            
+            if (updateAnalyticsError) {
+                console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
+                // Continua, pois a atualização da tabela principal é mais crítica
+            }
+
+            // --- 4. INSERIR REGISTRO DE MUDANÇA DE STATUS ---
             await supabase
                 .from('wristband_analytics')
                 .insert([{
                     wristband_id: id,
                     event_type: 'status_change',
-                    code_wristbands: data?.details.code,
+                    code_wristbands: data.details.code,
                     event_data: { 
-                        old_status: data?.details.status, 
+                        old_status: data.details.status, 
                         new_status: newStatus,
-                        manager_id: data?.details.manager_user_id,
+                        manager_id: data.details.manager_user_id,
                         location: 'Gerenciamento Manual'
                     }
                 }]);
@@ -152,13 +187,16 @@ const ManagerManageWristband: React.FC = () => {
     
     // Função auxiliar para obter o status do evento de analytics
     const getAnalyticsStatus = (entry: AnalyticsEntry) => {
+        // Prioriza o status gravado no próprio registro de analytics (se existir)
+        if (entry.status) return entry.status; 
+        
         if (entry.event_type === 'status_change') {
             return entry.event_data.new_status;
         }
         if (entry.event_type === 'creation') {
             return entry.event_data.initial_status;
         }
-        // Para outros eventos (ex: entrada/saída), o status é o status atual da pulseira
+        // Fallback para o status atual da pulseira
         return data?.details.status || 'N/A';
     };
 
