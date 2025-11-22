@@ -27,6 +27,7 @@ interface AnalyticsEntry {
     event_type: string;
     event_data: any;
     created_at: string;
+    code_wristbands: string; // Adicionado para clareza, embora já estivesse na query
 }
 
 const STATUS_OPTIONS = [
@@ -149,6 +150,28 @@ const ManagerManageWristband: React.FC = () => {
         }
     };
     
+    // Função auxiliar para obter o status do evento de analytics
+    const getAnalyticsStatus = (entry: AnalyticsEntry) => {
+        if (entry.event_type === 'status_change') {
+            return entry.event_data.new_status;
+        }
+        if (entry.event_type === 'creation') {
+            return entry.event_data.initial_status;
+        }
+        // Para outros eventos (ex: entrada/saída), o status é o status atual da pulseira
+        return data?.details.status || 'N/A';
+    };
+
+    const getStatusClasses = (status: string) => {
+        switch (status) {
+            case 'active': return 'bg-green-500/20 text-green-400';
+            case 'used': return 'bg-gray-500/20 text-gray-400';
+            case 'lost': return 'bg-red-500/20 text-red-400';
+            case 'cancelled': return 'bg-red-500/20 text-red-400';
+            default: return 'bg-yellow-500/20 text-yellow-400';
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="max-w-7xl mx-auto text-center py-20">
@@ -176,6 +199,7 @@ const ManagerManageWristband: React.FC = () => {
     // Filtragem dos analytics
     const filteredAnalytics = analytics.filter(entry => 
         entry.event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.code_wristbands?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         JSON.stringify(entry.event_data).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -219,7 +243,6 @@ const ManagerManageWristband: React.FC = () => {
                                 <span className="text-gray-400">Criação:</span>
                                 <span className="text-gray-300">{new Date(details.created_at).toLocaleDateString('pt-BR')}</span>
                             </div>
-                            {/* Ajuste de espaçamento: removendo pt-2 e usando space-y-2 no container pai */}
                             <div className="flex justify-between">
                                 <span className="text-gray-400">Cadastrado por:</span>
                                 <span className="text-gray-300 truncate max-w-[150px]">{details.manager_user_id.substring(0, 8)}...</span>
@@ -287,7 +310,7 @@ const ManagerManageWristband: React.FC = () => {
                         <div className="relative mb-6">
                             <Input 
                                 type="search" 
-                                placeholder="Pesquisar por tipo de evento ou dados..." 
+                                placeholder="Pesquisar por código da pulseira ou tipo de evento..." 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-full pl-10 py-3 rounded-xl"
@@ -301,35 +324,37 @@ const ManagerManageWristband: React.FC = () => {
                                     Nenhum registro encontrado.
                                 </div>
                             ) : (
-                                <Table className="w-full min-w-[500px]">
+                                <Table className="w-full min-w-[600px]">
                                     <TableHeader>
                                         <TableRow className="border-b border-yellow-500/20 text-sm hover:bg-black/40">
-                                            <TableHead className="text-left text-gray-400 font-semibold py-3 w-[30%]">Tipo de Evento</TableHead>
-                                            <TableHead className="text-left text-gray-400 font-semibold py-3 w-[40%]">Detalhes</TableHead>
+                                            <TableHead className="text-left text-gray-400 font-semibold py-3 w-[25%]">Evento</TableHead>
+                                            <TableHead className="text-left text-gray-400 font-semibold py-3 w-[25%]">Código Pulseira</TableHead>
+                                            <TableHead className="text-center text-gray-400 font-semibold py-3 w-[20%]">Status</TableHead>
                                             <TableHead className="text-right text-gray-400 font-semibold py-3 w-[30%]">Data/Hora</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredAnalytics.map((entry) => {
-                                            const eventTypeLabel = entry.event_type.replace(/_/g, ' ');
-                                            const detailsText = entry.event_data.new_status 
-                                                ? `Status alterado para: ${entry.event_data.new_status}`
-                                                : entry.event_data.location 
-                                                    ? `Local: ${entry.event_data.location}`
-                                                    : entry.event_data.initial_status 
-                                                        ? `Criação (Status: ${entry.event_data.initial_status})`
-                                                        : 'N/A';
+                                            const eventTitle = details.events?.title || 'N/A';
+                                            const wristbandCode = entry.code_wristbands || details.code;
+                                            const status = getAnalyticsStatus(entry);
+                                            const statusClasses = getStatusClasses(status);
 
                                             return (
                                                 <TableRow 
                                                     key={entry.id} 
                                                     className="border-b border-yellow-500/10 hover:bg-black/40 transition-colors text-sm"
                                                 >
-                                                    <TableCell className="py-3 capitalize text-white font-medium">
-                                                        {eventTypeLabel}
+                                                    <TableCell className="py-3 text-white font-medium truncate max-w-[150px]">
+                                                        {eventTitle}
                                                     </TableCell>
-                                                    <TableCell className="py-3 text-gray-400 text-xs">
-                                                        {detailsText}
+                                                    <TableCell className="py-3 text-yellow-500 font-medium">
+                                                        {wristbandCode}
+                                                    </TableCell>
+                                                    <TableCell className="text-center py-3">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusClasses}`}>
+                                                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                        </span>
                                                     </TableCell>
                                                     <TableCell className="py-3 text-right text-gray-500 text-xs">
                                                         {new Date(entry.created_at).toLocaleString('pt-BR')}
