@@ -1,39 +1,118 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Loader2, Crown } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/use-profile';
+import { showError } from '@/utils/toast';
+
+const ADMIN_USER_TYPE_ID = 1;
+const MANAGER_USER_TYPE_ID = 2;
 
 const ManagerLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+    const [loadingSession, setLoadingSession] = useState(true);
 
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUserId(user?.id);
+            setLoadingSession(false);
+        });
+    }, []);
+
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+
+    const handleLogout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            showError("Erro ao sair: " + error.message);
+        } else {
+            navigate('/');
+        }
+    };
+
+    // Redirect unauthenticated users to login
+    if (loadingSession || isLoadingProfile) {
+        if (!userId && !loadingSession) {
+            // Only redirect if trying to access a manager/admin route
+            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+                navigate('/manager/login');
+            }
+            return (
+                <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
+                </div>
+            );
+        }
+        // If loading, show spinner
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
+            </div>
+        );
+    }
+    
+    // Check if user is authorized (Admin or Manager)
+    const userType = profile?.tipo_usuario_id;
+    const isManager = userType === ADMIN_USER_TYPE_ID || userType === MANAGER_USER_TYPE_ID;
+    const isAdmin = userType === ADMIN_USER_TYPE_ID;
+
+    if (!isManager) {
+        // If the user is logged in but not a manager/admin (e.g., client type 3), redirect them
+        if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+            navigate('/');
+            return null;
+        }
+    }
+    
     const navItems = [
-        { path: '/manager/dashboard', label: 'Dashboard' },
+        { path: '/manager/dashboard', label: 'Dashboard PRO' },
         { path: '/manager/events', label: 'Eventos' },
-        { path: '/manager/wristbands', label: 'Pulseiras' }, // Rota atualizada para a lista
+        { path: '/manager/wristbands', label: 'Pulseiras' },
         { path: '#', label: 'Relatórios' },
         { path: '/manager/settings', label: 'Configurações' },
     ];
+    
+    // Add Admin Dashboard link if the user is an Admin
+    if (isAdmin) {
+        navItems.unshift({ path: '/admin/dashboard', label: 'Dashboard Admin' });
+    }
+    
+    const dashboardTitle = isAdmin && location.pathname.startsWith('/admin') ? 'ADMIN' : 'PRO';
+    const userRole = isAdmin ? 'Administrador Master' : 'Administrador PRO';
+    const userName = profile?.first_name || 'Gestor';
+
 
     const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
         <nav className="flex flex-col md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0">
-            {navItems.map(item => (
-                <button 
-                    key={item.path}
-                    onClick={() => {
-                        if (item.path !== '#') navigate(item.path);
-                        if (onClick) onClick();
-                    }} 
-                    className={`transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left ${
-                        location.pathname.startsWith(item.path) && item.path !== '#'
-                        ? 'text-yellow-500 md:border-b-2 border-yellow-500 font-semibold' 
-                        : 'text-white hover:text-yellow-500'
-                    }`}
-                >
-                    {item.label}
-                </button>
-            ))}
+            {navItems.map(item => {
+                // Determine if the link is active based on the current path
+                const isActive = item.path !== '#' && location.pathname.startsWith(item.path);
+                
+                // Special handling for Admin Dashboard link when on Manager Dashboard
+                const isManagerDashboardActive = location.pathname === '/manager/dashboard' && item.path === '/manager/dashboard';
+                const isAdminDashboardActive = location.pathname === '/admin/dashboard' && item.path === '/admin/dashboard';
+
+                return (
+                    <button 
+                        key={item.path}
+                        onClick={() => {
+                            if (item.path !== '#') navigate(item.path);
+                            if (onClick) onClick();
+                        }} 
+                        className={`transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left ${
+                            isActive || isManagerDashboardActive || isAdminDashboardActive
+                            ? 'text-yellow-500 md:border-b-2 border-yellow-500 font-semibold' 
+                            : 'text-white hover:text-yellow-500'
+                        }`}
+                    >
+                        {item.label}
+                    </button>
+                );
+            })}
         </nav>
     );
 
@@ -44,7 +123,7 @@ const ManagerLayout: React.FC = () => {
                     <div className="flex items-center space-x-4 sm:space-x-6">
                         <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold flex items-center">
                             Mazoy
-                            <span className="ml-2 sm:ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-2 sm:px-3 py-0.5 rounded-lg text-xs sm:text-sm font-bold">PRO</span>
+                            <span className="ml-2 sm:ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-2 sm:px-3 py-0.5 rounded-lg text-xs sm:text-sm font-bold">{dashboardTitle}</span>
                         </div>
                         <div className="hidden md:block">
                             <NavLinks />
@@ -57,15 +136,15 @@ const ManagerLayout: React.FC = () => {
                         </button>
                         <div className="flex items-center space-x-3 hidden sm:flex">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-sm">
-                                <i className="fas fa-user-tie"></i>
+                                <Crown className="h-5 w-5" />
                             </div>
                             <div className="text-right hidden lg:block">
-                                <div className="text-white font-semibold text-sm">João Manager</div>
-                                <div className="text-gray-400 text-xs">Administrador PRO</div>
+                                <div className="text-white font-semibold text-sm">{userName}</div>
+                                <div className="text-gray-400 text-xs">{userRole}</div>
                             </div>
                         </div>
                         <Button
-                            onClick={() => navigate('/')}
+                            onClick={handleLogout}
                             className="bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer px-3 py-1 h-8 text-sm hidden sm:block"
                         >
                             Sair
@@ -80,22 +159,22 @@ const ManagerLayout: React.FC = () => {
                             </SheetTrigger>
                             <SheetContent side="right" className="w-[250px] bg-black/95 border-l border-yellow-500/30 text-white p-0">
                                 <SheetHeader className="p-4 border-b border-yellow-500/20">
-                                    <SheetTitle className="text-2xl font-serif text-yellow-500">Mazoy PRO</SheetTitle>
+                                    <SheetTitle className="text-2xl font-serif text-yellow-500">Mazoy {dashboardTitle}</SheetTitle>
                                 </SheetHeader>
                                 <div className="p-4 space-y-4">
                                     <div className="flex items-center space-x-3 p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
                                         <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-black font-bold">
-                                            <i className="fas fa-user-tie"></i>
+                                            <Crown className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <div className="text-white font-semibold">João Manager</div>
-                                            <div className="text-gray-400 text-sm">Administrador PRO</div>
+                                            <div className="text-white font-semibold">{userName}</div>
+                                            <div className="text-gray-400 text-sm">{userRole}</div>
                                         </div>
                                     </div>
                                     <NavLinks onClick={() => {}} />
                                     <div className="border-t border-yellow-500/20 pt-4">
                                         <Button
-                                            onClick={() => navigate('/')}
+                                            onClick={handleLogout}
                                             className="w-full justify-start bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer"
                                         >
                                             <i className="fas fa-sign-out-alt mr-2"></i>

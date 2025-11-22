@@ -22,7 +22,9 @@ import ManagerAdvancedSettings from "./pages/ManagerAdvancedSettings";
 import ManagerPaymentSettings from "./pages/ManagerPaymentSettings"; 
 import ManagerCreateWristband from "./pages/ManagerCreateWristband"; 
 import ManagerWristbandsList from "./pages/ManagerWristbandsList"; 
-import ManagerManageWristband from "./pages/ManagerManageWristband"; // Importando a nova página
+import ManagerManageWristband from "./pages/ManagerManageWristband";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminRouteGuard from "./components/AdminRouteGuard";
 import ManagerLayout from "./components/layouts/ManagerLayout";
 import ForgotPassword from "./pages/ForgotPassword";
 
@@ -35,6 +37,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Public/Client Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="/register" element={<Register />} />
@@ -44,6 +47,7 @@ const App = () => (
           <Route path="/tickets" element={<MyTickets />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
           
+          {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}
           <Route element={<ManagerLayout />}>
             <Route path="/manager/dashboard" element={<ManagerDashboard />} />
             <Route path="/manager/events" element={<ManagerEventsList />} />
@@ -51,12 +55,19 @@ const App = () => (
             <Route path="/manager/events/edit/:id" element={<ManagerEditEvent />} />
             <Route path="/manager/wristbands" element={<ManagerWristbandsList />} />
             <Route path="/manager/wristbands/create" element={<ManagerCreateWristband />} /> 
-            <Route path="/manager/wristbands/manage/:id" element={<ManagerManageWristband />} /> {/* Nova Rota */}
+            <Route path="/manager/wristbands/manage/:id" element={<ManagerManageWristband />} />
             <Route path="/manager/settings" element={<ManagerSettings />} />
             <Route path="/manager/settings/company-profile" element={<ManagerCompanyProfile />} />
             <Route path="/manager/settings/notifications" element={<ManagerNotifications />} />
             <Route path="/manager/settings/advanced" element={<ManagerAdvancedSettings />} />
             <Route path="/manager/settings/payment" element={<ManagerPaymentSettings />} />
+          </Route>
+          
+          {/* Admin Routes (Protected by AdminRouteGuard) */}
+          <Route element={<AdminRouteGuard />}>
+            <Route element={<ManagerLayout />}>
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<NotFound />} />
