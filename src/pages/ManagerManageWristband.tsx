@@ -20,6 +20,7 @@ interface WristbandDetails {
     manager_user_id: string;
     events: { title: string } | null;
     company_id: string;
+    event_id: string; // Adicionando event_id para uso na lógica de atualização em massa
 }
 
 interface AnalyticsEntry {
@@ -28,7 +29,7 @@ interface AnalyticsEntry {
     event_data: any;
     created_at: string;
     code_wristbands: string;
-    status: 'active' | 'used' | 'lost' | 'cancelled'; // Agora é obrigatório, pois o DB tem um default
+    status: 'active' | 'used' | 'lost' | 'cancelled';
 }
 
 const STATUS_OPTIONS = [
@@ -44,7 +45,7 @@ const fetchWristbandData = async (id: string): Promise<{ details: WristbandDetai
     const { data: detailsData, error: detailsError } = await supabase
         .from('wristbands')
         .select(`
-            id, code, access_type, status, created_at, manager_user_id, company_id,
+            id, code, access_type, status, created_at, manager_user_id, company_id, event_id,
             events (title)
         `)
         .eq('id', id)
@@ -106,6 +107,7 @@ const ManagerManageWristband: React.FC = () => {
         
         const statusChanged = newStatus !== data.details.status;
         const isDeactivating = data.details.status === 'active' && newStatus !== 'active';
+        const eventId = data.details.event_id;
 
         if (!statusChanged) {
             showError("Nenhuma alteração detectada. Selecione um novo status.");
@@ -116,13 +118,13 @@ const ManagerManageWristband: React.FC = () => {
         const toastId = showLoading("Gravando alterações...");
 
         try {
-            // --- 1. VERIFICAÇÃO DE VENDA (Se estiver desativando) ---
+            // --- 1. VERIFICAÇÃO DE VENDA (Se estiver desativando em massa) ---
             if (isDeactivating) {
-                // Verifica se existe algum registro de analytics com client_user_id preenchido
+                // Verifica se HÁ ALGUMA pulseira do EVENTO que foi vendida (client_user_id não é nulo)
                 const { data: soldCheck, error: checkError } = await supabase
                     .from('wristband_analytics')
-                    .select('client_user_id')
-                    .eq('wristband_id', id)
+                    .select('client_user_id, wristband_id')
+                    .eq('event_id', eventId) // Filtra pelo ID do evento
                     .not('client_user_id', 'is', null)
                     .limit(1);
 
@@ -130,7 +132,7 @@ const ManagerManageWristband: React.FC = () => {
 
                 if (soldCheck && soldCheck.length > 0) {
                     dismissToast(toastId);
-                    showError("Não é possível desativar esta pulseira. Ela já foi vendida e associada a um cliente.");
+                    showError(`Não é possível desativar as pulseiras do evento "${data.details.events?.title || 'N/A'}". Pelo menos uma pulseira já foi vendida e associada a um cliente.`);
                     // Reverte o status selecionado no frontend para o status atual
                     setNewStatus(data.details.status); 
                     setIsUpdatingStatus(false);
@@ -138,44 +140,71 @@ const ManagerManageWristband: React.FC = () => {
                 }
             }
             
-            // --- 2. ATUALIZAÇÃO DO STATUS NA TABELA PRINCIPAL (wristbands) ---
+            // --- 2. ATUALIZAÇÃO EM MASSA (Se for desativação) ou ATUALIZAÇÃO INDIVIDUAL (Se for reativação/uso) ---
+            
+            let wristbandsToUpdate: string[] = [id]; // Começa com a pulseira atual
+            let updateCount = 1;
+
+            if (isDeactivating) {
+                // Se for desativação, buscamos todas as pulseiras ATIVAS do evento que NÃO foram vendidas
+                
+                // Nota: A RLS garante que só veremos as pulseiras da nossa empresa.
+                const { data: activeWristbands, error: fetchActiveError } = await supabase
+                    .from('wristbands')
+                    .select('id')
+                    .eq('event_id', eventId)
+                    .eq('status', 'active');
+                
+                if (fetchActiveError) throw fetchActiveError;
+
+                wristbandsToUpdate = activeWristbands.map(w => w.id);
+                updateCount = wristbandsToUpdate.length;
+            }
+            
+            // 2a. Atualizar status na tabela principal (wristbands)
             const { error: updateWristbandError } = await supabase
                 .from('wristbands')
                 .update({ status: newStatus })
-                .eq('id', id);
+                .in('id', wristbandsToUpdate); // Usa IN para atualização em massa
 
             if (updateWristbandError) throw updateWristbandError;
 
-            // --- 3. ATUALIZAÇÃO DO STATUS NA TABELA DE ANALYTICS (wristband_analytics) ---
-            // Atualiza o campo 'status' em TODOS os registros de analytics associados a esta pulseira
+            // 2b. Atualizar status na tabela de analytics (wristband_analytics)
+            // Atualiza o campo 'status' em TODOS os registros de analytics associados às pulseiras atualizadas
             const { error: updateAnalyticsError } = await supabase
                 .from('wristband_analytics')
                 .update({ status: newStatus })
-                .eq('wristband_id', id);
+                .in('wristband_id', wristbandsToUpdate);
             
             if (updateAnalyticsError) {
                 console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
-                // Continua, pois a atualização da tabela principal é mais crítica
             }
 
-            // --- 4. INSERIR REGISTRO DE MUDANÇA DE STATUS ---
-            await supabase
+            // --- 3. INSERIR REGISTRO DE MUDANÇA DE STATUS (Para cada pulseira atualizada) ---
+            const analyticsInserts = wristbandsToUpdate.map(wristbandId => ({
+                wristband_id: wristbandId,
+                event_type: 'status_change',
+                code_wristbands: data.details.code, // Usando o código da pulseira original como referência
+                status: newStatus as WristbandDetails['status'],
+                event_data: { 
+                    old_status: data.details.status, 
+                    new_status: newStatus,
+                    manager_id: data.details.manager_user_id,
+                    location: isDeactivating ? 'Gerenciamento em Massa (Evento)' : 'Gerenciamento Manual'
+                }
+            }));
+            
+            const { error: insertAnalyticsError } = await supabase
                 .from('wristband_analytics')
-                .insert([{
-                    wristband_id: id,
-                    event_type: 'status_change',
-                    code_wristbands: data.details.code,
-                    status: newStatus as WristbandDetails['status'], // Garante que o novo status seja gravado no registro de analytics
-                    event_data: { 
-                        old_status: data.details.status, 
-                        new_status: newStatus,
-                        manager_id: data.details.manager_user_id,
-                        location: 'Gerenciamento Manual'
-                    }
-                }]);
+                .insert(analyticsInserts);
+                
+            if (insertAnalyticsError) {
+                console.error("Warning: Failed to insert status change analytics:", insertAnalyticsError);
+            }
+
 
             dismissToast(toastId);
-            showSuccess("Status da pulseira atualizado com sucesso!");
+            showSuccess(`Status atualizado com sucesso! ${isDeactivating ? `(${updateCount} pulseiras do evento foram desativadas)` : ''}`);
             invalidate(); // Recarrega os dados
 
         } catch (e: any) {
