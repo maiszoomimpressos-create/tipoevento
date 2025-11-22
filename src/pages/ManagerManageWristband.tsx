@@ -149,8 +149,6 @@ const ManagerManageWristband: React.FC = () => {
         }
     };
     
-    // Removendo a função handleRegisterUsage
-
     if (isLoading) {
         return (
             <div className="max-w-7xl mx-auto text-center py-20">
@@ -199,19 +197,21 @@ const ManagerManageWristband: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Coluna de Detalhes e Status (Compactada) */}
+                {/* Coluna de Detalhes e Status (CONSOLIDADA) */}
                 <div className="lg:col-span-1 space-y-6">
                     <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
                         <CardTitle className="text-white text-xl mb-4 flex items-center">
                             <Tag className="h-5 w-5 mr-2 text-yellow-500" />
-                            Informações
+                            Informações e Status
                         </CardTitle>
-                        <div className="space-y-3 text-sm">
-                            <div className="flex justify-between border-b border-yellow-500/10 pb-2">
+                        
+                        {/* Informações Básicas (Espaçamento reduzido) */}
+                        <div className="space-y-2 text-sm pb-4 border-b border-yellow-500/10 mb-4">
+                            <div className="flex justify-between">
                                 <span className="text-gray-400">Evento:</span>
                                 <span className="text-white font-medium truncate max-w-[150px]">{details.events?.title || 'N/A'}</span>
                             </div>
-                            <div className="flex justify-between border-b border-yellow-500/10 pb-2">
+                            <div className="flex justify-between">
                                 <span className="text-gray-400">Tipo de Acesso:</span>
                                 <span className="text-yellow-500 font-medium">{details.access_type}</span>
                             </div>
@@ -219,24 +219,26 @@ const ManagerManageWristband: React.FC = () => {
                                 <span className="text-gray-400">Criação:</span>
                                 <span className="text-gray-300">{new Date(details.created_at).toLocaleDateString('pt-BR')}</span>
                             </div>
+                            <div className="flex justify-between pt-2">
+                                <span className="text-gray-400">Cadastrado por:</span>
+                                <span className="text-gray-300 truncate max-w-[150px]">{details.manager_user_id.substring(0, 8)}...</span>
+                            </div>
                         </div>
-                    </Card>
 
-                    {/* Gerenciamento de Status (Compactado) */}
-                    <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
-                        <CardTitle className="text-white text-xl mb-4 flex items-center">
-                            <RefreshCw className="h-5 w-5 mr-2 text-yellow-500" />
-                            Atualizar Status
-                        </CardTitle>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-400 text-sm">Status Atual:</span>
+                        {/* Gerenciamento de Status (Integrado) */}
+                        <div className="space-y-4 pt-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-400 text-sm flex items-center">
+                                    <RefreshCw className="h-4 w-4 mr-2 text-yellow-500" />
+                                    Status Atual:
+                                </span>
                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${currentStatusOption?.color} bg-yellow-500/10`}>
                                     {currentStatusOption?.label}
                                 </span>
                             </div>
                             
                             <div>
+                                <label htmlFor="status" className="block text-sm font-medium text-white mb-2">Alterar Status</label>
                                 <Select onValueChange={setNewStatus} value={newStatus}>
                                     <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500 h-10">
                                         <SelectValue placeholder="Selecione o novo status" />
