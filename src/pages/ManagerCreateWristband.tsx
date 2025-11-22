@@ -91,7 +91,7 @@ const ManagerCreateWristband: React.FC = () => {
             const wristbandsToInsert = [];
             const baseCodeClean = formData.baseCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
             
-            // 1. Gerar códigos únicos sequenciais
+            // 1. Gerar códigos únicos sequenciais e preparar inserção
             for (let i = 1; i <= formData.quantity; i++) {
                 const sequentialCode = `${baseCodeClean}-${String(i).padStart(3, '0')}`;
                 
@@ -106,9 +106,10 @@ const ManagerCreateWristband: React.FC = () => {
             }
 
             // 2. Inserir em lote na tabela wristbands
-            const { error: insertError } = await supabase
+            const { data: insertedWristbands, error: insertError } = await supabase
                 .from('wristbands')
-                .insert(wristbandsToInsert);
+                .insert(wristbandsToInsert)
+                .select('id, code'); // Seleciona o ID e o código para usar no analytics
 
             if (insertError) {
                 if (insertError.code === '23505') { // Unique violation (código da pulseira já existe)
@@ -116,9 +117,33 @@ const ManagerCreateWristband: React.FC = () => {
                 }
                 throw insertError;
             }
+            
+            // 3. Inserir registros de analytics para cada pulseira criada
+            if (insertedWristbands && insertedWristbands.length > 0) {
+                const analyticsToInsert = insertedWristbands.map(wristband => ({
+                    wristband_id: wristband.id,
+                    event_type: 'creation',
+                    event_data: {
+                        code: wristband.code,
+                        access_type: formData.accessType,
+                        manager_id: userId,
+                        event_id: formData.eventId,
+                        initial_status: 'active',
+                    },
+                }));
+
+                const { error: analyticsError } = await supabase
+                    .from('wristband_analytics')
+                    .insert(analyticsToInsert);
+
+                if (analyticsError) {
+                    console.error("Warning: Failed to insert analytics records:", analyticsError);
+                    // Não lançamos erro fatal aqui, pois as pulseiras já foram criadas.
+                }
+            }
 
             dismissToast(toastId);
-            showSuccess(`${formData.quantity} pulseira(s) cadastradas com sucesso!`);
+            showSuccess(`${formData.quantity} pulseira(s) cadastradas e registradas com sucesso!`);
             
             // Limpar formulário após sucesso
             setFormData(prev => ({ 
