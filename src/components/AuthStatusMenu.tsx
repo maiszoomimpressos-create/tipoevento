@@ -8,6 +8,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import NotificationBell from './NotificationBell';
+import { Shield } from 'lucide-react'; // Importando ícone para Admin
 
 const AuthStatusMenu: React.FC = () => {
     const navigate = useNavigate();
@@ -53,6 +54,7 @@ const AuthStatusMenu: React.FC = () => {
     if (session && profile) {
         const initials = profile.first_name ? profile.first_name.charAt(0).toUpperCase() : 'U';
         const isManager = profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2;
+        const isAdmin = profile.tipo_usuario_id === 1; // Novo: Verifica se é Admin Master
 
         return (
             <div className="flex items-center space-x-4">
@@ -98,6 +100,15 @@ const AuthStatusMenu: React.FC = () => {
                             >
                                 <i className="fas fa-crown mr-2"></i>
                                 Dashboard PRO
+                            </DropdownMenuItem>
+                        )}
+                        {isAdmin && (
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/admin/dashboard')} 
+                                className="cursor-pointer hover:bg-yellow-500/10 text-red-400 font-semibold"
+                            >
+                                <Shield className="mr-2 h-4 w-4" />
+                                Dashboard Admin
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator className="bg-yellow-500/20" />
