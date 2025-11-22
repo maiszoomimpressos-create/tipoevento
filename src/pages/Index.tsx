@@ -9,10 +9,16 @@ import MobileMenu from '@/components/MobileMenu';
 import { supabase } from '@/integrations/supabase/client';
 import { trackAdvancedFilterUse } from '@/utils/metrics';
 
+const EVENTS_PER_PAGE = 12;
+
 const Index: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | undefined>(undefined);
+    
+    // Paginação
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalPages = Math.ceil(eventSlides.length / EVENTS_PER_PAGE);
 
     // Fetch user ID on mount
     useEffect(() => {
@@ -39,6 +45,38 @@ const Index: React.FC = () => {
         }
         // Placeholder for actual filtering logic
         console.log("Aplicando filtros avançados...");
+        // Reset page to 1 after applying filters
+        setCurrentPage(1);
+    };
+    
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+            // Rola para o topo da seção de eventos
+            document.getElementById('eventos')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    // Lógica de Paginação
+    const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
+    const endIndex = startIndex + EVENTS_PER_PAGE;
+    const displayedEvents = eventSlides.slice(startIndex, endIndex);
+    
+    // Lógica para exibir 5 botões de paginação
+    const getPageNumbers = () => {
+        const maxPagesToShow = 5;
+        const pages = [];
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+        if (endPage - startPage + 1 < maxPagesToShow) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(i);
+        }
+        return pages;
     };
 
     // Função para determinar a transformação do carrossel (simplificada para mobile)
@@ -300,7 +338,7 @@ const Index: React.FC = () => {
                             </div>
                             <div className="flex-1">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
-                                    {eventSlides.slice(0, 12).map((event) => (
+                                    {displayedEvents.map((event) => (
                                         <Card
                                             key={event.id}
                                             className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
@@ -363,13 +401,21 @@ const Index: React.FC = () => {
                                     ))}
                                 </div>
                                 <div className="flex items-center justify-center mt-12 space-x-2">
-                                    <button className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer">
+                                    {/* Botão Anterior */}
+                                    <button 
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
                                         <i className="fas fa-chevron-left"></i>
                                     </button>
-                                    {[1, 2, 3, 4, 5].map((page) => (
+                                    
+                                    {/* Botões de Páginas */}
+                                    {getPageNumbers().map((page) => (
                                         <button
                                             key={page}
-                                            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 cursor-pointer text-sm sm:text-base ${page === 1
+                                            onClick={() => handlePageChange(page)}
+                                            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 cursor-pointer text-sm sm:text-base ${page === currentPage
                                                     ? 'bg-yellow-500 text-black'
                                                     : 'bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500'
                                                 }`}
@@ -377,13 +423,19 @@ const Index: React.FC = () => {
                                             {page}
                                         </button>
                                     ))}
-                                    <button className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer">
+                                    
+                                    {/* Botão Próximo */}
+                                    <button 
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
                                         <i className="fas fa-chevron-right"></i>
                                     </button>
                                 </div>
                                 <div className="text-center mt-8">
                                     <p className="text-gray-400 text-sm sm:text-base">
-                                        Mostrando <span className="text-yellow-500 font-semibold">1-12</span> de <span className="text-yellow-500 font-semibold">127</span> eventos
+                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, eventSlides.length)}</span> de <span className="text-yellow-500 font-semibold">{eventSlides.length}</span> eventos
                                     </p>
                                 </div>
                             </div>
