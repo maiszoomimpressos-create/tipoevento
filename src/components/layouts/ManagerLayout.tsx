@@ -69,6 +69,7 @@ const ManagerLayout: React.FC = () => {
     }
     
     const navItems = [
+        { path: '/', label: 'Home' }, // Novo item Home
         { path: '/manager/dashboard', label: 'Dashboard PRO' },
         { path: '/manager/events', label: 'Eventos' },
         { path: '/manager/wristbands', label: 'Pulseiras' },
@@ -78,7 +79,7 @@ const ManagerLayout: React.FC = () => {
     
     // Add Admin Dashboard link if the user is an Admin
     if (isAdmin) {
-        navItems.unshift({ path: '/admin/dashboard', label: 'Dashboard Admin' });
+        navItems.splice(1, 0, { path: '/admin/dashboard', label: 'Dashboard Admin' });
     }
     
     const dashboardTitle = isAdmin && location.pathname.startsWith('/admin') ? 'ADMIN' : 'PRO';
@@ -90,11 +91,21 @@ const ManagerLayout: React.FC = () => {
         <nav className="flex flex-col md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0">
             {navItems.map(item => {
                 // Determine if the link is active based on the current path
-                const isActive = item.path !== '#' && location.pathname.startsWith(item.path);
+                let isActive = false;
                 
-                // Special handling for Admin Dashboard link when on Manager Dashboard
+                if (item.path === '/') {
+                    // Home is active only if the path is exactly '/'
+                    isActive = location.pathname === '/';
+                } else if (item.path !== '#') {
+                    // Other paths are active if the current path starts with them
+                    isActive = location.pathname.startsWith(item.path);
+                }
+                
+                // Special handling for Dashboard links to ensure only one is highlighted
                 const isManagerDashboardActive = location.pathname === '/manager/dashboard' && item.path === '/manager/dashboard';
                 const isAdminDashboardActive = location.pathname === '/admin/dashboard' && item.path === '/admin/dashboard';
+                
+                const isLinkActive = isActive || isManagerDashboardActive || isAdminDashboardActive;
 
                 return (
                     <button 
@@ -104,7 +115,7 @@ const ManagerLayout: React.FC = () => {
                             if (onClick) onClick();
                         }} 
                         className={`transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left ${
-                            isActive || isManagerDashboardActive || isAdminDashboardActive
+                            isLinkActive
                             ? 'text-yellow-500 md:border-b-2 border-yellow-500 font-semibold' 
                             : 'text-white hover:text-yellow-500'
                         }`}
