@@ -52,8 +52,18 @@ const Index: React.FC = () => {
     const handlePageChange = (page: number) => {
         if (page >= 1 && page <= totalPages) {
             setCurrentPage(page);
-            // Rola para o topo da seção de eventos
-            document.getElementById('eventos')?.scrollIntoView({ behavior: 'smooth' });
+            
+            // Rola para o topo da seção de eventos, ajustando para o cabeçalho fixo
+            const eventsSection = document.getElementById('eventos');
+            if (eventsSection) {
+                const headerHeight = 80; // Altura aproximada do cabeçalho fixo (pt-20)
+                const topPosition = eventsSection.offsetTop - headerHeight;
+                
+                window.scrollTo({
+                    top: topPosition,
+                    behavior: 'smooth'
+                });
+            }
         }
     };
 
