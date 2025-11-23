@@ -160,6 +160,7 @@ const ManagerManageWristband: React.FC = () => {
                 if (updateWristbandError) throw updateWristbandError;
 
                 // 2. Atualizar status na tabela de analytics (wristband_analytics)
+                // CORREÇÃO: Atualizar TODOS os registros de analytics para esta pulseira
                 const { error: updateAnalyticsError } = await supabase
                     .from('wristband_analytics')
                     .update({ status: newStatus })
