@@ -177,7 +177,7 @@ const ManagerManageWristband: React.FC = () => {
             if (updateWristbandError) throw updateWristbandError;
 
             // 2b. Atualizar status na tabela de analytics (wristband_analytics)
-            // ATUALIZA O STATUS EM TODOS OS REGISTROS DE ANALYTICS EXISTENTES
+            // ATUALIZA O CAMPO 'STATUS' EM TODOS OS REGISTROS DE ANALYTICS EXISTENTES
             const { error: updateAnalyticsError } = await supabase
                 .from('wristband_analytics')
                 .update({ status: newStatus })
@@ -206,18 +206,9 @@ const ManagerManageWristband: React.FC = () => {
     };
     
     // Função auxiliar para obter o status do evento de analytics
+    // Agora confiamos apenas no campo 'status' do registro, que é atualizado pelo UPDATE em massa.
     const getAnalyticsStatus = (entry: AnalyticsEntry) => {
-        // Prioriza o status gravado no próprio registro de analytics (se existir)
-        if (entry.status) return entry.status; 
-        
-        if (entry.event_type === 'status_change') {
-            return entry.event_data.new_status;
-        }
-        if (entry.event_type === 'creation') {
-            return entry.event_data.initial_status;
-        }
-        // Fallback para o status atual da pulseira
-        return data?.details.status || 'N/A';
+        return entry.status || 'N/A';
     };
 
     const getStatusClasses = (status: string) => {
