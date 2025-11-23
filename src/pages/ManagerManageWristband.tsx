@@ -88,6 +88,7 @@ const useWristbandManagement = (id: string | undefined) => {
     return {
         ...query,
         invalidate: () => queryClient.invalidateQueries({ queryKey: ['wristbandManagement', id] }),
+        refetch: query.refetch, // Expondo o refetch
     };
 };
 
@@ -95,7 +96,7 @@ const useWristbandManagement = (id: string | undefined) => {
 const ManagerManageWristband: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
-    const { data, isLoading, isError, invalidate } = useWristbandManagement(id);
+    const { data, isLoading, isError, invalidate, refetch } = useWristbandManagement(id);
     const [newStatus, setNewStatus] = useState<WristbandDetails['status'] | string>('');
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [searchTerm, setSearchTerm] = useState(''); // Novo estado para pesquisa
@@ -112,7 +113,8 @@ const ManagerManageWristband: React.FC = () => {
         const statusChanged = newStatus !== data.details.status;
         
         // A desativação em massa ocorre se o status atual for 'active' e o novo status for 'lost' ou 'cancelled'.
-        const isMassDeactivation = data.details.status === 'active' && (newStatus === 'lost' || newStatus === 'cancelled');
+        // E se o novo status for diferente do atual.
+        const isMassDeactivation = (newStatus === 'lost' || newStatus === 'cancelled');
         const eventId = data.details.event_id;
 
         if (!statusChanged) {
@@ -151,16 +153,16 @@ const ManagerManageWristband: React.FC = () => {
                     return;
                 }
                 
-                // Se não houver vendas, buscamos todas as pulseiras ATIVAS do evento para desativação em massa
-                const { data: activeWristbands, error: fetchActiveError } = await supabase
+                // Se não houver vendas, buscamos TODAS as pulseiras do evento (ativas, usadas, etc.) para desativação em massa
+                // Isso garante que todos os registros de analytics sejam atualizados.
+                const { data: allWristbands, error: fetchAllError } = await supabase
                     .from('wristbands')
                     .select('id')
-                    .eq('event_id', eventId)
-                    .eq('status', 'active');
+                    .eq('event_id', eventId);
                 
-                if (fetchActiveError) throw fetchActiveError;
+                if (fetchAllError) throw fetchAllError;
 
-                wristbandsToUpdate = activeWristbands.map(w => w.id);
+                wristbandsToUpdate = allWristbands.map(w => w.id);
                 updateCount = wristbandsToUpdate.length;
                 isMassOperation = true;
             }
@@ -176,8 +178,7 @@ const ManagerManageWristband: React.FC = () => {
             if (updateWristbandError) throw updateWristbandError;
 
             // 2b. Atualizar status na tabela de analytics (wristband_analytics)
-            // Atualiza o campo 'status' em TODOS os registros de analytics associados às pulseiras atualizadas
-            // ESTA É A OPERAÇÃO QUE ATUALIZA OS REGISTROS ANTIGOS (CRIAÇÃO/USO)
+            // ATUALIZA O CAMPO 'STATUS' EM TODOS OS REGISTROS DE ANALYTICS EXISTENTES
             const { error: updateAnalyticsError } = await supabase
                 .from('wristband_analytics')
                 .update({ status: newStatus })
@@ -187,14 +188,11 @@ const ManagerManageWristband: React.FC = () => {
                 console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
             }
 
-            // --- 3. REMOVIDO: INSERÇÃO DE REGISTRO DE MUDANÇA DE STATUS ---
-            // O registro de auditoria foi removido para atender ao pedido de não inserir novos registros.
-            // Apenas os registros existentes são atualizados.
-
-
             dismissToast(toastId);
             showSuccess(`Status atualizado com sucesso! ${isMassOperation ? `(${updateCount} pulseiras do evento foram desativadas)` : ''}`);
-            invalidate(); // Recarrega os dados
+            
+            // Força a re-busca dos dados para refletir a mudança na grade de analytics
+            refetch(); 
 
         } catch (e: any) {
             dismissToast(toastId);
@@ -207,17 +205,7 @@ const ManagerManageWristband: React.FC = () => {
     
     // Função auxiliar para obter o status do evento de analytics
     const getAnalyticsStatus = (entry: AnalyticsEntry) => {
-        // Prioriza o status gravado no próprio registro de analytics (se existir)
-        if (entry.status) return entry.status; 
-        
-        if (entry.event_type === 'status_change') {
-            return entry.event_data.new_status;
-        }
-        if (entry.event_type === 'creation') {
-            return entry.event_data.initial_status;
-        }
-        // Fallback para o status atual da pulseira
-        return data?.details.status || 'N/A';
+        return entry.status || 'N/A';
     };
 
     const getStatusClasses = (status: string) => {
