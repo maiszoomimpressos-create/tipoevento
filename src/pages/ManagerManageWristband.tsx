@@ -113,7 +113,8 @@ const ManagerManageWristband: React.FC = () => {
         const statusChanged = newStatus !== data.details.status;
         
         // A desativação em massa ocorre se o status atual for 'active' e o novo status for 'lost' ou 'cancelled'.
-        const isMassDeactivation = data.details.status === 'active' && (newStatus === 'lost' || newStatus === 'cancelled');
+        // E se o novo status for diferente do atual.
+        const isMassDeactivation = (newStatus === 'lost' || newStatus === 'cancelled');
         const eventId = data.details.event_id;
 
         if (!statusChanged) {
@@ -152,16 +153,16 @@ const ManagerManageWristband: React.FC = () => {
                     return;
                 }
                 
-                // Se não houver vendas, buscamos todas as pulseiras ATIVAS do evento para desativação em massa
-                const { data: activeWristbands, error: fetchActiveError } = await supabase
+                // Se não houver vendas, buscamos TODAS as pulseiras do evento (ativas, usadas, etc.) para desativação em massa
+                // Isso garante que todos os registros de analytics sejam atualizados.
+                const { data: allWristbands, error: fetchAllError } = await supabase
                     .from('wristbands')
                     .select('id')
-                    .eq('event_id', eventId)
-                    .eq('status', 'active');
+                    .eq('event_id', eventId);
                 
-                if (fetchActiveError) throw fetchActiveError;
+                if (fetchAllError) throw fetchAllError;
 
-                wristbandsToUpdate = activeWristbands.map(w => w.id);
+                wristbandsToUpdate = allWristbands.map(w => w.id);
                 updateCount = wristbandsToUpdate.length;
                 isMassOperation = true;
             }
@@ -187,9 +188,6 @@ const ManagerManageWristband: React.FC = () => {
                 console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
             }
 
-            // --- 3. REMOVIDO: INSERÇÃO DE REGISTRO DE MUDANÇA DE STATUS ---
-            // Mantemos a remoção para atender ao pedido de não inserir novos registros.
-
             dismissToast(toastId);
             showSuccess(`Status atualizado com sucesso! ${isMassOperation ? `(${updateCount} pulseiras do evento foram desativadas)` : ''}`);
             
@@ -206,7 +204,6 @@ const ManagerManageWristband: React.FC = () => {
     };
     
     // Função auxiliar para obter o status do evento de analytics
-    // Agora confiamos apenas no campo 'status' do registro, que é atualizado pelo UPDATE em massa.
     const getAnalyticsStatus = (entry: AnalyticsEntry) => {
         return entry.status || 'N/A';
     };
