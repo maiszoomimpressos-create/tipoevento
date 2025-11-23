@@ -123,6 +123,8 @@ const ManagerCreateWristband: React.FC = () => {
                     event_type: 'creation',
                     client_user_id: null, 
                     code_wristbands: insertedWristband.code, // Gravando o Código Base aqui
+                    status: 'active',
+                    sequential_number: i + 1, // Adicionando o número sequencial
                     event_data: {
                         code: insertedWristband.code, // Mantendo no event_data para histórico
                         access_type: formData.accessType,
