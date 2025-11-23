@@ -110,7 +110,8 @@ const ManagerManageWristband: React.FC = () => {
         if (!id || !newStatus || !data?.details) return;
         
         const statusChanged = newStatus !== data.details.status;
-        const isDeactivating = data.details.status === 'active' && newStatus !== 'active';
+        // Define se é uma desativação em massa (de 'active' para qualquer outro status)
+        const isDeactivating = data.details.status === 'active' && (newStatus === 'lost' || newStatus === 'cancelled');
         const eventId = data.details.event_id;
 
         if (!statusChanged) {
@@ -124,7 +125,7 @@ const ManagerManageWristband: React.FC = () => {
         try {
             // --- 1. VERIFICAÇÃO DE VENDA (Se estiver desativando em massa) ---
             if (isDeactivating) {
-                // CORREÇÃO: Usar JOIN implícito para filtrar pelo event_id da pulseira associada
+                // Verifica se alguma pulseira do evento já foi vendida (associada a um cliente)
                 const { data: soldCheck, error: checkError } = await supabase
                     .from('wristband_analytics')
                     .select(`
@@ -178,6 +179,7 @@ const ManagerManageWristband: React.FC = () => {
 
             // 2b. Atualizar status na tabela de analytics (wristband_analytics)
             // Atualiza o campo 'status' em TODOS os registros de analytics associados às pulseiras atualizadas
+            // Esta operação é o equivalente eficiente do laço de repetição solicitado.
             const { error: updateAnalyticsError } = await supabase
                 .from('wristband_analytics')
                 .update({ status: newStatus })
