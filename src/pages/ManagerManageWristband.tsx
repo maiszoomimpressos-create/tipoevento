@@ -113,8 +113,7 @@ const ManagerManageWristband: React.FC = () => {
         const statusChanged = newStatus !== data.details.status;
         
         // A desativação em massa ocorre se o status atual for 'active' e o novo status for 'lost' ou 'cancelled'.
-        // E se o novo status for diferente do atual.
-        const isMassDeactivation = (newStatus === 'lost' || newStatus === 'cancelled');
+        const isMassDeactivation = data.details.status === 'active' && (newStatus === 'lost' || newStatus === 'cancelled');
         const eventId = data.details.event_id;
 
         if (!statusChanged) {
@@ -126,66 +125,49 @@ const ManagerManageWristband: React.FC = () => {
         const toastId = showLoading("Gravando alterações...");
 
         try {
-            let wristbandsToUpdate: string[] = [id]; // Começa com a pulseira atual
             let updateCount = 1;
             let isMassOperation = false;
-
-            // --- 1. VERIFICAÇÃO DE VENDA E DEFINIÇÃO DE ESCOPO ---
+            
             if (isMassDeactivation) {
-                // Verifica se alguma pulseira do evento já foi vendida (associada a um cliente)
-                const { data: soldCheck, error: checkError } = await supabase
-                    .from('wristband_analytics')
-                    .select(`
-                        client_user_id,
-                        wristbands!inner(event_id)
-                    `)
-                    .not('client_user_id', 'is', null)
-                    .eq('wristbands.event_id', eventId) 
-                    .limit(1);
+                // Se for desativação em massa, usamos a Edge Function
+                const { data: edgeData, error: edgeError } = await supabase.functions.invoke('update-wristband-status-mass', {
+                    body: {
+                        event_id: eventId,
+                        new_status: newStatus,
+                    },
+                });
 
-                if (checkError) throw checkError;
-
-                if (soldCheck && soldCheck.length > 0) {
-                    dismissToast(toastId);
-                    showError(`Não é possível desativar as pulseiras do evento "${data.details.events?.title || 'N/A'}". Pelo menos uma pulseira já foi vendida e associada a um cliente.`);
-                    setNewStatus(data.details.status); 
-                    setIsUpdatingStatus(false);
-                    return;
+                if (edgeError) {
+                    throw new Error(edgeError.message);
                 }
                 
-                // Se não houver vendas, buscamos TODAS as pulseiras do evento (ativas, usadas, etc.) para desativação em massa
-                // Isso garante que todos os registros de analytics sejam atualizados.
-                const { data: allWristbands, error: fetchAllError } = await supabase
-                    .from('wristbands')
-                    .select('id')
-                    .eq('event_id', eventId);
-                
-                if (fetchAllError) throw fetchAllError;
+                if (edgeData.error) {
+                    throw new Error(edgeData.error);
+                }
 
-                wristbandsToUpdate = allWristbands.map(w => w.id);
-                updateCount = wristbandsToUpdate.length;
+                updateCount = edgeData.count || 0;
                 isMassOperation = true;
-            }
-            
-            // --- 2. ATUALIZAÇÃO NO BANCO DE DADOS ---
-            
-            // 2a. Atualizar status na tabela principal (wristbands)
-            const { error: updateWristbandError } = await supabase
-                .from('wristbands')
-                .update({ status: newStatus })
-                .in('id', wristbandsToUpdate); // Usa IN para atualização em massa
 
-            if (updateWristbandError) throw updateWristbandError;
+            } else {
+                // Se for atualização de status individual (ou de 'used' para 'active', etc.)
+                
+                // 1. Atualizar status na tabela principal (wristbands)
+                const { error: updateWristbandError } = await supabase
+                    .from('wristbands')
+                    .update({ status: newStatus })
+                    .eq('id', id);
 
-            // 2b. Atualizar status na tabela de analytics (wristband_analytics)
-            // ATUALIZA O CAMPO 'STATUS' EM TODOS OS REGISTROS DE ANALYTICS EXISTENTES
-            const { error: updateAnalyticsError } = await supabase
-                .from('wristband_analytics')
-                .update({ status: newStatus })
-                .in('wristband_id', wristbandsToUpdate);
-            
-            if (updateAnalyticsError) {
-                console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
+                if (updateWristbandError) throw updateWristbandError;
+
+                // 2. Atualizar status na tabela de analytics (wristband_analytics)
+                const { error: updateAnalyticsError } = await supabase
+                    .from('wristband_analytics')
+                    .update({ status: newStatus })
+                    .eq('wristband_id', id);
+                
+                if (updateAnalyticsError) {
+                    console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
+                }
             }
 
             dismissToast(toastId);
