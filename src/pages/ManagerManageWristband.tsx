@@ -177,6 +177,7 @@ const ManagerManageWristband: React.FC = () => {
 
             // 2b. Atualizar status na tabela de analytics (wristband_analytics)
             // Atualiza o campo 'status' em TODOS os registros de analytics associados às pulseiras atualizadas
+            // ESTA É A OPERAÇÃO QUE ATUALIZA OS REGISTROS ANTIGOS (CRIAÇÃO/USO)
             const { error: updateAnalyticsError } = await supabase
                 .from('wristband_analytics')
                 .update({ status: newStatus })
@@ -186,30 +187,9 @@ const ManagerManageWristband: React.FC = () => {
                 console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
             }
 
-            // --- 3. INSERIR REGISTRO DE MUDANÇA DE STATUS ---
-            
-            // Se for operação em massa, registramos a mudança para todas as pulseiras afetadas.
-            const analyticsInserts = wristbandsToUpdate.map(wristbandId => ({
-                wristband_id: wristbandId,
-                event_type: 'status_change',
-                // Usamos o código da pulseira original para o registro, mas o ID é o correto
-                code_wristbands: data.details.code, 
-                status: newStatus as WristbandDetails['status'],
-                event_data: { 
-                    old_status: data.details.status, 
-                    new_status: newStatus,
-                    manager_id: data.details.manager_user_id,
-                    location: isMassOperation ? 'Gerenciamento em Massa (Evento)' : 'Gerenciamento Manual'
-                }
-            }));
-            
-            const { error: insertAnalyticsError } = await supabase
-                .from('wristband_analytics')
-                .insert(analyticsInserts);
-                
-            if (insertAnalyticsError) {
-                console.error("Warning: Failed to insert status change analytics:", insertAnalyticsError);
-            }
+            // --- 3. REMOVIDO: INSERÇÃO DE REGISTRO DE MUDANÇA DE STATUS ---
+            // O registro de auditoria foi removido para atender ao pedido de não inserir novos registros.
+            // Apenas os registros existentes são atualizados.
 
 
             dismissToast(toastId);
