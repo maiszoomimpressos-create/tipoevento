@@ -19,12 +19,13 @@ import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, ArrowLeft } from 'lucide-react';
+import { parse, isValid, format } from 'date-fns'; // Importando date-fns
 
 // Define the structure for the form data
 interface EventFormData {
     title: string;
     description: string;
-    date: string;
+    date: string; // Agora será DD/MM/YYYY no estado
     time: string;
     location: string; // General location name
     address: string; // Detailed address (new mandatory field)
@@ -34,17 +35,31 @@ interface EventFormData {
     price: string;
 }
 
+// Função para formatar a data para DD/MM/YYYY enquanto o usuário digita
+const formatInputDate = (value: string): string => {
+    const cleanValue = value.replace(/\D/g, '');
+    let formatted = cleanValue;
+
+    if (cleanValue.length > 2) {
+        formatted = cleanValue.substring(0, 2) + '/' + cleanValue.substring(2);
+    }
+    if (cleanValue.length > 4) {
+        formatted = formatted.substring(0, 5) + '/' + cleanValue.substring(4);
+    }
+    return formatted.substring(0, 10);
+};
+
 const ManagerCreateEvent: React.FC = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState<EventFormData>({
         title: '',
         description: '',
-        date: '',
+        date: '', // Inicializado como string vazia
         time: '',
         location: '',
-        address: '', // New
-        image_url: '', // New
-        min_age: 0, // New, default to 0 (Livre)
+        address: '',
+        image_url: '',
+        min_age: 0,
         category: '',
         price: '',
     });
@@ -70,46 +85,68 @@ const ManagerCreateEvent: React.FC = () => {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value, type } = e.target;
-        setFormData(prev => ({ 
-            ...prev, 
-            [id]: type === 'number' ? (value === '' ? '' : Number(value)) : value 
-        }));
+        
+        if (id === 'date') {
+            const formattedDate = formatInputDate(value);
+            setFormData(prev => ({ ...prev, [id]: formattedDate }));
+        } else if (type === 'number') {
+            setFormData(prev => ({ 
+                ...prev, 
+                [id]: value === '' ? '' : Number(value) 
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [id]: value }));
+        }
     };
 
     const handleSelectChange = (value: string) => {
         setFormData(prev => ({ ...prev, category: value }));
     };
 
-    const validateForm = () => {
+    const validateForm = (): { isValid: boolean, isoDate: string | null } => {
         const errors: string[] = [];
+        let isoDate: string | null = null;
         
         if (!formData.title) errors.push("Título é obrigatório.");
         if (!formData.description) errors.push("Descrição é obrigatória.");
-        if (!formData.date) errors.push("Data é obrigatória.");
         if (!formData.time) errors.push("Horário é obrigatório.");
         if (!formData.location) errors.push("Localização é obrigatória.");
-        if (!formData.address) errors.push("Endereço detalhado é obrigatório."); // New validation
-        if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória."); // New validation
+        if (!formData.address) errors.push("Endereço detalhado é obrigatório.");
+        if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória.");
         
+        // Validação e conversão da Data
+        if (!formData.date || formData.date.length !== 10) {
+            errors.push("Data é obrigatória e deve estar no formato DD/MM/YYYY.");
+        } else {
+            const parsedDate = parse(formData.date, 'dd/MM/yyyy', new Date());
+            if (!isValid(parsedDate)) {
+                errors.push("Data inválida.");
+            } else {
+                // Converte para o formato ISO (YYYY-MM-DD) para salvar no Supabase
+                isoDate = format(parsedDate, 'yyyy-MM-dd');
+            }
+        }
+
         const minAge = Number(formData.min_age);
         if (formData.min_age === '' || formData.min_age === null || isNaN(minAge) || minAge < 0) {
-            errors.push("Idade Mínima é obrigatória e deve ser 0 ou maior."); // New validation
+            errors.push("Idade Mínima é obrigatória e deve ser 0 ou maior.");
         }
 
         if (!formData.category) errors.push("Categoria é obrigatória.");
         if (!formData.price || Number(formData.price) <= 0) errors.push("Preço Base é obrigatório e deve ser maior que zero.");
 
         if (errors.length > 0) {
-            // Exibe um único toast de erro para todos os campos
-            showError(`Por favor, preencha todos os campos obrigatórios.`);
-            return false;
+            showError(`Por favor, preencha todos os campos corretamente.`);
+            return { isValid: false, isoDate: null };
         }
-        return true;
+        return { isValid: true, isoDate };
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateForm() || !userId) return;
+        const validationResult = validateForm();
+        
+        if (!validationResult.isValid || !userId || !validationResult.isoDate) return;
 
         const toastId = showLoading("Publicando evento...");
         setIsLoading(true);
@@ -122,7 +159,7 @@ const ManagerCreateEvent: React.FC = () => {
                         user_id: userId,
                         title: formData.title,
                         description: formData.description,
-                        date: formData.date,
+                        date: validationResult.isoDate, // Usando a data formatada para ISO
                         time: formData.time,
                         location: formData.location,
                         address: formData.address,
@@ -142,7 +179,6 @@ const ManagerCreateEvent: React.FC = () => {
             dismissToast(toastId);
             showSuccess(`Evento "${formData.title}" criado com sucesso!`);
             
-            // Armazena o ID e abre o modal de confirmação
             setNewEventId(data.id);
             setShowWristbandModal(true);
 
@@ -157,13 +193,11 @@ const ManagerCreateEvent: React.FC = () => {
     
     const handleEmitirPulseiras = () => {
         setShowWristbandModal(false);
-        // Redireciona para a tela de cadastro de pulseiras
         navigate('/manager/wristbands/create');
     };
 
     const handleNaoEmitir = () => {
         setShowWristbandModal(false);
-        // Redireciona para o Dashboard
         navigate('/manager/dashboard');
     };
 
@@ -256,13 +290,15 @@ const ManagerCreateEvent: React.FC = () => {
                         {/* Linha 5: Data, Horário, Categoria */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data *</label>
+                                <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data (DD/MM/YYYY) *</label>
                                 <Input 
                                     id="date" 
-                                    type="date"
+                                    type="text" // Alterado para text para usar máscara
                                     value={formData.date} 
                                     onChange={handleChange} 
+                                    placeholder="DD/MM/AAAA"
                                     className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    maxLength={10}
                                     required
                                 />
                             </div>
