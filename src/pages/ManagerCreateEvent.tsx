@@ -18,9 +18,9 @@ import {
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, ArrowLeft } from 'lucide-react';
-import { format } from 'date-fns'; // Importando format de date-fns
-import { DatePicker } from '@/components/DatePicker'; // Importando o novo DatePicker
+import { Plus, ArrowLeft, ImageOff } from 'lucide-react';
+import { format } from 'date-fns';
+import { DatePicker } from '@/components/DatePicker';
 
 // Define the structure for the form data
 interface EventFormData {
@@ -256,18 +256,45 @@ const ManagerCreateEvent: React.FC = () => {
                             />
                         </div>
                         
-                        {/* Linha 4: Imagem/Banner */}
-                        <div>
-                            <label htmlFor="image_url" className="block text-sm font-medium text-white mb-2">URL da Imagem/Banner *</label>
-                            <Input 
-                                id="image_url" 
-                                value={formData.image_url} 
-                                onChange={handleChange} 
-                                placeholder="Ex: https://readdy.ai/api/search-image?query=..."
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
-                                required
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Use uma URL de imagem pública para o banner do evento.</p>
+                        {/* Linha 4: Imagem/Banner Preview */}
+                        <div className="space-y-4 pt-4 border-t border-yellow-500/20">
+                            <h3 className="text-xl font-semibold text-white">Banner do Evento</h3>
+                            
+                            {/* Preview da Imagem */}
+                            <div className="w-full h-48 bg-black/60 border border-yellow-500/30 rounded-xl overflow-hidden flex items-center justify-center">
+                                {formData.image_url ? (
+                                    <img 
+                                        src={formData.image_url} 
+                                        alt="Preview do Banner" 
+                                        className="w-full h-full object-cover object-center"
+                                        onError={(e) => {
+                                            // Fallback se a URL da imagem estiver quebrada
+                                            e.currentTarget.onerror = null; 
+                                            e.currentTarget.src = 'placeholder.svg'; // Usar um placeholder local
+                                            e.currentTarget.className = "w-16 h-16 text-gray-500";
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="text-center text-gray-500">
+                                        <ImageOff className="h-8 w-8 mx-auto mb-2" />
+                                        Nenhuma URL de imagem fornecida.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Campo URL da Imagem */}
+                            <div>
+                                <label htmlFor="image_url" className="block text-sm font-medium text-white mb-2">URL da Imagem/Banner *</label>
+                                <Input 
+                                    id="image_url" 
+                                    value={formData.image_url} 
+                                    onChange={handleChange} 
+                                    placeholder="Ex: https://readdy.ai/api/search-image?query=..."
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Cole a URL da imagem do banner aqui para pré-visualizar acima.</p>
+                            </div>
                         </div>
 
                         {/* Linha 5: Data, Horário, Categoria */}
