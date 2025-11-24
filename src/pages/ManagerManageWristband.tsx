@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input"; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Loader2, QrCode, Tag, Clock, AlertTriangle, CheckCircle, XCircle, RefreshCw, Search, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, QrCode, Tag, Clock, AlertTriangle, CheckCircle, XCircle, RefreshCw, Search, Save, DollarSign } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +21,7 @@ interface WristbandDetails {
     events: { title: string } | null;
     company_id: string;
     event_id: string; // Adicionando event_id para uso na lógica de atualização em massa
+    price: number; // NOVO: Preço da pulseira
 }
 
 interface AnalyticsEntry {
@@ -46,7 +47,7 @@ const fetchWristbandData = async (id: string): Promise<{ details: WristbandDetai
     const { data: detailsData, error: detailsError } = await supabase
         .from('wristbands')
         .select(`
-            id, code, access_type, status, created_at, manager_user_id, company_id, event_id,
+            id, code, access_type, status, created_at, manager_user_id, company_id, event_id, price,
             events (title)
         `)
         .eq('id', id)
@@ -92,34 +93,75 @@ const useWristbandManagement = (id: string | undefined) => {
     };
 };
 
+// Função utilitária para formatar moeda
+const formatPriceInput = (value: string): string => {
+    // Remove tudo que não for dígito ou vírgula
+    let cleanValue = value.replace(/[^\d,]/g, '');
+    
+    // Garante que haja no máximo uma vírgula
+    const parts = cleanValue.split(',');
+    if (parts.length > 2) {
+        cleanValue = parts[0] + ',' + parts.slice(1).join('');
+    }
+    return cleanValue;
+};
 
 const ManagerManageWristband: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { data, isLoading, isError, invalidate, refetch } = useWristbandManagement(id);
     const [newStatus, setNewStatus] = useState<WristbandDetails['status'] | string>('');
+    const [newPrice, setNewPrice] = useState<string>(''); // NOVO: Estado para o novo preço
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-    const [searchTerm, setSearchTerm] = useState(''); // Novo estado para pesquisa
+    const [searchTerm, setSearchTerm] = useState(''); 
 
     useEffect(() => {
         if (data?.details) {
             setNewStatus(data.details.status);
+            // Formata o preço para exibição (ex: 150.00 -> 150,00)
+            setNewPrice(data.details.price.toFixed(2).replace('.', ','));
         }
     }, [data]);
+    
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const formattedPrice = formatPriceInput(e.target.value);
+        setNewPrice(formattedPrice);
+    };
+    
+    const handlePriceBlur = () => {
+        // Converte para float usando ponto, e formata para duas casas decimais com vírgula
+        const numericValue = parseFloat(newPrice.replace(',', '.') || '0');
+        if (isNaN(numericValue)) {
+            setNewPrice('0,00');
+        } else {
+            setNewPrice(numericValue.toFixed(2).replace('.', ','));
+        }
+    };
 
     const handleStatusUpdate = async () => {
-        if (!id || !newStatus || !data?.details) return;
+        if (!id || !data?.details) return;
         
         const statusChanged = newStatus !== data.details.status;
         
-        // Verifica se a operação é uma desativação em massa (de 'active' para 'lost' ou 'cancelled')
-        const isMassDeactivation = data.details.status === 'active' && (newStatus === 'lost' || newStatus === 'cancelled');
-        const eventId = data.details.event_id;
+        // Converte o preço de volta para float (usando ponto) para salvar no DB
+        const priceNumeric = parseFloat(newPrice.replace(',', '.') || '0');
+        const priceChanged = priceNumeric !== data.details.price;
 
-        if (!statusChanged) {
-            showError("Nenhuma alteração detectada. Selecione um novo status.");
+        if (!statusChanged && !priceChanged) {
+            showError("Nenhuma alteração detectada. Altere o status ou o preço.");
             return;
         }
+        
+        // Validação básica do preço
+        if (isNaN(priceNumeric) || priceNumeric < 0) {
+            showError("Preço inválido. Insira um valor numérico positivo.");
+            return;
+        }
+
+        // Verifica se a operação é uma desativação em massa (de 'active' para 'lost' ou 'cancelled')
+        const isMassDeactivation = statusChanged && data.details.status === 'active' && (newStatus === 'lost' || newStatus === 'cancelled');
+        const eventId = data.details.event_id;
+
         
         setIsUpdatingStatus(true);
         const toastId = showLoading("Gravando alterações...");
@@ -149,32 +191,41 @@ const ManagerManageWristband: React.FC = () => {
                 isMassOperation = true;
 
             } else {
-                // Se for atualização de status individual (ou de 'used' para 'active', etc.)
+                // Se for atualização individual (incluindo status e/ou preço)
                 
-                // 1. Atualizar status na tabela principal (wristbands)
+                const updatePayload: Partial<WristbandDetails> = {};
+                if (statusChanged) {
+                    updatePayload.status = newStatus as WristbandDetails['status'];
+                }
+                if (priceChanged) {
+                    updatePayload.price = priceNumeric;
+                }
+                
+                // 1. Atualizar status/preço na tabela principal (wristbands)
                 const { error: updateWristbandError } = await supabase
                     .from('wristbands')
-                    .update({ status: newStatus })
+                    .update(updatePayload)
                     .eq('id', id);
 
                 if (updateWristbandError) throw updateWristbandError;
 
-                // 2. Atualizar status na tabela de analytics (wristband_analytics)
-                // CORREÇÃO: Atualizar TODOS os registros de analytics para esta pulseira
-                const { error: updateAnalyticsError } = await supabase
-                    .from('wristband_analytics')
-                    .update({ status: newStatus })
-                    .eq('wristband_id', id);
-                
-                if (updateAnalyticsError) {
-                    console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
+                // 2. Se o status mudou, atualizar status na tabela de analytics
+                if (statusChanged) {
+                    const { error: updateAnalyticsError } = await supabase
+                        .from('wristband_analytics')
+                        .update({ status: newStatus })
+                        .eq('wristband_id', id);
+                    
+                    if (updateAnalyticsError) {
+                        console.error("Warning: Failed to update status in analytics table:", updateAnalyticsError);
+                    }
                 }
             }
 
             dismissToast(toastId);
-            showSuccess(`Status atualizado com sucesso! ${isMassOperation ? `(${updateCount} pulseiras do evento foram desativadas)` : ''}`);
+            showSuccess(`Status e/ou Preço atualizados com sucesso! ${isMassOperation ? `(${updateCount} pulseiras do evento foram desativadas)` : ''}`);
             
-            // Força a re-busca dos dados para refletir a mudança na grade de analytics
+            // Força a re-busca dos dados para refletir a mudança na grade de analytics e nos detalhes
             refetch(); 
 
         } catch (e: any) {
@@ -274,8 +325,29 @@ const ManagerManageWristband: React.FC = () => {
                             <InfoRow label="Cadastrado por" value={`${details.manager_user_id.substring(0, 8)}...`} />
                         </div>
 
-                        {/* Gerenciamento de Status (Integrado) */}
-                        <div className="space-y-4 pt-4">
+                        {/* Gerenciamento de Preço */}
+                        <div className="space-y-4 pt-4 border-t border-yellow-500/10">
+                            <h3 className="text-lg font-semibold text-white flex items-center">
+                                <DollarSign className="h-5 w-5 mr-2 text-yellow-500" />
+                                Valor da Pulseira
+                            </h3>
+                            <div>
+                                <label htmlFor="price" className="block text-sm font-medium text-gray-400 mb-2">Preço Atual (R$)</label>
+                                <Input 
+                                    id="price" 
+                                    type="text"
+                                    value={newPrice} 
+                                    onChange={handlePriceChange} 
+                                    onBlur={handlePriceBlur}
+                                    placeholder="0,00"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    disabled={isUpdatingStatus}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Gerenciamento de Status */}
+                        <div className="space-y-4 pt-4 border-t border-yellow-500/10">
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-gray-400 text-sm flex items-center">
                                     <RefreshCw className="h-4 w-4 mr-2 text-yellow-500" />
@@ -320,7 +392,7 @@ const ManagerManageWristband: React.FC = () => {
                             <div className="flex space-x-4 pt-2">
                                 <Button
                                     onClick={handleStatusUpdate}
-                                    disabled={isUpdatingStatus || !newStatus || newStatus === details.status}
+                                    disabled={isUpdatingStatus || (!newStatus || newStatus === details.status) && (parseFloat(newPrice.replace(',', '.')) === details.price)}
                                     className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-2 text-base font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 h-10"
                                 >
                                     {isUpdatingStatus ? (
@@ -328,7 +400,7 @@ const ManagerManageWristband: React.FC = () => {
                                     ) : (
                                         <>
                                             <Save className="w-4 h-4 mr-2" />
-                                            Salvar Status
+                                            Salvar Alterações
                                         </>
                                     )}
                                 </Button>
