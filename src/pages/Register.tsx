@@ -130,6 +130,10 @@ const Register: React.FC = () => {
         if (message.includes('duplicate key value violates unique constraint')) {
             return 'Erro de cadastro: O CPF ou outro dado único já está em uso.';
         }
+        // Captura erros genéricos de rede/API
+        if (message.includes('Failed to fetch') || message.includes('Network request failed')) {
+            return 'Falha na comunicação com o servidor. Verifique sua conexão ou tente novamente mais tarde.';
+        }
         return 'Ocorreu um erro ao processar seu cadastro. Tente novamente.';
     };
 
@@ -180,9 +184,9 @@ const Register: React.FC = () => {
                 }, 3000);
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro inesperado no cadastro:', error);
-            showError("Ocorreu um erro inesperado. Tente novamente.");
+            showError(translateSupabaseError(error.message || 'Erro desconhecido.'));
         } finally {
             setIsLoading(false);
         }

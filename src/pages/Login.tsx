@@ -25,10 +25,7 @@ const Login: React.FC = () => {
             if (authError) {
                 let errorMessage = "Credenciais inválidas ou usuário não encontrado.";
                 
-                // Supabase retorna 'Invalid login credentials' para senha errada OU e-mail não confirmado
                 if (authError.message.includes('Invalid login credentials')) {
-                    // Tentativa de verificar se o usuário existe, mas não está confirmado (Supabase não expõe isso diretamente no signIn)
-                    // Por segurança, mantemos a mensagem genérica, mas podemos adicionar um aviso.
                     errorMessage = "Credenciais inválidas. Verifique seu e-mail e senha. Se for um novo cadastro, confirme seu e-mail.";
                 } else if (authError.message.includes('Email not confirmed')) {
                     errorMessage = "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.";
@@ -51,10 +48,17 @@ const Login: React.FC = () => {
                     .eq('id', user.id)
                     .single();
 
-                if (profileError || !profileData) {
+                if (profileError) {
                     console.error("Erro ao buscar perfil:", profileError);
-                    showError("Erro ao carregar dados do perfil. Tente novamente.");
-                    // Opcional: forçar logout se o perfil não for encontrado
+                    showError("Erro ao carregar dados do perfil. Por favor, tente novamente ou entre em contato com o suporte.");
+                    // Se a busca do perfil falhar, forçamos o logout para evitar um estado de sessão incompleta.
+                    await supabase.auth.signOut();
+                    setIsLoading(false);
+                    return;
+                }
+                
+                if (!profileData) {
+                    showError("Perfil de usuário não encontrado após o login. Acesso negado.");
                     await supabase.auth.signOut();
                     setIsLoading(false);
                     return;
@@ -79,7 +83,6 @@ const Login: React.FC = () => {
                 // 4. Roteamento unificado para a Home.
                 navigate('/');
             } else {
-                // Isso pode acontecer se o e-mail não estiver confirmado, dependendo da configuração do Supabase
                 showError("Login falhou. Verifique seu e-mail e senha.");
             }
 
