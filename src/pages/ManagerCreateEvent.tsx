@@ -19,13 +19,14 @@ import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, ArrowLeft } from 'lucide-react';
-import { parse, isValid, format } from 'date-fns'; // Importando date-fns
+import { format } from 'date-fns'; // Importando format de date-fns
+import { DatePicker } from '@/components/DatePicker'; // Importando o novo DatePicker
 
 // Define the structure for the form data
 interface EventFormData {
     title: string;
     description: string;
-    date: string; // Agora será DD/MM/YYYY no estado
+    date: Date | undefined; // Alterado para tipo Date | undefined
     time: string;
     location: string; // General location name
     address: string; // Detailed address (new mandatory field)
@@ -35,26 +36,12 @@ interface EventFormData {
     price: string;
 }
 
-// Função para formatar a data para DD/MM/YYYY enquanto o usuário digita
-const formatInputDate = (value: string): string => {
-    const cleanValue = value.replace(/\D/g, '');
-    let formatted = cleanValue;
-
-    if (cleanValue.length > 2) {
-        formatted = cleanValue.substring(0, 2) + '/' + cleanValue.substring(2);
-    }
-    if (cleanValue.length > 4) {
-        formatted = formatted.substring(0, 5) + '/' + cleanValue.substring(4);
-    }
-    return formatted.substring(0, 10);
-};
-
 const ManagerCreateEvent: React.FC = () => {
     const navigate = useNavigate();
     const [formData, setFormData] = useState<EventFormData>({
         title: '',
         description: '',
-        date: '', // Inicializado como string vazia
+        date: undefined, // Inicializado como undefined
         time: '',
         location: '',
         address: '',
@@ -86,10 +73,7 @@ const ManagerCreateEvent: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value, type } = e.target;
         
-        if (id === 'date') {
-            const formattedDate = formatInputDate(value);
-            setFormData(prev => ({ ...prev, [id]: formattedDate }));
-        } else if (type === 'number') {
+        if (type === 'number') {
             setFormData(prev => ({ 
                 ...prev, 
                 [id]: value === '' ? '' : Number(value) 
@@ -97,6 +81,10 @@ const ManagerCreateEvent: React.FC = () => {
         } else {
             setFormData(prev => ({ ...prev, [id]: value }));
         }
+    };
+    
+    const handleDateChange = (date: Date | undefined) => {
+        setFormData(prev => ({ ...prev, date }));
     };
 
     const handleSelectChange = (value: string) => {
@@ -114,17 +102,12 @@ const ManagerCreateEvent: React.FC = () => {
         if (!formData.address) errors.push("Endereço detalhado é obrigatório.");
         if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória.");
         
-        // Validação e conversão da Data
-        if (!formData.date || formData.date.length !== 10) {
-            errors.push("Data é obrigatória e deve estar no formato DD/MM/YYYY.");
+        // Validação da Data (agora é um objeto Date)
+        if (!formData.date) {
+            errors.push("Data é obrigatória.");
         } else {
-            const parsedDate = parse(formData.date, 'dd/MM/yyyy', new Date());
-            if (!isValid(parsedDate)) {
-                errors.push("Data inválida.");
-            } else {
-                // Converte para o formato ISO (YYYY-MM-DD) para salvar no Supabase
-                isoDate = format(parsedDate, 'yyyy-MM-dd');
-            }
+            // Converte para o formato ISO (YYYY-MM-DD) para salvar no Supabase
+            isoDate = format(formData.date, 'yyyy-MM-dd');
         }
 
         const minAge = Number(formData.min_age);
@@ -290,16 +273,11 @@ const ManagerCreateEvent: React.FC = () => {
                         {/* Linha 5: Data, Horário, Categoria */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
-                                <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data (DD/MM/YYYY) *</label>
-                                <Input 
-                                    id="date" 
-                                    type="text" // Alterado para text para usar máscara
-                                    value={formData.date} 
-                                    onChange={handleChange} 
-                                    placeholder="DD/MM/AAAA"
-                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
-                                    maxLength={10}
-                                    required
+                                <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data *</label>
+                                <DatePicker 
+                                    date={formData.date}
+                                    setDate={handleDateChange}
+                                    placeholder="Selecione a data do evento"
                                 />
                             </div>
                             <div>
