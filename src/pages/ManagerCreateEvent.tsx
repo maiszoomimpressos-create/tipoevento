@@ -26,7 +26,7 @@ import { DatePicker } from '@/components/DatePicker';
 interface EventFormData {
     title: string;
     description: string;
-    date: Date | undefined; // Alterado para tipo Date | undefined
+    date: Date | undefined; // Mantido como Date | undefined
     time: string;
     location: string; // General location name
     address: string; // Detailed address (new mandatory field)
@@ -304,7 +304,7 @@ const ManagerCreateEvent: React.FC = () => {
                                 <DatePicker 
                                     date={formData.date}
                                     setDate={handleDateChange}
-                                    placeholder="Selecione a data do evento"
+                                    placeholder="DD/MM/AAAA ou Selecione"
                                 />
                             </div>
                             <div>
