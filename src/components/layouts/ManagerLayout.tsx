@@ -5,6 +5,7 @@ import { Menu, X, Loader2, Crown } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/use-profile';
+import { useUserType } from '@/hooks/use-user-type';
 import { showError } from '@/utils/toast';
 
 const ADMIN_USER_TYPE_ID = 1;
@@ -24,6 +25,7 @@ const ManagerLayout: React.FC = () => {
     }, []);
 
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+    const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -35,7 +37,7 @@ const ManagerLayout: React.FC = () => {
     };
 
     // Redirect unauthenticated users to login
-    if (loadingSession || isLoadingProfile) {
+    if (loadingSession || isLoadingProfile || isLoadingUserType) {
         if (!userId && !loadingSession) {
             // Only redirect if trying to access a manager/admin route
             if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
@@ -94,6 +96,7 @@ const ManagerLayout: React.FC = () => {
     }
     
     const userName = profile?.first_name || 'Gestor';
+    const userRole = userTypeName;
 
 
     const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (

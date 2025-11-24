@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { supabase } from '@/integrations/supabase/client';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile } from '@/hooks/use-profile';
+import { useUserType } from '@/hooks/use-user-type'; // Importando novo hook
 import { showSuccess, showError } from '@/utils/toast';
 
 const MobileMenu: React.FC = () => {
@@ -33,6 +34,7 @@ const MobileMenu: React.FC = () => {
     const userId = session?.user?.id;
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
     const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
+    const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id); // Novo: Obtém o nome do tipo de usuário
 
     const handleNavigation = (path: string) => {
         setIsOpen(false);
@@ -56,9 +58,11 @@ const MobileMenu: React.FC = () => {
         { path: '/#contato', label: 'Contato', icon: 'fas fa-envelope' },
     ];
 
-    const isUserLoading = loadingSession || isLoadingProfile || statusLoading;
+    const isUserLoading = loadingSession || isLoadingProfile || statusLoading || isLoadingUserType;
     const isLoggedIn = session && profile;
     const isManager = isLoggedIn && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
+    
+    const fullName = profile?.first_name + (profile?.last_name ? ` ${profile.last_name}` : '');
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -87,9 +91,9 @@ const MobileMenu: React.FC = () => {
                                 <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-black font-bold">
                                     <User className="h-5 w-5" />
                                 </div>
-                                <div>
-                                    <div className="text-white font-semibold">{profile.first_name || 'Usuário'}</div>
-                                    <div className="text-gray-400 text-sm">{isManager ? 'Gestor PRO' : 'Cliente'}</div>
+                                <div className="min-w-0">
+                                    <div className="text-white font-semibold truncate">{fullName || 'Usuário'}</div>
+                                    <div className="text-gray-400 text-sm truncate">{userTypeName}</div>
                                 </div>
                             </div>
 
