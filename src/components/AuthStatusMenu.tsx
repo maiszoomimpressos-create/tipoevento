@@ -9,6 +9,7 @@ import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import NotificationBell from './NotificationBell';
 import { Shield } from 'lucide-react'; // Importando ícone para Admin
+import { useUserType } from '@/hooks/use-user-type'; // Importando novo hook
 
 const AuthStatusMenu: React.FC = () => {
     const navigate = useNavigate();
@@ -35,6 +36,9 @@ const AuthStatusMenu: React.FC = () => {
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
     
     const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
+    
+    // Novo: Obtém o nome do tipo de usuário
+    const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -46,7 +50,7 @@ const AuthStatusMenu: React.FC = () => {
         }
     };
 
-    if (loadingSession || isLoadingProfile || statusLoading) {
+    if (loadingSession || isLoadingProfile || statusLoading || isLoadingUserType) {
         // Pode retornar um Skeleton ou null durante o carregamento inicial
         return <div className="w-10 h-10 bg-yellow-500/20 rounded-full animate-pulse"></div>;
     }
@@ -55,6 +59,9 @@ const AuthStatusMenu: React.FC = () => {
         const initials = profile.first_name ? profile.first_name.charAt(0).toUpperCase() : 'U';
         const isManager = profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2;
         const isAdmin = profile.tipo_usuario_id === 1; // Novo: Verifica se é Admin Master
+        
+        // Combina primeiro e último nome (se disponível)
+        const fullName = profile.first_name + (profile.last_name ? ` ${profile.last_name}` : '');
 
         return (
             <div className="flex items-center space-x-4">
@@ -75,8 +82,11 @@ const AuthStatusMenu: React.FC = () => {
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
-                        <DropdownMenuLabel className="text-yellow-500">
-                            Olá, {profile.first_name}
+                        <DropdownMenuLabel className="text-yellow-500 truncate max-w-[200px]">
+                            {fullName}
+                        </DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-gray-400 text-xs pt-0">
+                            {userTypeName}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator className="bg-yellow-500/20" />
                         <DropdownMenuItem 
