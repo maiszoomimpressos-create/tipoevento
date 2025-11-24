@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
+import { useQueryClient } from '@tanstack/react-query'; // Importando useQueryClient
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient(); // Inicializando queryClient
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +43,9 @@ const Login: React.FC = () => {
             const user = authData.user;
 
             if (user) {
+                // **AÇÃO CHAVE:** Invalida o cache do perfil para forçar o useProfile a buscar os dados mais recentes
+                queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+                
                 // 2. Buscar o Tipo de Usuário na tabela profiles
                 const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
