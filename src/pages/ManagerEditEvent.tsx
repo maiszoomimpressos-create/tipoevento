@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ImageOff } from 'lucide-react';
+import { Loader2, ImageOff, ArrowLeft } from 'lucide-react';
+import { DatePicker } from '@/components/DatePicker';
+import { parseISO } from 'date-fns'; // Importando parseISO para converter string ISO para Date
 
 // Define the structure for the form data
 interface EventFormData {
     title: string;
     description: string;
-    date: string;
+    date: Date | undefined; // Alterado para Date | undefined
     time: string;
     location: string; // General location name
     address: string; // Detailed address
@@ -75,7 +77,8 @@ const ManagerEditEvent: React.FC = () => {
             setFormData({
                 title: eventData.title || '',
                 description: eventData.description || '',
-                date: eventData.date || '',
+                // Converte a string ISO do DB para objeto Date
+                date: eventData.date ? parseISO(eventData.date) : undefined,
                 time: eventData.time || '',
                 location: eventData.location || '',
                 address: eventData.address || '',
@@ -100,6 +103,13 @@ const ManagerEditEvent: React.FC = () => {
             };
         });
     };
+    
+    const handleDateChange = (date: Date | undefined) => {
+        setFormData(prev => {
+            if (!prev) return null;
+            return { ...prev, date };
+        });
+    };
 
     const handleSelectChange = (value: string) => {
         setFormData(prev => {
@@ -108,18 +118,26 @@ const ManagerEditEvent: React.FC = () => {
         });
     };
 
-    const validateForm = () => {
-        if (!formData) return false;
+    const validateForm = (): { isValid: boolean, isoDate: string | null } => {
+        if (!formData) return { isValid: false, isoDate: null };
         const errors: string[] = [];
+        let isoDate: string | null = null;
         
         if (!formData.title) errors.push("Título é obrigatório.");
         if (!formData.description) errors.push("Descrição é obrigatória.");
-        if (!formData.date) errors.push("Data é obrigatória.");
         if (!formData.time) errors.push("Horário é obrigatório.");
         if (!formData.location) errors.push("Localização é obrigatória.");
         if (!formData.address) errors.push("Endereço detalhado é obrigatório.");
         if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória.");
         
+        // Validação da Data
+        if (!formData.date) {
+            errors.push("Data é obrigatória.");
+        } else {
+            // Converte para o formato ISO (YYYY-MM-DD) para salvar no Supabase
+            isoDate = format(formData.date, 'yyyy-MM-dd');
+        }
+
         const minAge = Number(formData.min_age);
         if (formData.min_age === '' || formData.min_age === null || isNaN(minAge) || minAge < 0) {
             errors.push("Idade Mínima é obrigatória e deve ser 0 ou maior.");
@@ -130,14 +148,16 @@ const ManagerEditEvent: React.FC = () => {
 
         if (errors.length > 0) {
             showError(`Por favor, preencha todos os campos obrigatórios.`);
-            return false;
+            return { isValid: false, isoDate: null };
         }
-        return true;
+        return { isValid: true, isoDate };
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateForm() || !userId || !id || !formData) return;
+        const validationResult = validateForm();
+        
+        if (!validationResult.isValid || !userId || !id || !formData || !validationResult.isoDate) return;
 
         const toastId = showLoading("Atualizando evento...");
         setIsLoading(true);
@@ -148,7 +168,7 @@ const ManagerEditEvent: React.FC = () => {
                 .update({
                     title: formData.title,
                     description: formData.description,
-                    date: formData.date,
+                    date: validationResult.isoDate, // Usando a data formatada para ISO
                     time: formData.time,
                     location: formData.location,
                     address: formData.address,
@@ -195,7 +215,7 @@ const ManagerEditEvent: React.FC = () => {
                     variant="outline"
                     className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
                 >
-                    <i className="fas fa-arrow-left mr-2"></i>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
                     Voltar para a Lista
                 </Button>
             </div>
@@ -272,7 +292,7 @@ const ManagerEditEvent: React.FC = () => {
                                         onError={(e) => {
                                             // Fallback se a URL da imagem estiver quebrada
                                             e.currentTarget.onerror = null; 
-                                            e.currentTarget.src = 'placeholder.svg'; // Usar um placeholder local
+                                            e.currentTarget.src = '/placeholder.svg'; // Usar um placeholder local
                                             e.currentTarget.className = "w-16 h-16 text-gray-500";
                                         }}
                                     />
@@ -303,13 +323,10 @@ const ManagerEditEvent: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data *</label>
-                                <Input 
-                                    id="date" 
-                                    type="date"
-                                    value={formData.date} 
-                                    onChange={handleChange} 
-                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
-                                    required
+                                <DatePicker 
+                                    date={formData.date}
+                                    setDate={handleDateChange}
+                                    placeholder="DD/MM/AAAA ou Selecione"
                                 />
                             </div>
                             <div>
@@ -319,7 +336,7 @@ const ManagerEditEvent: React.FC = () => {
                                     type="time"
                                     value={formData.time} 
                                     onChange={handleChange} 
-                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    className="w-full bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
                                     required
                                 />
                             </div>
@@ -376,7 +393,7 @@ const ManagerEditEvent: React.FC = () => {
                             <Button
                                 type="submit"
                                 disabled={isLoading || !userId}
-                                className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 flex-1"
+                                className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 flex-1"
                             >
                                 {isLoading ? (
                                     <div className="flex items-center justify-center">
@@ -396,7 +413,7 @@ const ManagerEditEvent: React.FC = () => {
                                 variant="outline"
                                 className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer flex-1"
                             >
-                                <i className="fas fa-arrow-left mr-2"></i>
+                                <ArrowLeft className="mr-2 h-5 w-5" />
                                 Voltar para a Lista
                             </Button>
                         </div>
