@@ -64,6 +64,11 @@ const EventDetails: React.FC = () => {
     
     const { event, ticketTypes } = details;
     const minPriceDisplay = getMinPriceDisplay(ticketTypes);
+    
+    // Extraindo dados do organizador
+    const organizerName = event.companies?.corporate_name || 'N/A';
+    const capacityDisplay = event.capacity > 0 ? event.capacity.toLocaleString('pt-BR') : 'N/A';
+    const durationDisplay = event.duration || 'N/A';
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
@@ -167,11 +172,11 @@ const EventDetails: React.FC = () => {
                                         <div className="space-y-3 sm:space-y-4">
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-users text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Capacidade: N/A (Definido por ingressos)</span>
+                                                <span className="text-white">Capacidade: {capacityDisplay}</span>
                                             </div>
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-clock text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Duração: N/A</span>
+                                                <span className="text-white">Duração: {durationDisplay}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-3 sm:space-y-4">
@@ -181,7 +186,7 @@ const EventDetails: React.FC = () => {
                                             </div>
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-user-tie text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Organizador: N/A</span>
+                                                <span className="text-white">Organizador: {organizerName}</span>
                                             </div>
                                         </div>
                                     </div>
