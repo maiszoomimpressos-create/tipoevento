@@ -95,13 +95,14 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
         );
     }
 
-    const BASE_SLIDE_WIDTH = 150; // Largura base para o cálculo, não a largura final do menor slide
+    const BASE_SLIDE_WIDTH = 100; // Largura base para cálculo, não a largura final
     const CAROUSEL_WIDTH = 750; 
+    const CAROUSEL_HEIGHT = 450;
 
     return (
         <div className="relative w-[750px] h-[450px] mx-auto rounded-2xl overflow-hidden">
             <div className="embla__viewport h-full" ref={emblaRef}>
-                <div className="embla__container relative h-full"> {/* Removido 'flex items-center justify-center' */}
+                <div className="embla__container relative h-full">
                     {featuredEvents.map((event, index) => {
                         const relativeIndex = index - selectedIndex;
                         
@@ -112,42 +113,42 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
 
                         // Lógica para o efeito de escada com 7 banners visíveis
                         if (relativeIndex === 0) { // Item central
-                            scale = 2.5; // Largura final: 150 * 2.5 = 375px
+                            scale = CAROUSEL_WIDTH / BASE_SLIDE_WIDTH; // Escala para 750px de largura
                             opacity = 1;
                             zIndex = 7;
                             translateX = 0;
                         } else if (relativeIndex === 1) { // Primeiro à direita
-                            scale = 1.8; // Largura final: 150 * 1.8 = 270px
+                            scale = 0.4; // Largura: 100 * 0.4 = 40px
                             opacity = 0.8;
                             zIndex = 6;
-                            translateX = 180; // Deslocamento do centro do carrossel
+                            translateX = (CAROUSEL_WIDTH / 2) - (BASE_SLIDE_WIDTH * scale / 2) - 20; // Posiciona à direita do centro, com ajuste
                         } else if (relativeIndex === -1) { // Primeiro à esquerda
-                            scale = 1.8;
+                            scale = 0.4;
                             opacity = 0.8;
                             zIndex = 6;
-                            translateX = -180;
+                            translateX = -((CAROUSEL_WIDTH / 2) - (BASE_SLIDE_WIDTH * scale / 2) - 20); // Posiciona à esquerda do centro, com ajuste
                         } else if (relativeIndex === 2) { // Segundo à direita
-                            scale = 1.2; // Largura final: 150 * 1.2 = 180px
+                            scale = 0.3; // Largura: 100 * 0.3 = 30px
                             opacity = 0.6;
                             zIndex = 5;
-                            translateX = 320;
+                            translateX = (CAROUSEL_WIDTH / 2) - (BASE_SLIDE_WIDTH * scale / 2) - 50; // Mais afastado
                         } else if (relativeIndex === -2) { // Segundo à esquerda
-                            scale = 1.2;
+                            scale = 0.3;
                             opacity = 0.6;
                             zIndex = 5;
-                            translateX = -320;
+                            translateX = -((CAROUSEL_WIDTH / 2) - (BASE_SLIDE_WIDTH * scale / 2) - 50); // Mais afastado
                         } else if (relativeIndex === 3) { // Terceiro à direita
-                            scale = 0.8; // Largura final: 150 * 0.8 = 120px
+                            scale = 0.2; // Largura: 100 * 0.2 = 20px
                             opacity = 0.4;
                             zIndex = 4;
-                            translateX = 450;
+                            translateX = (CAROUSEL_WIDTH / 2) - (BASE_SLIDE_WIDTH * scale / 2) - 80; // Ainda mais afastado
                         } else if (relativeIndex === -3) { // Terceiro à esquerda
-                            scale = 0.8;
+                            scale = 0.2;
                             opacity = 0.4;
                             zIndex = 4;
-                            translateX = -450;
+                            translateX = -((CAROUSEL_WIDTH / 2) - (BASE_SLIDE_WIDTH * scale / 2) - 80); // Ainda mais afastado
                         } else { // Itens fora do campo de 7 visíveis (escondidos)
-                            scale = 0.5; // Pequena escala para manter a proporção
+                            scale = 0.1; // Escala mínima
                             opacity = 0; // Totalmente transparente
                             zIndex = 0;
                             translateX = (relativeIndex > 0 ? 1 : -1) * (CAROUSEL_WIDTH / 2 + BASE_SLIDE_WIDTH); // Empurra para fora da tela
