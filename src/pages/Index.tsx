@@ -50,6 +50,25 @@ const Index: React.FC = () => {
         console.log(`Navegando para Finalizar Compra para o evento: ${event.title}`);
     };
     
+    // Funções para manipular a seleção dos filtros
+    const handlePriceRangeChange = (range: string, isChecked: boolean) => {
+        setSelectedPriceRanges(prev => 
+            isChecked ? [...prev, range] : prev.filter(r => r !== range)
+        );
+    };
+
+    const handleTimeRangeChange = (range: string, isChecked: boolean) => {
+        setSelectedTimeRanges(prev => 
+            isChecked ? [...prev, range] : prev.filter(r => r !== range)
+        );
+    };
+
+    const handleStatusChange = (status: string, isChecked: boolean) => {
+        setSelectedStatuses(prev => 
+            isChecked ? [...prev, status] : prev.filter(s => s !== status)
+        );
+    };
+
     const handleApplyFilters = () => {
         if (userId) {
             trackAdvancedFilterUse(userId);
