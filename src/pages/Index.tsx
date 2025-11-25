@@ -223,31 +223,23 @@ const Index: React.FC = () => {
                 </div>
             </header>
             
-            {/* Hero Section: Aplicando a regra de Proposta de Valor */}
+            {/* Hero Section (Originalmente vazia) */}
             <section id="home" className="relative w-full h-[500px] sm:h-[600px] md:h-[700px] overflow-hidden bg-black pt-20">
-                {/* Fundo visualmente impactante (simulação de gradiente/efeito) */}
-                <div className="absolute inset-0" style={{
-                    backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.1) 0%, transparent 70%)',
-                    backgroundSize: '1000px 1000px',
-                    opacity: 0.5
-                }}></div>
-                <div className="absolute inset-0 bg-black/50"></div>
-                
                 <div className="relative z-10 max-w-7xl mx-auto h-full flex flex-col justify-center items-center text-center px-4 sm:px-6">
-                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif text-yellow-500 font-bold mb-4 sm:mb-6 animate-fadeInUp">
+                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif text-yellow-500 font-bold mb-4 sm:mb-6">
                         Mazoy
                     </h1>
-                    <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 sm:mb-8 leading-tight animate-fadeInUp delay-100">
+                    <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 sm:mb-8 leading-tight">
                         Experiências Premium. Ingressos Exclusivos.
                     </h2>
-                    <p className="text-base sm:text-xl text-gray-300 max-w-3xl mb-8 sm:mb-10 animate-fadeInUp delay-200">
-                        Descubra os eventos mais sofisticados e garanta seu acesso VIP com segurança e facilidade.
+                    <p className="text-base sm:text-xl text-gray-300 max-w-3xl mb-8 sm:mb-10">
+                        Descubra os eventos mais sofisticados.
                     </p>
                     <Button
                         onClick={() => {
                             document.getElementById('eventos')?.scrollIntoView({ behavior: 'smooth' });
                         }}
-                        className="bg-yellow-500 text-black hover:bg-yellow-600 px-8 sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer animate-fadeInUp delay-300"
+                        className="bg-yellow-500 text-black hover:bg-yellow-600 px-8 sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer"
                     >
                         Explorar Eventos
                     </Button>
