@@ -15,7 +15,7 @@ interface WristbandFormData {
     baseCode: string; // Código principal da pulseira
     quantity: number; // Quantidade de registros de analytics a gerar
     accessType: string;
-    price: string; // NOVO: Preço da pulseira/acesso
+    price: string; // Novo campo para o valor da pulseira
 }
 
 const ACCESS_TYPES = [
@@ -26,6 +26,33 @@ const ACCESS_TYPES = [
     'Organizador'
 ];
 
+// Função utilitária para converter string formatada (ex: "150,00") para float (ex: 150.00)
+const parsePriceToNumeric = (value: string): number => {
+    const cleanValue = value.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(cleanValue) || 0;
+};
+
+// Função utilitária para formatar a entrada do usuário (apenas dígitos e vírgula, limitando a 2 casas decimais)
+const formatPriceInput = (value: string): string => {
+    // 1. Remove tudo que não for dígito ou vírgula
+    let cleanValue = value.replace(/[^\d,]/g, '');
+    
+    // 2. Garante que haja no máximo uma vírgula
+    const parts = cleanValue.split(',');
+    if (parts.length > 2) {
+        cleanValue = parts[0] + ',' + parts.slice(1).join('');
+    }
+    
+    // 3. Limita a 2 casas decimais após a vírgula
+    if (parts.length === 2) {
+        parts[1] = parts[1].substring(0, 2);
+        cleanValue = parts[0] + ',' + parts[1];
+    }
+
+    return cleanValue;
+};
+
+
 const ManagerCreateWristband: React.FC = () => {
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | null>(null);
@@ -34,7 +61,7 @@ const ManagerCreateWristband: React.FC = () => {
         baseCode: '',
         quantity: 1,
         accessType: ACCESS_TYPES[0],
-        price: '0.00', // Novo campo
+        price: '0,00', // Usando vírgula para padrão brasileiro
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -52,21 +79,30 @@ const ManagerCreateWristband: React.FC = () => {
     const isLoading = isLoadingCompany || isLoadingEvents || !userId;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { id, value, type } = e.target;
+        const { id, value } = e.target;
         
         if (id === 'quantity') {
             const numValue = parseInt(value);
             setFormData(prev => ({ ...prev, [id]: isNaN(numValue) || numValue < 1 ? 1 : numValue }));
+        } else if (id === 'price') {
+            const formattedPrice = formatPriceInput(value);
+            setFormData(prev => ({ ...prev, [id]: formattedPrice }));
         } else {
             setFormData(prev => ({ ...prev, [id]: value }));
         }
+    };
+
+    const handlePriceBlur = () => {
+        // Formata o preço para duas casas decimais ao perder o foco
+        const numericValue = parsePriceToNumeric(formData.price);
+        setFormData(prev => ({ ...prev, price: numericValue.toFixed(2).replace('.', ',') }));
     };
 
     const handleSelectChange = (field: keyof Omit<WristbandFormData, 'quantity' | 'baseCode' | 'price'>, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const validateForm = () => {
+    const validateForm = (priceNumeric: number) => {
         const errors: string[] = [];
         
         if (!formData.eventId) errors.push("Selecione o evento.");
@@ -75,8 +111,7 @@ const ManagerCreateWristband: React.FC = () => {
         if (!formData.accessType) errors.push("O Tipo de Acesso é obrigatório.");
         if (!company?.id) errors.push("O Perfil da Empresa não está cadastrado. Cadastre-o em Configurações.");
         
-        const priceValue = Number(formData.price);
-        if (isNaN(priceValue) || priceValue < 0) errors.push("O Preço deve ser um valor numérico positivo.");
+        if (isNaN(priceNumeric) || priceNumeric < 0) errors.push("O Valor deve ser um número positivo.");
 
         if (errors.length > 0) {
             showError(`Por favor, corrija os seguintes erros: ${errors.join(' ')}`);
@@ -87,14 +122,15 @@ const ManagerCreateWristband: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateForm() || !company?.id || !userId) return;
+        
+        const priceNumeric = parsePriceToNumeric(formData.price);
+        if (!validateForm(priceNumeric) || !company?.id || !userId) return;
 
         setIsSaving(true);
         const toastId = showLoading(`Cadastrando pulseira e ${formData.quantity} registros de analytics...`);
 
         try {
             const baseCodeClean = formData.baseCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-            const priceToSave = Number(formData.price);
             
             // 1. Inserir APENAS UM registro na tabela wristbands
             const wristbandData = {
@@ -104,7 +140,7 @@ const ManagerCreateWristband: React.FC = () => {
                 code: baseCodeClean, // Usando o Código Base como o código principal
                 access_type: formData.accessType,
                 status: 'active',
-                price: priceToSave, // NOVO: Salvando o preço
+                price: priceNumeric, // Salvando o preço
             };
 
             const { data: insertedWristband, error: insertError } = await supabase
@@ -135,7 +171,7 @@ const ManagerCreateWristband: React.FC = () => {
                     event_data: {
                         code: insertedWristband.code, // Mantendo no event_data para histórico
                         access_type: formData.accessType,
-                        price: priceToSave, // Incluindo preço no histórico de criação
+                        price: priceNumeric, // Incluindo o preço no histórico
                         manager_id: userId,
                         event_id: formData.eventId,
                         initial_status: 'active',
@@ -161,7 +197,7 @@ const ManagerCreateWristband: React.FC = () => {
                 baseCode: '',
                 quantity: 1,
                 accessType: ACCESS_TYPES[0],
-                price: '0.00', // Resetar preço
+                price: '0,00',
             }));
 
         } catch (error: any) {
@@ -221,7 +257,7 @@ const ManagerCreateWristband: React.FC = () => {
                 <CardHeader>
                     <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Detalhes da Pulseira</CardTitle>
                     <CardDescription className="text-gray-400 text-sm">
-                        Cadastre uma pulseira, defina seu preço e quantos registros de uso inicial ela representa.
+                        Cadastre uma pulseira e defina quantos registros de uso inicial ela representa.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -271,7 +307,7 @@ const ManagerCreateWristband: React.FC = () => {
                             <div>
                                 <label htmlFor="quantity" className="block text-sm font-medium text-white mb-2 flex items-center">
                                     <Hash className="h-4 w-4 mr-2 text-yellow-500" />
-                                    Quantidade de Pulseiras *
+                                    Quantidade de Registros *
                                 </label>
                                 <Input 
                                     id="quantity" 
@@ -306,24 +342,22 @@ const ManagerCreateWristband: React.FC = () => {
                             </div>
                         </div>
                         
-                        {/* NOVO: Preço da Pulseira */}
+                        {/* Valor da Pulseira */}
                         <div>
                             <label htmlFor="price" className="block text-sm font-medium text-white mb-2 flex items-center">
                                 <DollarSign className="h-4 w-4 mr-2 text-yellow-500" />
-                                Preço da Pulseira (R$) *
+                                Valor da Pulseira (R$) *
                             </label>
                             <Input 
                                 id="price" 
-                                type="number"
                                 value={formData.price} 
                                 onChange={handleChange} 
-                                placeholder="0.00"
+                                onBlur={handlePriceBlur}
+                                placeholder="0,00"
                                 className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
-                                min="0"
-                                step="0.01"
                                 required
                             />
-                            <p className="text-xs text-gray-500 mt-1">Este é o preço de venda para este tipo de acesso.</p>
+                            <p className="text-xs text-gray-500 mt-1">O valor de venda ou custo desta pulseira.</p>
                         </div>
 
                         {/* Associação de Cliente (Aviso atualizado) */}
