@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { showError } from '@/utils/toast'; // Importando showError
 
 // Helper function to get the minimum price from ticket types
 const getMinPriceDisplay = (ticketTypes: TicketType[] | undefined) => {
@@ -40,6 +41,16 @@ const EventDetails: React.FC = () => {
 
     const getTotalTickets = () => {
         return Object.values(selectedTickets).reduce((total, quantity) => total + quantity, 0);
+    };
+    
+    const handleCheckout = () => {
+        if (getTotalTickets() === 0) {
+            showError("Selecione pelo menos um ingresso para prosseguir.");
+            return;
+        }
+        // Em um cenário real, você passaria os dados do pedido via state ou context.
+        // Por enquanto, apenas navegamos para a tela de checkout mockada.
+        navigate('/checkout');
     };
 
     if (isLoading) {
@@ -148,7 +159,10 @@ const EventDetails: React.FC = () => {
                                     <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
                                         A partir de {minPriceDisplay}
                                     </span>
-                                    <Button className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
+                                    <Button 
+                                        onClick={handleCheckout} // Usando a função de checkout
+                                        className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
+                                    >
                                         Comprar Ingressos
                                     </Button>
                                 </div>
@@ -280,7 +294,10 @@ const EventDetails: React.FC = () => {
                                                     <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {getTotalPrice().toFixed(2).replace('.', ',')}</span>
                                                 </div>
                                             </div>
-                                            <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
+                                            <Button 
+                                                onClick={handleCheckout} // Botão de checkout
+                                                className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
+                                            >
                                                 Finalizar Compra
                                             </Button>
                                         </>
