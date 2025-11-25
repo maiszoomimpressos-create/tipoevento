@@ -75,6 +75,8 @@ const EventDetails: React.FC = () => {
     const organizerName = event.companies?.corporate_name || 'N/A';
     const capacityDisplay = event.capacity > 0 ? event.capacity.toLocaleString('pt-BR') : 'N/A';
     const durationDisplay = event.duration || 'N/A';
+    const highlightsList = event.highlights ? event.highlights.split(',').map(h => h.trim()) : [];
+
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
@@ -201,15 +203,21 @@ const EventDetails: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div>
-                                <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Destaques do Evento</h3>
-                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
-                                    <div className="text-gray-400">
-                                        {/* Placeholder para destaques, pois não temos este campo no DB */}
-                                        <p>Destaques não disponíveis no momento. Consulte a descrição.</p>
+                            {highlightsList.length > 0 && (
+                                <div>
+                                    <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Destaques do Evento</h3>
+                                    <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
+                                        <ul className="list-disc list-inside text-gray-300 text-sm sm:text-base space-y-2">
+                                            {highlightsList.map((highlight, index) => (
+                                                <li key={index} className="flex items-start">
+                                                    <span className="text-yellow-500 mr-2">•</span>
+                                                    <span>{highlight}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                             <div>
                                 <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Localização</h3>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">

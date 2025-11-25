@@ -18,7 +18,7 @@ import {
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, ArrowLeft, ImageOff } from 'lucide-react';
+import { Plus, ArrowLeft, ImageOff, Star } from 'lucide-react'; // Importando Star para o ícone
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/DatePicker';
 
@@ -35,6 +35,7 @@ interface EventFormData {
     category: string;
     capacity: number | string; // Capacidade
     duration: string; // NOVO: Duração
+    highlights: string; // NOVO: Destaques do evento
 }
 
 const ManagerCreateEvent: React.FC = () => {
@@ -51,6 +52,7 @@ const ManagerCreateEvent: React.FC = () => {
         category: '',
         capacity: '', // Inicializado como string vazia
         duration: '', // Inicializado como string vazia
+        highlights: '', // Inicializado como string vazia
     });
     const [isLoading, setIsLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
@@ -124,6 +126,7 @@ const ManagerCreateEvent: React.FC = () => {
         }
 
         if (!formData.category) errors.push("Categoria é obrigatória.");
+        // Highlights é opcional, então não precisa de validação de preenchimento
 
         if (errors.length > 0) {
             showError(`Por favor, preencha todos os campos corretamente.`);
@@ -158,6 +161,7 @@ const ManagerCreateEvent: React.FC = () => {
                         category: formData.category,
                         capacity: Number(formData.capacity), // SALVANDO CAPACIDADE
                         duration: formData.duration, // SALVANDO DURAÇÃO
+                        highlights: formData.highlights || null, // SALVANDO DESTAQUES (pode ser null)
                     },
                 ])
                 .select('id')
@@ -264,6 +268,22 @@ const ManagerCreateEvent: React.FC = () => {
                             />
                         </div>
                         
+                        {/* NOVO CAMPO: Destaques do Evento */}
+                        <div>
+                            <label htmlFor="highlights" className="block text-sm font-medium text-white mb-2 flex items-center">
+                                <Star className="h-4 w-4 mr-2 text-yellow-500" />
+                                Destaques do Evento (Opcional)
+                            </label>
+                            <Textarea 
+                                id="highlights" 
+                                value={formData.highlights} 
+                                onChange={handleChange} 
+                                placeholder="Ex: Regência de Maestro Internacional, Programa Especial de Natal, Dress Code: Traje Social"
+                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 min-h-[80px]"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Liste os pontos altos ou informações adicionais importantes, separados por vírgula.</p>
+                        </div>
+
                         {/* Linha 4: Imagem/Banner Preview */}
                         <div className="space-y-4 pt-4 border-t border-yellow-500/20">
                             <h3 className="text-xl font-semibold text-white">Banner do Evento</h3>

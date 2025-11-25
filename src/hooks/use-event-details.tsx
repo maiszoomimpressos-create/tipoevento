@@ -16,6 +16,7 @@ export interface EventData {
     category: string;
     capacity: number; // Adicionando capacidade
     duration: string; // Adicionando duração
+    highlights: string | null; // NOVO: Destaques do evento
     
     // Dados do Organizador (JOIN)
     companies: {
@@ -41,11 +42,11 @@ export interface EventDetailsData {
 const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | null> => {
     if (!eventId) return null;
 
-    // 1. Buscar detalhes do Evento, incluindo capacidade, duração e o nome da empresa organizadora
+    // 1. Buscar detalhes do Evento, incluindo capacidade, duração, destaques e o nome da empresa organizadora
     const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select(`
-            id, title, description, date, time, location, address, image_url, min_age, category, capacity, duration,
+            id, title, description, date, time, location, address, image_url, min_age, category, capacity, duration, highlights,
             companies (corporate_name)
         `)
         .eq('id', eventId)
