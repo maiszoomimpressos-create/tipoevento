@@ -6,19 +6,23 @@ export interface PublicEvent {
     id: string;
     title: string;
     description: string;
-    date: string;
+    date: string; // Keep as string for display
+    raw_date: Date; // New: raw Date object for comparison
     time: string;
     location: string;
     image_url: string;
     category: string;
     min_price: number | null; // Preço mínimo calculado
+    min_price_wristband_id: string | null;
+    total_available_tickets: number; // New: total count of active wristbands for the event
+    capacity: number; // New: event capacity from the 'events' table
 }
 
 const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
-    // 1. Buscar todos os eventos
+    // 1. Buscar todos os eventos com capacidade
     const { data: eventsData, error: eventsError } = await supabase
         .from('events')
-        .select('*')
+        .select('id, title, description, date, time, location, image_url, category, capacity') // Include capacity
         .order('date', { ascending: true });
 
     if (eventsError) {
@@ -28,42 +32,56 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
     
     const eventIds = eventsData.map(e => e.id);
     
-    // 2. Buscar o preço mínimo para todos os eventos em uma única query
-    // Agrupamos por event_id e encontramos o preço mínimo das pulseiras ativas.
-    const { data: minPricesData, error: pricesError } = await supabase
+    // 2. Buscar o preço mínimo e o ID da pulseira, e contar a disponibilidade para todos os eventos
+    const { data: wristbandsData, error: wristbandsError } = await supabase
         .from('wristbands')
-        .select('event_id, price')
-        .in('event_id', eventIds)
-        .eq('status', 'active');
+        .select('event_id, id, price, status')
+        .in('event_id', eventIds); // Fetch all wristbands for these events
 
-    if (pricesError) {
-        console.error("Error fetching wristband prices:", pricesError);
-        // Não lançamos erro aqui, apenas continuamos sem preços se falhar
+    if (wristbandsError) {
+        console.error("Error fetching wristband data:", wristbandsError);
+        // Continue without wristband data if there's an error
     }
     
-    const minPricesMap = minPricesData ? minPricesData.reduce((acc, item) => {
-        const priceValue = Number(item.price); // Garantindo que é um número
+    const eventAggregates = wristbandsData ? wristbandsData.reduce((acc, item) => {
+        if (!acc[item.event_id]) {
+            acc[item.event_id] = { min_price: Infinity, min_price_wristband_id: null, total_available_tickets: 0 };
+        }
+
+        const price = parseFloat(item.price as unknown as string) || 0; 
         
-        if (isNaN(priceValue) || priceValue < 0) return acc; // Ignora preços inválidos
-        
-        if (!acc[item.event_id] || priceValue < acc[item.event_id]) {
-            acc[item.event_id] = priceValue;
+        if (item.status === 'active') {
+            // Update min_price only for active wristbands
+            if (price < acc[item.event_id].min_price) {
+                acc[item.event_id].min_price = price;
+                acc[item.event_id].min_price_wristband_id = item.id;
+            }
+            acc[item.event_id].total_available_tickets += 1;
         }
         return acc;
-    }, {} as { [eventId: string]: number }) : {};
+    }, {} as { [eventId: string]: { min_price: number; min_price_wristband_id: string | null; total_available_tickets: number } }) : {};
 
     // 3. Combinar dados e formatar
-    return eventsData.map(event => ({
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        date: new Date(event.date).toLocaleDateString('pt-BR'), // Formatando a data para exibição
-        time: event.time,
-        location: event.location,
-        image_url: event.image_url,
-        category: event.category,
-        min_price: minPricesMap[event.id] !== undefined ? minPricesMap[event.id] : null,
-    }));
+    return eventsData.map(event => {
+        const aggregates = eventAggregates[event.id] || { min_price: Infinity, min_price_wristband_id: null, total_available_tickets: 0 };
+        const minPrice = aggregates.min_price === Infinity ? null : aggregates.min_price;
+
+        return {
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            date: new Date(event.date).toLocaleDateString('pt-BR'),
+            raw_date: new Date(event.date), // Store raw date
+            time: event.time,
+            location: event.location,
+            image_url: event.image_url,
+            category: event.category,
+            min_price: minPrice,
+            min_price_wristband_id: aggregates.min_price_wristband_id,
+            total_available_tickets: aggregates.total_available_tickets,
+            capacity: event.capacity,
+        };
+    });
 };
 
 export const usePublicEvents = () => {
