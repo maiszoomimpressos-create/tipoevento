@@ -11,6 +11,7 @@ import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
 import { Loader2 } from 'lucide-react';
 import { showError } from '@/utils/toast';
+import HeroSection from '@/components/HeroSection'; // Importando o novo componente
 
 const EVENTS_PER_PAGE = 12;
 
@@ -222,11 +223,9 @@ const Index: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <section id="home" className="pt-20 pb-8">
-                <div className="relative w-full h-[400px] sm:h-[500px] bg-white flex items-center justify-center">
-                    {/* Conteúdo do hero em branco */}
-                </div>
-            </section>
+            
+            <HeroSection /> {/* Componente Hero implementado */}
+
             <section id="eventos" className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-10 sm:mb-16">
@@ -571,7 +570,7 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-instagram text-xl sm:text-2xl"></i>
