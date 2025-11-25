@@ -88,7 +88,7 @@ ticketTypes: [
 },
 {
 id: 5,
-image: 'https://readdy.ai/api/search-image?query=luxury%20theater%20stage%20with%20black%20velvet%20curtains%20and%20golden%20spotlights%2C%20premium%20performing%20arts%20venue%20with%20sophisticated%20ambiance%20and%20dramatic%20lighting%20effects&width=750&height=450&seq=banner5&orientation=landscape',
+image: 'https://readdy.ai/api/search-image?query=luxury%20theater%20stage%20with%20black%20velvet%20curtains%20and%20golden%20spotlights%2C%20premium%20performing%20arts%20venue%20with%20sophisticated%20ambiance%20and%20dramatic%20illumination&width=750&height=450&seq=banner5&orientation=landscape',
 title: 'Teatro Musical Exclusivo',
 description: 'Performance única com artistas internacionais renomados em um espetáculo teatral emocionante e sofisticado.',
 date: '05 Janeiro 2026',
@@ -433,13 +433,6 @@ ticketTypes: [
 }
 ];
 
-// Função auxiliar para calcular o preço mínimo
-const getMinPrice = (ticketTypes: { price: number }[]): string => {
-    if (!ticketTypes || ticketTypes.length === 0) return 'Grátis';
-    const minPrice = Math.min(...ticketTypes.map(t => t.price));
-    return `R$ ${minPrice}`;
-};
-
 export const upcomingEvents = [
 {
 id: 1,
@@ -447,7 +440,7 @@ image: 'https://readdy.ai/api/search-image?query=luxury%20music%20concert%20stag
 title: 'Concerto Sinfônico Premium',
 date: '15 Dezembro 2025',
 location: 'Teatro Municipal',
-price: getMinPrice(eventSlides[0].ticketTypes)
+// price: getMinPrice(eventSlides[0].ticketTypes) // Removido
 },
 {
 id: 2,
@@ -455,7 +448,7 @@ image: 'https://readdy.ai/api/search-image?query=elegant%20business%20conference
 title: 'Summit de Inovação',
 date: '22 Dezembro 2025',
 location: 'Centro de Convenções',
-price: getMinPrice(eventSlides[1].ticketTypes)
+// price: getMinPrice(eventSlides[1].ticketTypes) // Removido
 },
 {
 id: 3,
@@ -463,7 +456,7 @@ image: 'https://readdy.ai/api/search-image?query=luxury%20art%20gallery%20exhibi
 title: 'Exposição de Arte Contemporânea',
 date: '28 Dezembro 2025',
 location: 'Galeria Premium',
-price: getMinPrice(eventSlides[2].ticketTypes)
+// price: getMinPrice(eventSlides[2].ticketTypes) // Removido
 },
 {
 id: 4,
@@ -471,7 +464,7 @@ image: 'https://readdy.ai/api/search-image?query=elegant%20fine%20dining%20resta
 title: 'Jantar Gastronômico Exclusivo',
 date: '31 Dezembro 2025',
 location: 'Restaurante Michelin',
-price: getMinPrice(eventSlides[3].ticketTypes)
+// price: getMinPrice(eventSlides[3].ticketTypes) // Removido
 }
 ];
 export const categories = [
