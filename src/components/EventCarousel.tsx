@@ -23,6 +23,12 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
         loop: true,
         align: 'start',
         slidesToScroll: 1,
+        // Configuração responsiva para mostrar múltiplos slides
+        breakpoints: {
+            '(min-width: 640px)': { slidesToScroll: 2 },
+            '(min-width: 1024px)': { slidesToScroll: 3 },
+        },
+        watchDrag: true,
     });
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
