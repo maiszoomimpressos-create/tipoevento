@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,9 +29,14 @@ const Index: React.FC = () => {
     // Carregamento de eventos do Supabase
     const { events: allEvents, isLoading: isLoadingEvents, isError: isErrorEvents } = usePublicEvents();
     
+    // Estados para os filtros
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedPriceRanges, setSelectedPriceRanges] = useState<string[]>([]);
+    const [selectedTimeRanges, setSelectedTimeRanges] = useState<string[]>([]);
+    const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+
     // Paginação
     const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = Math.ceil(allEvents.length / EVENTS_PER_PAGE);
 
     // Fetch user ID on mount
     useEffect(() => {
@@ -40,7 +45,6 @@ const Index: React.FC = () => {
         });
     }, []);
 
-    // MODIFICADO: Agora navega para a página FinalizarCompra
     const handleEventClick = (event: PublicEvent) => {
         navigate(`/finalizar-compra`);
         console.log(`Navegando para Finalizar Compra para o evento: ${event.title}`);
@@ -51,7 +55,7 @@ const Index: React.FC = () => {
             trackAdvancedFilterUse(userId);
         }
         console.log("Aplicando filtros avançados...");
-        setCurrentPage(1);
+        setCurrentPage(1); // Resetar para a primeira página ao aplicar filtros
     };
     
     const handlePageChange = (page: number) => {
@@ -71,10 +75,80 @@ const Index: React.FC = () => {
         }
     };
 
+    // Lógica de Filtragem
+    const filteredEvents = useMemo(() => {
+        let tempEvents = allEvents;
+
+        // 1. Filtro por termo de busca (título, descrição, localização, categoria)
+        if (searchTerm) {
+            tempEvents = tempEvents.filter(event =>
+                event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                event.category.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // 2. Filtro por Faixa de Preço
+        if (selectedPriceRanges.length > 0) {
+            tempEvents = tempEvents.filter(event => {
+                const price = event.min_price;
+                
+                return selectedPriceRanges.some(range => {
+                    switch (range) {
+                        case 'free': return price === 0;
+                        case 'under100': return price !== null && price > 0 && price <= 100;
+                        case '100to300': return price !== null && price > 100 && price <= 300;
+                        case 'over300': return price !== null && price > 300;
+                        default: return false;
+                    }
+                });
+            });
+        }
+
+        // 3. Filtro por Horário
+        if (selectedTimeRanges.length > 0) {
+            tempEvents = tempEvents.filter(event => {
+                const eventTime = event.time; // Ex: "20:00 - 23:00"
+                const [startTimeStr] = eventTime.split(' - ');
+                const [hours] = startTimeStr.split(':').map(Number);
+                const eventHour = hours;
+
+                return selectedTimeRanges.some(range => {
+                    switch (range) {
+                        case 'morning': return eventHour >= 6 && eventHour < 12;
+                        case 'afternoon': return eventHour >= 12 && eventHour < 18;
+                        case 'night': return eventHour >= 18 || eventHour < 6; // Inclui 18:00 até 05:59
+                        default: return false;
+                    }
+                });
+            });
+        }
+
+        // 4. Filtro por Status
+        if (selectedStatuses.length > 0) {
+            tempEvents = tempEvents.filter(event => {
+                return selectedStatuses.some(status => {
+                    switch (status) {
+                        case 'open_sales': return event.total_available_tickets > 0;
+                        case 'low_stock': 
+                            // Considera "Últimos Ingressos" se menos de 10% da capacidade estiver disponível
+                            return event.total_available_tickets > 0 && event.capacity > 0 && 
+                                   (event.total_available_tickets / event.capacity) <= 0.1;
+                        default: return false;
+                    }
+                });
+            });
+        }
+
+        return tempEvents;
+    }, [allEvents, searchTerm, selectedPriceRanges, selectedTimeRanges, selectedStatuses]);
+
     // Lógica de Paginação
+    const totalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
     const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
     const endIndex = startIndex + EVENTS_PER_PAGE;
-    const displayedEvents = allEvents.slice(startIndex, endIndex);
+    const displayedEvents = filteredEvents.slice(startIndex, endIndex);
     
     const getPageNumbers = () => {
         const maxPagesToShow = 5;
@@ -112,6 +186,8 @@ const Index: React.FC = () => {
                             <Input 
                                 type="search" 
                                 placeholder="Buscar eventos..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                                 className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-48 md:w-64 pl-4 pr-10 py-2 rounded-xl"
                             />
                             <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
@@ -146,9 +222,11 @@ const Index: React.FC = () => {
                         <div className="flex flex-col lg:flex-row gap-6 mb-8">
                             <div className="flex-1">
                                 <div className="relative">
-                                    <input
+                                    <Input
                                         type="text"
                                         placeholder="Buscar eventos..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
                                         className="w-full bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white placeholder-gray-400 text-base sm:text-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20 transition-all duration-300"
                                     />
                                     <i className="fas fa-search absolute right-4 sm:right-6 top-1/2 transform -translate-y-1/2 text-yellow-500 text-lg"></i>
@@ -190,19 +268,39 @@ const Index: React.FC = () => {
                                         <h4 className="text-white font-medium mb-3">Faixa de Preço</h4>
                                         <div className="space-y-3">
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedPriceRanges.includes('free')}
+                                                    onChange={(e) => handlePriceRangeChange('free', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Gratuito</span>
                                             </label>
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedPriceRanges.includes('under100')}
+                                                    onChange={(e) => handlePriceRangeChange('under100', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Até R$ 100</span>
                                             </label>
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedPriceRanges.includes('100to300')}
+                                                    onChange={(e) => handlePriceRangeChange('100to300', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">R$ 100 - R$ 300</span>
                                             </label>
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedPriceRanges.includes('over300')}
+                                                    onChange={(e) => handlePriceRangeChange('over300', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Acima de R$ 300</span>
                                             </label>
                                         </div>
@@ -211,15 +309,30 @@ const Index: React.FC = () => {
                                         <h4 className="text-white font-medium mb-3">Horário</h4>
                                         <div className="space-y-3">
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedTimeRanges.includes('morning')}
+                                                    onChange={(e) => handleTimeRangeChange('morning', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Manhã (06:00 - 12:00)</span>
                                             </label>
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedTimeRanges.includes('afternoon')}
+                                                    onChange={(e) => handleTimeRangeChange('afternoon', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Tarde (12:00 - 18:00)</span>
                                             </label>
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedTimeRanges.includes('night')}
+                                                    onChange={(e) => handleTimeRangeChange('night', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Noite (18:00 - 00:00)</span>
                                             </label>
                                         </div>
@@ -228,11 +341,21 @@ const Index: React.FC = () => {
                                         <h4 className="text-white font-medium mb-3">Status</h4>
                                         <div className="space-y-3">
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" defaultChecked />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedStatuses.includes('open_sales')}
+                                                    onChange={(e) => handleStatusChange('open_sales', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Vendas Abertas</span>
                                             </label>
                                             <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="mr-3 accent-yellow-500" />
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="mr-3 accent-yellow-500" 
+                                                    checked={selectedStatuses.includes('low_stock')}
+                                                    onChange={(e) => handleStatusChange('low_stock', e.target.checked)}
+                                                />
                                                 <span className="text-gray-300">Últimos Ingressos</span>
                                             </label>
                                         </div>
@@ -251,11 +374,11 @@ const Index: React.FC = () => {
                                         <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
                                         <p className="text-gray-400">Carregando eventos...</p>
                                     </div>
-                                ) : isErrorEvents || allEvents.length === 0 ? (
+                                ) : isErrorEvents || filteredEvents.length === 0 ? (
                                     <div className="text-center py-20">
                                         <i className="fas fa-calendar-times text-5xl text-gray-600 mb-4"></i>
                                         <p className="text-gray-400 text-lg">Nenhum evento encontrado.</p>
-                                        <p className="text-gray-500 text-sm mt-2">Cadastre um evento na área do gestor para vê-lo aqui.</p>
+                                        <p className="text-gray-500 text-sm mt-2">Ajuste seus filtros ou cadastre um evento na área do gestor para vê-lo aqui.</p>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -325,7 +448,7 @@ const Index: React.FC = () => {
                                     </div>
                                 )}
                                 
-                                {allEvents.length > EVENTS_PER_PAGE && (
+                                {filteredEvents.length > EVENTS_PER_PAGE && (
                                     <div className="flex items-center justify-center mt-12 space-x-2">
                                         <button 
                                             onClick={() => handlePageChange(currentPage - 1)}
@@ -359,7 +482,7 @@ const Index: React.FC = () => {
                                 )}
                                 <div className="text-center mt-8">
                                     <p className="text-gray-400 text-sm sm:text-base">
-                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, allEvents.length)}</span> de <span className="text-yellow-500 font-semibold">{allEvents.length}</span> eventos
+                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredEvents.length)}</span> de <span className="text-yellow-500 font-semibold">{filteredEvents.length}</span> eventos
                                     </p>
                                 </div>
                             </div>
