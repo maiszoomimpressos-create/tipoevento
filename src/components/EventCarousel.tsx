@@ -85,7 +85,7 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
 
     if (featuredEvents.length === 0) {
         return (
-            <div className="w-[650px] h-[400px] mx-auto rounded-2xl flex items-center justify-center bg-black/60 border border-yellow-500/30 shadow-2xl shadow-yellow-500/20">
+            <div className="w-[650px] h-[450px] mx-auto rounded-2xl flex items-center justify-center bg-black/60 border border-yellow-500/30 shadow-2xl shadow-yellow-500/20">
                 <div className="text-center p-8">
                     <i className="fas fa-star text-yellow-500 text-4xl mb-4"></i>
                     <h2 className="text-xl sm:text-2xl font-serif text-white mb-2">Destaques Premium</h2>
@@ -96,12 +96,12 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
     }
 
     const CAROUSEL_WIDTH = 650; 
-    const CAROUSEL_HEIGHT = 400; // Alterado para 400px
+    const CAROUSEL_HEIGHT = 450; // Revertido para 450px
     const SLIDE_OFFSET_PERCENTAGE = 0.35; // 35% de deslocamento
     const SLIDE_OFFSET_PX = CAROUSEL_WIDTH * SLIDE_OFFSET_PERCENTAGE;
 
     return (
-        <div className="relative w-[650px] h-[400px] mx-auto rounded-2xl overflow-hidden">
+        <div className="relative w-[650px] h-[450px] mx-auto rounded-2xl overflow-hidden">
             <div className="embla__viewport h-full" ref={emblaRef}>
                 <div className="embla__container relative h-full">
                     {featuredEvents.map((event, index) => {
