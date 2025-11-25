@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, ArrowLeft, ShoppingCart, CreditCard, CheckCircle, Calendar, Clock, MapMarkerAlt, Users, UserCheck, UserTie } from 'lucide-react'; // Importando ícones adicionais
+import { Loader2, ArrowLeft, ShoppingCart, CreditCard, CheckCircle, Calendar, Clock, MapPin, Users, UserCheck, UserTie } from 'lucide-react'; // Importando ícones adicionais
 import { showSuccess, showError } from '@/utils/toast';
 import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
 import { useEventDetails } from '@/hooks/use-event-details'; // Importando o hook de detalhes do evento
@@ -142,7 +142,7 @@ const Checkout: React.FC = () => {
         return (
             <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center pt-20 px-4">
                 <h1 className="text-4xl font-serif text-red-500 mb-4">Erro ao Carregar Evento</h1>
-                <p className="text-xl text-gray-400 mb-6">Não foi possível carregar os detalhes do evento.</p>
+                <p className className="text-xl text-gray-400 mb-6">Não foi possível carregar os detalhes do evento.</p>
                 <Button onClick={() => navigate('/')} className="bg-yellow-500 text-black hover:bg-yellow-600">
                     Voltar para a Home
                 </Button>
@@ -206,7 +206,7 @@ const Checkout: React.FC = () => {
                                         <span>Horário: {event.time}</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <MapMarkerAlt className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <MapPin className="h-4 w-4 mr-2 text-yellow-500" />
                                         <span>Local: {event.location}</span>
                                     </div>
                                     <div className="flex items-center">
