@@ -11,6 +11,7 @@ import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
 import { Loader2 } from 'lucide-react';
 import EventCarousel from '@/components/EventCarousel'; // Importando o novo componente
+import { showError } from '@/utils/toast'; // Importando showError
 
 const EVENTS_PER_PAGE = 12;
 
@@ -39,8 +40,35 @@ const Index: React.FC = () => {
         });
     }, []);
 
+    // MODIFICADO: Agora navega diretamente para o Checkout com 1 ingresso
     const handleEventClick = (event: PublicEvent) => {
-        navigate(`/events/${event.id}`);
+        if (event.min_price === null) {
+            showError("Este evento não tem ingressos disponíveis para compra.");
+            return;
+        }
+        
+        // Simula a compra de 1 ingresso do tipo mais barato
+        const price = event.min_price;
+        
+        // Nota: O ticketTypeId é o ID da pulseira base. Como não temos essa informação
+        // na lista pública, usamos o ID do evento como placeholder. Isso FALHARÁ na transação real
+        // se o ID do evento não for um ID de pulseira válido, mas abrirá a tela de checkout.
+        const mockTicketTypeId = event.id; 
+
+        navigate('/checkout', {
+            state: {
+                eventName: event.title,
+                totalTickets: 1,
+                totalPrice: price,
+                items: [{
+                    name: "Ingresso Padrão (Preço Mínimo)",
+                    quantity: 1,
+                    price: price,
+                    ticketTypeId: mockTicketTypeId,
+                    eventId: event.id,
+                }],
+            }
+        });
     };
     
     const handleApplyFilters = () => {
@@ -260,7 +288,7 @@ const Index: React.FC = () => {
                                             <Card
                                                 key={event.id}
                                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
-                                                onClick={() => handleEventClick(event)}
+                                                onClick={() => handleEventClick(event)} // Redireciona para Checkout
                                             >
                                                 <div className="relative overflow-hidden">
                                                     <img
@@ -311,7 +339,7 @@ const Index: React.FC = () => {
                                                         <Button
                                                             className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
                                                         >
-                                                            Ver Detalhes
+                                                            Comprar Agora
                                                         </Button>
                                                     </div>
                                                 </div>
