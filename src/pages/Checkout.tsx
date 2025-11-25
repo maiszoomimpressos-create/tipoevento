@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, ArrowLeft, ShoppingCart, CreditCard, CheckCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, ShoppingCart, CreditCard, CheckCircle, CalendarAlt, Clock, MapMarkerAlt, Users, UserCheck, UserTie } from 'lucide-react'; // Importando ícones adicionais
 import { showSuccess, showError } from '@/utils/toast';
-import { usePurchaseTicket } from '@/hooks/use-purchase-ticket'; // Importando o hook de compra
+import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
+import { useEventDetails } from '@/hooks/use-event-details'; // Importando o hook de detalhes do evento
+import { Skeleton } from '@/components/ui/skeleton'; // Importando Skeleton para estados de carregamento
 
 interface OrderItem {
     name: string;
@@ -24,14 +26,17 @@ interface OrderState {
 const Checkout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const order = location.state as OrderState; // Recebe os dados do pedido via state
+    const order = location.state as OrderState;
     
     const { isLoading: isProcessing, purchaseTicket } = usePurchaseTicket();
     const [isConfirmed, setIsConfirmed] = useState(false);
     const [isOrderValid, setIsOrderValid] = useState(false);
 
+    // Extrai o eventId do primeiro item do pedido (assumindo que todos os itens são do mesmo evento)
+    const eventId = order?.items?.[0]?.eventId;
+    const { details: eventDetails, isLoading: isLoadingEventDetails, isError: isErrorEventDetails } = useEventDetails(eventId);
+
     useEffect(() => {
-        // Validação básica do pedido
         if (!order || !order.items || order.items.length === 0 || order.totalPrice <= 0) {
             showError("Pedido inválido ou vazio. Retorne à página do evento.");
             setIsOrderValid(false);
@@ -41,8 +46,8 @@ const Checkout: React.FC = () => {
     }, [order]);
 
     const handlePayment = async () => {
-        if (!isOrderValid) {
-            showError("Não é possível processar um pedido inválido.");
+        if (!isOrderValid || !eventDetails) {
+            showError("Não é possível processar um pedido inválido ou sem detalhes do evento.");
             return;
         }
         
@@ -52,7 +57,6 @@ const Checkout: React.FC = () => {
         // 2. Processamento da Transação no Supabase (Associação de Ingressos)
         let success = true;
         
-        // Itera sobre os itens do pedido
         for (const item of order.items) {
             const purchaseSuccess = await purchaseTicket({
                 eventId: item.eventId,
@@ -63,7 +67,7 @@ const Checkout: React.FC = () => {
             
             if (!purchaseSuccess) {
                 success = false;
-                break; // Interrompe se uma transação falhar
+                break;
             }
         }
 
@@ -113,9 +117,47 @@ const Checkout: React.FC = () => {
         );
     }
 
+    // Renderiza skeletons enquanto os detalhes do evento estão carregando
+    if (isLoadingEventDetails) {
+        return (
+            <div className="min-h-screen bg-black text-white pt-24 pb-12 px-4 sm:px-6">
+                <div className="max-w-4xl mx-auto">
+                    <Skeleton className="h-10 w-1/2 mb-8" />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-6">
+                            <Skeleton className="h-64 w-full" />
+                            <Skeleton className="h-48 w-full" />
+                        </div>
+                        <div className="lg:col-span-1">
+                            <Skeleton className="h-96 w-full" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Exibe erro se os detalhes do evento não puderem ser carregados
+    if (isErrorEventDetails || !eventDetails) {
+        return (
+            <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center pt-20 px-4">
+                <h1 className="text-4xl font-serif text-red-500 mb-4">Erro ao Carregar Evento</h1>
+                <p className="text-xl text-gray-400 mb-6">Não foi possível carregar os detalhes do evento.</p>
+                <Button onClick={() => navigate('/')} className="bg-yellow-500 text-black hover:bg-yellow-600">
+                    Voltar para a Home
+                </Button>
+            </div>
+        );
+    }
+
+    const { event } = eventDetails;
+    const organizerName = event.companies?.corporate_name || 'N/A';
+    const capacityDisplay = event.capacity > 0 ? event.capacity.toLocaleString('pt-BR') : 'N/A';
+    const durationDisplay = event.duration || 'N/A';
+
     return (
         <div className="min-h-screen bg-black text-white pt-24 pb-12 px-4 sm:px-6">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-7xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 flex items-center">
                         <ShoppingCart className="h-8 w-8 mr-3" />
@@ -132,23 +174,53 @@ const Checkout: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Coluna de Detalhes do Pedido */}
+                    {/* Coluna de Detalhes do Evento (Esquerda) */}
                     <div className="lg:col-span-2 space-y-6">
-                        <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
-                            <CardHeader className="p-0 mb-4 border-b border-yellow-500/20 pb-4">
-                                <CardTitle className="text-white text-xl font-semibold">Resumo do Pedido</CardTitle>
-                                <CardDescription className="text-gray-400 text-sm">{order.eventName}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0 space-y-4">
-                                {order.items.map((item, index) => (
-                                    <div key={index} className="flex justify-between items-center text-sm sm:text-base">
-                                        <span className="text-gray-300">{item.name} ({item.quantity}x)</span>
-                                        <span className="text-white font-medium">R$ {item.price.toFixed(2).replace('.', ',')}</span>
+                        <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-0 overflow-hidden">
+                            <div className="relative h-64 sm:h-80 overflow-hidden">
+                                <img
+                                    src={event.image_url}
+                                    alt={event.title}
+                                    className="w-full h-full object-cover object-center"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-6 flex flex-col justify-end">
+                                    <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-xs font-semibold mb-2 self-start">
+                                        {event.category}
+                                    </span>
+                                    <h2 className="text-2xl sm:text-3xl font-serif text-white leading-tight">
+                                        {event.title}
+                                    </h2>
+                                </div>
+                            </div>
+                            <CardContent className="p-6 space-y-4">
+                                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                                    {event.description}
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                                    <div className="flex items-center">
+                                        <CalendarAlt className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <span>Data: {new Date(event.date).toLocaleDateString('pt-BR')}</span>
                                     </div>
-                                ))}
-                                <div className="border-t border-yellow-500/20 pt-4 flex justify-between items-center">
-                                    <span className="text-white text-lg sm:text-xl font-semibold">Total a Pagar:</span>
-                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {order.totalPrice.toFixed(2).replace('.', ',')}</span>
+                                    <div className="flex items-center">
+                                        <Clock className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <span>Horário: {event.time}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <MapMarkerAlt className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <span>Local: {event.location}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <Users className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <span>Capacidade: {capacityDisplay}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <UserCheck className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <span>Classificação: {event.min_age === 0 ? 'Livre' : `${event.min_age} anos`}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <UserTie className="h-4 w-4 mr-2 text-yellow-500" />
+                                        <span>Organizador: {organizerName}</span>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -170,10 +242,29 @@ const Checkout: React.FC = () => {
                         </Card>
                     </div>
 
-                    {/* Coluna de Pagamento */}
+                    {/* Coluna de Resumo do Pedido e Pagamento (Direita) */}
                     <div className="lg:col-span-1">
                         <Card className="lg:sticky lg:top-24 bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6 space-y-6">
-                            <CardTitle className="text-white text-xl font-semibold flex items-center">
+                            <CardHeader className="p-0 mb-4 border-b border-yellow-500/20 pb-4">
+                                <CardTitle className="text-white text-xl font-semibold flex items-center">
+                                    <ShoppingCart className="h-5 w-5 mr-2 text-yellow-500" />
+                                    Resumo do Pedido
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 space-y-4">
+                                {order.items.map((item, index) => (
+                                    <div key={index} className="flex justify-between items-center text-sm sm:text-base">
+                                        <span className="text-gray-300">{item.name} ({item.quantity}x)</span>
+                                        <span className="text-white font-medium">R$ {item.price.toFixed(2).replace('.', ',')}</span>
+                                    </div>
+                                ))}
+                                <div className="border-t border-yellow-500/20 pt-4 flex justify-between items-center">
+                                    <span className="text-white text-lg sm:text-xl font-semibold">Total a Pagar:</span>
+                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {order.totalPrice.toFixed(2).replace('.', ',')}</span>
+                                </div>
+                            </CardContent>
+
+                            <CardTitle className="text-white text-xl font-semibold flex items-center pt-4 border-t border-yellow-500/20">
                                 <CreditCard className="h-5 w-5 mr-2 text-yellow-500" />
                                 Método de Pagamento
                             </CardTitle>
