@@ -11,7 +11,6 @@ import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
 import { Loader2 } from 'lucide-react';
 import { showError } from '@/utils/toast';
-import HeroSection from '@/components/HeroSection'; // Importando o novo componente
 
 const EVENTS_PER_PAGE = 12;
 
@@ -224,7 +223,28 @@ const Index: React.FC = () => {
                 </div>
             </header>
             
-            <HeroSection /> {/* Componente Hero implementado */}
+            {/* Hero Section Revertida */}
+            <section id="home" className="relative w-full h-[500px] sm:h-[600px] md:h-[700px] overflow-hidden bg-black pt-20">
+                <div className="relative z-10 max-w-7xl mx-auto h-full flex flex-col justify-center items-center text-center px-4 sm:px-6">
+                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-serif text-yellow-500 font-bold mb-4 sm:mb-6">
+                        Mazoy
+                    </h1>
+                    <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 sm:mb-8 leading-tight">
+                        Experiências Premium. Ingressos Exclusivos.
+                    </h2>
+                    <p className="text-base sm:text-xl text-gray-300 max-w-3xl mb-8 sm:mb-10">
+                        Descubra os eventos mais sofisticados.
+                    </p>
+                    <Button
+                        onClick={() => {
+                            document.getElementById('eventos')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className="bg-yellow-500 text-black hover:bg-yellow-600 px-8 sm:px-10 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer"
+                    >
+                        Explorar Eventos
+                    </Button>
+                </div>
+            </section>
 
             <section id="eventos" className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
