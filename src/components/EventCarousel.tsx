@@ -15,8 +15,7 @@ const AUTOPLAY_DELAY = 6000; // 6 segundos
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null) return 'Grátis'; // Se não houver ingressos ativos ou preço nulo
-    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
+    if (price === null) return 'Sem ingressos ativos'; // Alterado para 'Sem ingressos ativos'
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 

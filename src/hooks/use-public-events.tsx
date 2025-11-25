@@ -66,7 +66,7 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
         const aggregates = eventAggregates[event.id] || { min_price: Infinity, min_price_wristband_id: null, total_available_tickets: 0 };
         const minPrice = aggregates.min_price === Infinity ? null : aggregates.min_price;
 
-        return {
+        const eventData = {
             id: event.id,
             title: event.title,
             description: event.description,
@@ -81,6 +81,8 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
             total_available_tickets: aggregates.total_available_tickets,
             capacity: event.capacity,
         };
+        console.log(`Event: ${event.title}, Min Price: ${minPrice}, Total Available: ${aggregates.total_available_tickets}`);
+        return eventData;
     });
 };
 
