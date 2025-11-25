@@ -40,11 +40,10 @@ const Index: React.FC = () => {
         });
     }, []);
 
-    // MODIFICADO: Agora navega diretamente para a página de detalhes do evento
+    // MODIFICADO: Agora navega para a página FinalizarCompra
     const handleEventClick = (event: PublicEvent) => {
-        // Removendo a navegação
-        // navigate(`/events/${event.id}`);
-        console.log(`Clique no evento: ${event.title} (navegação desabilitada)`);
+        navigate(`/finalizar-compra`);
+        console.log(`Navegando para Finalizar Compra para o evento: ${event.title}`);
     };
     
     const handleApplyFilters = () => {
@@ -264,8 +263,7 @@ const Index: React.FC = () => {
                                             <Card
                                                 key={event.id}
                                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
-                                                // Removendo a navegação do clique no card
-                                                onClick={() => {}} 
+                                                onClick={() => handleEventClick(event)} // Redireciona para FinalizarCompra
                                             >
                                                 <div className="relative overflow-hidden">
                                                     <img
@@ -315,7 +313,7 @@ const Index: React.FC = () => {
                                                         </div>
                                                         <Button
                                                             // Garante que o clique no botão também chame a função de redirecionamento
-                                                            onClick={(e) => { e.stopPropagation(); /* handleEventClick(event); */ }} // Removendo a navegação
+                                                            onClick={(e) => { e.stopPropagation(); handleEventClick(event); }}
                                                             className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
                                                         >
                                                             Ver Detalhes
