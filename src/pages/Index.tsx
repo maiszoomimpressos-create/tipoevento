@@ -253,44 +253,6 @@ const Index: React.FC = () => {
                         <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
                     </div>
                     <div className="mb-12">
-                        <div className="flex flex-col lg:flex-row gap-6 mb-8">
-                            <div className="flex-1">
-                                <div className="relative">
-                                    <Input
-                                        type="text"
-                                        placeholder="Buscar eventos..."
-                                        value={stagedSearchTerm}
-                                        onChange={(e) => setStagedSearchTerm(e.target.value)}
-                                        className="w-full bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white placeholder-gray-400 text-base sm:text-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20 transition-all duration-300"
-                                    />
-                                    <i className="fas fa-search absolute right-4 sm:right-6 top-1/2 transform -translate-y-1/2 text-yellow-500 text-lg"></i>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-4">
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
-                                    <option value="">Todas as Categorias</option>
-                                    <option value="musica">Música</option>
-                                    <option value="negocios">Negócios</option>
-                                    <option value="arte">Arte</option>
-                                    <option value="gastronomia">Gastronomia</option>
-                                    <option value="tecnologia">Tecnologia</option>
-                                </select>
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
-                                    <option value="">Todas as Cidades</option>
-                                    <option value="sao-paulo">São Paulo</option>
-                                    <option value="rio-janeiro">Rio de Janeiro</option>
-                                    <option value="belo-horizonte">Belo Horizonte</option>
-                                    <option value="brasilia">Brasília</option>
-                                </select>
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
-                                    <option value="">Todas as Datas</option>
-                                    <option value="hoje">Hoje</option>
-                                    <option value="semana">Esta Semana</option>
-                                    <option value="mes">Este Mês</option>
-                                    <option value="proximo-mes">Próximo Mês</option>
-                                </select>
-                            </div>
-                        </div>
                         <div className="flex flex-col lg:flex-row gap-8">
                             <div className="lg:w-80">
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 lg:sticky lg:top-24">
