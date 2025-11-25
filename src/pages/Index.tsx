@@ -240,8 +240,8 @@ const Index: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
-                <div className="relative w-full h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center">
+            <section id="home" className="pt-20 pb-8"> {/* Removido px-4 sm:px-6 */}
+                <div className="relative w-full h-[400px] sm:h-[500px] bg-white flex items-center justify-center"> {/* Altura responsiva e sem bordas/arredondamento */}
                     {/* Conteúdo do hero em branco */}
                 </div>
             </section>
@@ -571,7 +571,7 @@ const Index: React.FC = () => {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Links Úteis</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
@@ -580,7 +580,7 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Suporte</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Suporte</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
@@ -589,7 +589,7 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-instagram text-xl sm:text-2xl"></i>
