@@ -87,7 +87,7 @@ const Index: React.FC = () => {
         console.log("Filtros aplicados!");
     };
     
-    const totalPages = Math.ceil(allEvents.length / EVENTS_PER_PAGE);
+    const totalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
 
     const handlePageChange = (page: number) => {
         if (page >= 1 && page <= totalPages) {
