@@ -42,8 +42,11 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
     }
     
     const minPricesMap = minPricesData ? minPricesData.reduce((acc, item) => {
-        if (!acc[item.event_id] || item.price < acc[item.event_id]) {
-            acc[item.event_id] = item.price;
+        // Converte o preço para número, garantindo que seja tratado como 0 se for null/undefined
+        const price = parseFloat(item.price as unknown as string) || 0; 
+        
+        if (!acc[item.event_id] || price < acc[item.event_id]) {
+            acc[item.event_id] = price;
         }
         return acc;
     }, {} as { [eventId: string]: number }) : {};
@@ -58,7 +61,8 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
         location: event.location,
         image_url: event.image_url,
         category: event.category,
-        min_price: minPricesMap[event.id] || null,
+        // Se o preço mínimo for 0, exibimos 'Grátis'. Se for null (sem pulseiras), também.
+        min_price: minPricesMap[event.id] !== undefined ? minPricesMap[event.id] : null,
     }));
 };
 

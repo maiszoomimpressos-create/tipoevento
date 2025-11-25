@@ -13,6 +13,12 @@ interface EventCarouselProps {
 
 const AUTOPLAY_DELAY = 6000; // 6 segundos
 
+// Helper function to get the minimum price display
+const getMinPriceDisplay = (price: number | null): string => {
+    if (price === null || price === 0) return 'Grátis';
+    return `R$ ${price.toFixed(2).replace('.', ',')}`;
+};
+
 const EventCarousel = ({ events }: EventCarouselProps) => {
     const navigate = useNavigate();
     
@@ -69,7 +75,7 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
     useEffect(() => {
         if (!emblaApi) return;
         onInit(emblaApi);
-        onSelect(emblaApi); // Chamada inicial
+        onSelect(emblaApi);
         emblaApi.on('reInit', onInit);
         emblaApi.on('select', onSelect);
     }, [emblaApi, onInit, onSelect]);
@@ -139,7 +145,7 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                         </div>
                                         <div className="flex justify-between items-center pt-2">
                                             <span className="text-lg font-bold text-yellow-500">
-                                                {event.min_price === null ? 'Grátis' : `R$ ${event.min_price.toFixed(2).replace('.', ',')}`}
+                                                {getMinPriceDisplay(event.min_price)}
                                             </span>
                                             <Button 
                                                 variant="default" 
