@@ -241,10 +241,8 @@ const Index: React.FC = () => {
                 </div>
             </header>
             <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="relative mx-auto w-[650px] h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center">
-                        {/* Conteúdo do hero em branco */}
-                    </div>
+                <div className="relative w-full h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center">
+                    {/* Conteúdo do hero em branco */}
                 </div>
             </section>
             <section id="eventos" className="py-12 sm:py-20 px-4 sm:px-6">
