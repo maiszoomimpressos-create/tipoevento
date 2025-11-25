@@ -15,7 +15,8 @@ const EVENTS_PER_PAGE = 12;
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null || price === 0) return 'Grátis';
+    if (price === null) return 'Esgotado'; // Se não houver pulseiras ativas, consideramos esgotado/indisponível
+    if (price === 0) return 'Grátis';
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
