@@ -14,19 +14,15 @@ const fetchManagerEvents = async (userId: string): Promise<ManagerEvent[]> => {
         return [];
     }
 
-    // A RLS (Row Level Security) deve garantir que apenas os eventos do gestor logado sejam retornados,
-    // desde que a política "Managers can view their own events" (auth.uid() = user_id) esteja ativa.
-    // Se houver uma política "Allow public read access to events" (true) ativa, o gestor verá todos.
-    // Para que o gestor veja APENAS os dele, a política pública deve ser removida ou a query deve ser filtrada.
-    // Como o usuário pediu para desfazer a última alteração, voltamos à query sem filtro explícito,
-    // mas o comportamento na área do gestor será de ver TODOS os eventos (devido à política pública).
-    
+    // Filtra explicitamente os eventos onde o user_id é igual ao userId logado.
+    // Isso garante que, mesmo que haja uma política RLS pública, o gestor veja apenas os seus.
     const { data, error } = await supabase
         .from('events')
         .select(`
             id,
             title
         `)
+        .eq('user_id', userId) // FILTRO ADICIONADO AQUI
         .order('created_at', { ascending: false });
 
     if (error) {
