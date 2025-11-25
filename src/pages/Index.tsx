@@ -40,33 +40,9 @@ const Index: React.FC = () => {
         });
     }, []);
 
-    // MODIFICADO: Agora navega diretamente para o Checkout com 1 ingresso
+    // MODIFICADO: Agora navega diretamente para a página de detalhes do evento
     const handleEventClick = (event: PublicEvent) => {
-        if (event.min_price === null || event.min_price_wristband_id === null) {
-            // Se não houver preço mínimo ou ID de pulseira, redireciona para a página de detalhes
-            // para que o usuário veja a mensagem de indisponibilidade.
-            showError("Não há ingressos disponíveis para compra direta neste evento. Verifique os detalhes.");
-            navigate(`/events/${event.id}`);
-            return;
-        }
-        
-        const price = event.min_price;
-        const ticketTypeId = event.min_price_wristband_id; // Usando o ID da pulseira com o preço mínimo
-
-        navigate('/checkout', {
-            state: {
-                eventName: event.title,
-                totalTickets: 1,
-                totalPrice: price,
-                items: [{
-                    name: "Ingresso Padrão (Preço Mínimo)",
-                    quantity: 1,
-                    price: price,
-                    ticketTypeId: ticketTypeId, // Passando o ID da pulseira correto
-                    eventId: event.id,
-                }],
-            }
-        });
+        navigate(`/events/${event.id}`);
     };
     
     const handleApplyFilters = () => {
@@ -286,7 +262,7 @@ const Index: React.FC = () => {
                                             <Card
                                                 key={event.id}
                                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
-                                                onClick={() => handleEventClick(event)} // Redireciona para Checkout
+                                                onClick={() => handleEventClick(event)} // Redireciona para EventDetails
                                             >
                                                 <div className="relative overflow-hidden">
                                                     <img
@@ -339,7 +315,7 @@ const Index: React.FC = () => {
                                                             onClick={(e) => { e.stopPropagation(); handleEventClick(event); }}
                                                             className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
                                                         >
-                                                            Comprar Agora
+                                                            Ver Detalhes
                                                         </Button>
                                                     </div>
                                                 </div>

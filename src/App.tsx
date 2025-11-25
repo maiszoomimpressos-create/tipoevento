@@ -29,7 +29,7 @@ import AdminRouteGuard from "./components/AdminRouteGuard";
 import AdminMasterRouteGuard from "./components/AdminMasterRouteGuard";
 import ManagerLayout from "./components/layouts/ManagerLayout";
 import ForgotPassword from "./pages/ForgotPassword";
-import Checkout from "./pages/Checkout"; // Importando a nova página
+// import Checkout from "./pages/Checkout"; // Importação removida
 
 const queryClient = new QueryClient();
 
@@ -48,7 +48,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/tickets" element={<MyTickets />} />
-          <Route path="/checkout" element={<Checkout />} /> {/* Nova Rota de Checkout */}
+          {/* <Route path="/checkout" element={<Checkout />} /> */} {/* Rota removida */}
           <Route path="/manager/login" element={<ManagerLogin />} />
           
           {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}

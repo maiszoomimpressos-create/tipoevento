@@ -44,47 +44,8 @@ const EventDetails: React.FC = () => {
     };
     
     const handleCheckout = () => {
-        if (getTotalTickets() === 0) {
-            showError("Selecione pelo menos um ingresso para prosseguir.");
-            return;
-        }
-        
-        if (!details) {
-            showError("Detalhes do evento não carregados.");
-            return;
-        }
-
-        // Prepara os itens do pedido
-        const orderItems = Object.entries(selectedTickets)
-            .filter(([, quantity]) => quantity > 0)
-            .map(([ticketId, quantity]) => {
-                const ticket = details.ticketTypes.find((t: TicketType) => t.id === ticketId);
-                if (!ticket) return null;
-                
-                return {
-                    name: ticket.name,
-                    quantity: quantity,
-                    price: ticket.price,
-                    ticketTypeId: ticket.id, // ID da pulseira base
-                    eventId: details.event.id,
-                };
-            })
-            .filter(item => item !== null);
-
-        if (orderItems.length === 0) {
-            showError("Selecione pelo menos um ingresso para prosseguir.");
-            return;
-        }
-
-        // Navega para o checkout, passando os dados do pedido no state
-        navigate('/checkout', {
-            state: {
-                eventName: details.event.title,
-                totalTickets: getTotalTickets(),
-                totalPrice: getTotalPrice(),
-                items: orderItems,
-            }
-        });
+        showError("A funcionalidade de compra está temporariamente indisponível.");
+        // Anteriormente, navegava para '/checkout'. Agora, apenas exibe um erro.
     };
 
     if (isLoading) {
@@ -332,7 +293,7 @@ const EventDetails: React.FC = () => {
                                                 onClick={handleCheckout} // Botão de checkout
                                                 className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
                                             >
-                                                Finalizar Compra
+                                                Comprar Ingressos
                                             </Button>
                                         </>
                                     )}
