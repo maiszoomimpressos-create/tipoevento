@@ -121,7 +121,7 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                 onClick={() => navigate(`/finalizar-compra`)} 
                             >
                                 <CardContent className="flex flex-col p-0">
-                                    <div className="relative h-48 overflow-hidden">
+                                    <div className="relative h-[450px] overflow-hidden"> {/* Altura ajustada para 450px */}
                                         <img
                                             src={event.image_url}
                                             alt={event.title}
