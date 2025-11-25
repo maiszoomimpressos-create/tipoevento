@@ -17,8 +17,8 @@ const EVENTS_PER_PAGE = 12;
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null || price === 0) return 'Grátis';
-    // Formata para R$ X.XX, usando vírgula como separador decimal
+    if (price === null) return 'Grátis'; // Se não houver ingressos ativos ou preço nulo
+    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
@@ -61,7 +61,7 @@ const Index: React.FC = () => {
 
 
     const handleEventClick = (event: PublicEvent) => {
-        // Corrigido: Navega para a página de finalizar compra
+        // Mantido: Navega para a página de finalizar compra
         navigate(`/finalizar-compra`);
         console.log(`Navegando para Finalizar Compra para o evento: ${event.title}`);
     };
