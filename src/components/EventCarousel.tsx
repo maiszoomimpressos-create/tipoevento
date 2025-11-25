@@ -95,14 +95,13 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
         );
     }
 
-    const BASE_SLIDE_WIDTH = 250; // Largura base para cada slide antes da escala
-    const CENTRAL_SLIDE_WIDTH = 400; // Largura desejada para o slide central
-    const CAROUSEL_WIDTH = 750; // Largura total do carrossel
+    const BASE_SLIDE_WIDTH = 150; // Largura base para o cálculo, não a largura final do menor slide
+    const CAROUSEL_WIDTH = 750; 
 
     return (
         <div className="relative w-[750px] h-[450px] mx-auto rounded-2xl overflow-hidden">
             <div className="embla__viewport h-full" ref={emblaRef}>
-                <div className="embla__container flex h-full items-center justify-center relative"> {/* Adicionado relative */}
+                <div className="embla__container relative h-full"> {/* Removido 'flex items-center justify-center' */}
                     {featuredEvents.map((event, index) => {
                         const relativeIndex = index - selectedIndex;
                         
@@ -113,43 +112,43 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
 
                         // Lógica para o efeito de escada com 7 banners visíveis
                         if (relativeIndex === 0) { // Item central
-                            scale = CENTRAL_SLIDE_WIDTH / BASE_SLIDE_WIDTH;
+                            scale = 2.5; // Largura final: 150 * 2.5 = 375px
                             opacity = 1;
                             zIndex = 7;
                             translateX = 0;
                         } else if (relativeIndex === 1) { // Primeiro à direita
-                            scale = 0.8;
+                            scale = 1.8; // Largura final: 150 * 1.8 = 270px
                             opacity = 0.8;
                             zIndex = 6;
-                            translateX = (CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 30; // Ajuste para sobreposição
+                            translateX = 180; // Deslocamento do centro do carrossel
                         } else if (relativeIndex === -1) { // Primeiro à esquerda
-                            scale = 0.8;
+                            scale = 1.8;
                             opacity = 0.8;
                             zIndex = 6;
-                            translateX = -((CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 30); // Ajuste para sobreposição
+                            translateX = -180;
                         } else if (relativeIndex === 2) { // Segundo à direita
-                            scale = 0.6;
+                            scale = 1.2; // Largura final: 150 * 1.2 = 180px
                             opacity = 0.6;
                             zIndex = 5;
-                            translateX = (CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 60; // Mais afastado
+                            translateX = 320;
                         } else if (relativeIndex === -2) { // Segundo à esquerda
-                            scale = 0.6;
+                            scale = 1.2;
                             opacity = 0.6;
                             zIndex = 5;
-                            translateX = -((CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 60); // Mais afastado
+                            translateX = -320;
                         } else if (relativeIndex === 3) { // Terceiro à direita
-                            scale = 0.4;
+                            scale = 0.8; // Largura final: 150 * 0.8 = 120px
                             opacity = 0.4;
                             zIndex = 4;
-                            translateX = (CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * 0.6 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 90; // Ainda mais afastado
+                            translateX = 450;
                         } else if (relativeIndex === -3) { // Terceiro à esquerda
-                            scale = 0.4;
+                            scale = 0.8;
                             opacity = 0.4;
                             zIndex = 4;
-                            translateX = -((CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * 0.6 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 90); // Ainda mais afastado
+                            translateX = -450;
                         } else { // Itens fora do campo de 7 visíveis (escondidos)
-                            scale = 0.2;
-                            opacity = 0; 
+                            scale = 0.5; // Pequena escala para manter a proporção
+                            opacity = 0; // Totalmente transparente
                             zIndex = 0;
                             translateX = (relativeIndex > 0 ? 1 : -1) * (CAROUSEL_WIDTH / 2 + BASE_SLIDE_WIDTH); // Empurra para fora da tela
                         }
@@ -161,14 +160,16 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                 key={event.id} 
                                 className="embla__slide flex-shrink-0 relative h-full"
                                 style={{ 
-                                    width: `${BASE_SLIDE_WIDTH}px`, // Largura base para todos os slides
+                                    width: `${BASE_SLIDE_WIDTH}px`, // Largura base para todos os slides antes da escala
                                     transform: transformStyle,
                                     opacity: opacity,
                                     zIndex: zIndex,
                                     transition: 'transform 0.6s ease-out, opacity 0.6s ease-out',
-                                    position: 'absolute', // Essencial para sobreposição
-                                    left: '50%', // Centraliza todos os slides inicialmente
-                                    marginLeft: `-${BASE_SLIDE_WIDTH / 2}px`, // Ajusta pela própria largura
+                                    position: 'absolute', 
+                                    top: 0,
+                                    left: '50%', // Centraliza o ponto de origem para o translateX
+                                    marginLeft: `-${BASE_SLIDE_WIDTH / 2}px`, // Ajusta para centralizar o slide em si
+                                    height: '100%',
                                 }}
                             >
                                 <Card 
