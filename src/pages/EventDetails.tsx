@@ -13,6 +13,7 @@ import { showError } from '@/utils/toast'; // Importando showError
 const getMinPriceDisplay = (ticketTypes: TicketType[] | undefined) => {
     if (!ticketTypes || ticketTypes.length === 0) return 'Grátis';
     const minPrice = Math.min(...ticketTypes.map(t => t.price));
+    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
     return `R$ ${minPrice.toFixed(2).replace('.', ',')}`;
 };
 
