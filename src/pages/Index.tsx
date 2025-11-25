@@ -242,7 +242,7 @@ const Index: React.FC = () => {
             </header>
             <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="relative h-[450px] overflow-hidden"> {/* Altura ajustada para 450px */}
+                    <div className="relative h-[450px] w-[750px] mx-auto overflow-hidden"> {/* Adicionado w-[750px] e mx-auto */}
                         {isLoadingEvents ? (
                             <div className="flex items-center justify-center h-full bg-black/60 border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/20">
                                 <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />

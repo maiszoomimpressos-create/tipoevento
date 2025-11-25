@@ -30,10 +30,11 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
         loop: true,
         align: 'start',
         slidesToScroll: 1,
-        breakpoints: {
-            '(min-width: 640px)': { slidesToScroll: 2 },
-            '(min-width: 1024px)': { slidesToScroll: 3 },
-        },
+        // Removendo breakpoints para garantir que cada slide ocupe a largura total do contêiner
+        // breakpoints: {
+        //     '(min-width: 640px)': { slidesToScroll: 2 },
+        //     '(min-width: 1024px)': { slidesToScroll: 3 },
+        // },
         watchDrag: true,
     });
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -113,7 +114,7 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                     {featuredEvents.map((event, index) => (
                         <div 
                             key={event.id} 
-                            className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 flex-shrink-0 min-w-0"
+                            className="pl-4 basis-full flex-shrink-0 min-w-0" // Removido sm:basis-1/2 lg:basis-1/3
                         >
                             <Card 
                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden h-full cursor-pointer hover:border-yellow-500/60 transition-all duration-300 group"
