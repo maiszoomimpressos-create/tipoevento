@@ -117,7 +117,8 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                         >
                             <Card 
                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden h-full cursor-pointer hover:border-yellow-500/60 transition-all duration-300 group"
-                                onClick={() => navigate(`/events/${event.id}`)}
+                                // Removendo a navegação do clique no card
+                                onClick={() => {}} 
                             >
                                 <CardContent className="flex flex-col p-0">
                                     <div className="relative h-48 overflow-hidden">
@@ -151,6 +152,8 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                             <Button 
                                                 variant="default" 
                                                 className="bg-yellow-500 text-black hover:bg-yellow-600 px-4 py-2 text-xs"
+                                                // Removendo a navegação do clique no botão
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 Detalhes <ArrowRight className="h-3 w-3 ml-1" />
                                             </Button>
