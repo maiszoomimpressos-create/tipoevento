@@ -16,7 +16,6 @@ const AUTOPLAY_DELAY = 6000; // 6 segundos
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
     if (price === null) return 'Grátis'; // Se não houver ingressos ativos ou preço nulo
-    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
@@ -30,17 +29,14 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
         loop: true,
         align: 'center', // Centraliza o slide ativo
         slidesToScroll: 1,
-        dragFree: false, // Garante que os slides se encaixem
-        containScroll: 'trimSnaps', // Remove o espaço extra no final
+        dragFree: false,
+        containScroll: 'trimSnaps',
     });
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
     const [prevBtnDisabled, setPrevBtnDisabled] = useState(true);
     const [nextBtnDisabled, setNextBtnDisabled] = useState(true);
-    const [scrollProgress, setScrollProgress] = useState(0);
 
-
-    // --- Lógica de Auto-Play ---
     const autoplay = useCallback(() => {
         if (!emblaApi) return;
         if (emblaApi.canScrollNext()) {
@@ -52,15 +48,10 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
 
     useEffect(() => {
         if (!emblaApi) return;
-
         const timer = setInterval(autoplay, AUTOPLAY_DELAY);
-
-        return () => {
-            clearInterval(timer);
-        };
+        return () => { clearInterval(timer); };
     }, [emblaApi, autoplay]);
 
-    // --- Lógica de Navegação e Indicadores ---
     const onSelect = useCallback((emblaApi: EmblaCarouselType) => {
         setSelectedIndex(emblaApi.selectedScrollSnap());
         setPrevBtnDisabled(!emblaApi.canScrollPrev());
@@ -69,11 +60,6 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
 
     const onInit = useCallback((emblaApi: EmblaCarouselType) => {
         setScrollSnaps(emblaApi.scrollSnapList());
-        setScrollProgress(emblaApi.scrollProgress());
-    }, []);
-
-    const onScroll = useCallback((emblaApi: EmblaCarouselType) => {
-        setScrollProgress(emblaApi.scrollProgress());
     }, []);
 
     useEffect(() => {
@@ -82,8 +68,7 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
         onSelect(emblaApi);
         emblaApi.on('reInit', onInit);
         emblaApi.on('select', onSelect);
-        emblaApi.on('scroll', onScroll);
-    }, [emblaApi, onInit, onSelect, onScroll]);
+    }, [emblaApi, onInit, onSelect]);
 
     const scrollTo = useCallback((index: number) => {
         emblaApi && emblaApi.scrollTo(index);
@@ -110,39 +95,63 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
         );
     }
 
+    const BASE_SLIDE_WIDTH = 250; // Largura base para cada slide antes da escala
+    const CENTRAL_SLIDE_WIDTH = 400; // Largura desejada para o slide central
+    const CAROUSEL_WIDTH = 750; // Largura total do carrossel
+
     return (
         <div className="relative w-[750px] h-[450px] mx-auto rounded-2xl overflow-hidden">
             <div className="embla__viewport h-full" ref={emblaRef}>
-                <div className="embla__container flex h-full gap-4"> {/* Adicionado gap-4 */}
+                <div className="embla__container flex h-full items-center justify-center relative"> {/* Adicionado relative */}
                     {featuredEvents.map((event, index) => {
-                        const isSelected = index === selectedIndex;
+                        const relativeIndex = index - selectedIndex;
                         
-                        // Calcula a distância do slide atual para o slide selecionado (central)
-                        // Isso é uma simplificação, em um Embla mais complexo usaríamos emblaApi.scrollProgress()
-                        // para calcular a posição real no viewport.
-                        const distance = Math.abs(index - selectedIndex); 
-
                         let scale = 1;
                         let opacity = 1;
-                        let zIndex = 3;
+                        let zIndex = 1;
                         let translateX = 0;
 
-                        // Lógica para o efeito de escada
-                        if (distance === 1) { // Vizinhos imediatos (1 à esquerda, 1 à direita)
-                            scale = 0.85;
-                            opacity = 0.7;
-                            zIndex = 2;
-                            translateX = (index > selectedIndex ? 1 : -1) * 50; // Desloca para fora
-                        } else if (distance === 2) { // Próximos vizinhos (2 à esquerda, 2 à direita)
-                            scale = 0.7;
-                            opacity = 0.4;
-                            zIndex = 1;
-                            translateX = (index > selectedIndex ? 1 : -1) * 100; // Desloca mais
-                        } else if (distance > 2) { // Mais distantes (3+ à esquerda, 3+ à direita)
+                        // Lógica para o efeito de escada com 7 banners visíveis
+                        if (relativeIndex === 0) { // Item central
+                            scale = CENTRAL_SLIDE_WIDTH / BASE_SLIDE_WIDTH;
+                            opacity = 1;
+                            zIndex = 7;
+                            translateX = 0;
+                        } else if (relativeIndex === 1) { // Primeiro à direita
+                            scale = 0.8;
+                            opacity = 0.8;
+                            zIndex = 6;
+                            translateX = (CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 30; // Ajuste para sobreposição
+                        } else if (relativeIndex === -1) { // Primeiro à esquerda
+                            scale = 0.8;
+                            opacity = 0.8;
+                            zIndex = 6;
+                            translateX = -((CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 30); // Ajuste para sobreposição
+                        } else if (relativeIndex === 2) { // Segundo à direita
                             scale = 0.6;
-                            opacity = 0.2;
+                            opacity = 0.6;
+                            zIndex = 5;
+                            translateX = (CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 60; // Mais afastado
+                        } else if (relativeIndex === -2) { // Segundo à esquerda
+                            scale = 0.6;
+                            opacity = 0.6;
+                            zIndex = 5;
+                            translateX = -((CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 60); // Mais afastado
+                        } else if (relativeIndex === 3) { // Terceiro à direita
+                            scale = 0.4;
+                            opacity = 0.4;
+                            zIndex = 4;
+                            translateX = (CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * 0.6 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 90; // Ainda mais afastado
+                        } else if (relativeIndex === -3) { // Terceiro à esquerda
+                            scale = 0.4;
+                            opacity = 0.4;
+                            zIndex = 4;
+                            translateX = -((CENTRAL_SLIDE_WIDTH / 2) + (BASE_SLIDE_WIDTH * 0.8 / 2) + (BASE_SLIDE_WIDTH * 0.6 / 2) + (BASE_SLIDE_WIDTH * scale / 2) - 90); // Ainda mais afastado
+                        } else { // Itens fora do campo de 7 visíveis (escondidos)
+                            scale = 0.2;
+                            opacity = 0; 
                             zIndex = 0;
-                            translateX = (index > selectedIndex ? 1 : -1) * 150; // Desloca ainda mais
+                            translateX = (relativeIndex > 0 ? 1 : -1) * (CAROUSEL_WIDTH / 2 + BASE_SLIDE_WIDTH); // Empurra para fora da tela
                         }
 
                         const transformStyle = `translateX(${translateX}px) scale(${scale})`;
@@ -152,11 +161,14 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                 key={event.id} 
                                 className="embla__slide flex-shrink-0 relative h-full"
                                 style={{ 
-                                    width: `calc(100% / 3)`, // Mostra 3 slides no viewport
+                                    width: `${BASE_SLIDE_WIDTH}px`, // Largura base para todos os slides
                                     transform: transformStyle,
                                     opacity: opacity,
                                     zIndex: zIndex,
                                     transition: 'transform 0.6s ease-out, opacity 0.6s ease-out',
+                                    position: 'absolute', // Essencial para sobreposição
+                                    left: '50%', // Centraliza todos os slides inicialmente
+                                    marginLeft: `-${BASE_SLIDE_WIDTH / 2}px`, // Ajusta pela própria largura
                                 }}
                             >
                                 <Card 
