@@ -33,7 +33,8 @@ interface EventFormData {
     image_url: string; // Image URL (new mandatory field)
     min_age: number | string; // Minimum age (new mandatory field)
     category: string;
-    // price: string; // REMOVIDO
+    capacity: number | string; // Capacidade
+    duration: string; // NOVO: Duração
 }
 
 const ManagerCreateEvent: React.FC = () => {
@@ -48,7 +49,8 @@ const ManagerCreateEvent: React.FC = () => {
         image_url: '',
         min_age: 0,
         category: '',
-        // price: '', // REMOVIDO
+        capacity: '', // Inicializado como string vazia
+        duration: '', // Inicializado como string vazia
     });
     const [isLoading, setIsLoading] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
@@ -73,7 +75,7 @@ const ManagerCreateEvent: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value, type } = e.target;
         
-        if (id === 'min_age' && type === 'number') {
+        if (type === 'number') {
             setFormData(prev => ({ 
                 ...prev, 
                 [id]: value === '' ? '' : Number(value) 
@@ -101,6 +103,7 @@ const ManagerCreateEvent: React.FC = () => {
         if (!formData.location) errors.push("Localização é obrigatória.");
         if (!formData.address) errors.push("Endereço detalhado é obrigatório.");
         if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória.");
+        if (!formData.duration) errors.push("Duração é obrigatória.");
         
         // Validação da Data (agora é um objeto Date)
         if (!formData.date) {
@@ -114,9 +117,13 @@ const ManagerCreateEvent: React.FC = () => {
         if (formData.min_age === '' || formData.min_age === null || isNaN(minAge) || minAge < 0) {
             errors.push("Idade Mínima é obrigatória e deve ser 0 ou maior.");
         }
+        
+        const capacity = Number(formData.capacity);
+        if (formData.capacity === '' || formData.capacity === null || isNaN(capacity) || capacity <= 0) {
+            errors.push("Capacidade é obrigatória e deve ser maior que zero.");
+        }
 
         if (!formData.category) errors.push("Categoria é obrigatória.");
-        // if (!formData.price || Number(formData.price) <= 0) errors.push("Preço Base é obrigatório e deve ser maior que zero."); // REMOVIDO
 
         if (errors.length > 0) {
             showError(`Por favor, preencha todos os campos corretamente.`);
@@ -149,7 +156,8 @@ const ManagerCreateEvent: React.FC = () => {
                         image_url: formData.image_url,
                         min_age: Number(formData.min_age),
                         category: formData.category,
-                        price: 0, // Definindo preço como 0 ou um valor padrão, já que será definido por tipo de ingresso
+                        capacity: Number(formData.capacity), // SALVANDO CAPACIDADE
+                        duration: formData.duration, // SALVANDO DURAÇÃO
                     },
                 ])
                 .select('id')
@@ -314,7 +322,7 @@ const ManagerCreateEvent: React.FC = () => {
                                     type="time"
                                     value={formData.time} 
                                     onChange={handleChange} 
-                                    className="w-full bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
                                     required
                                 />
                             </div>
@@ -335,9 +343,35 @@ const ManagerCreateEvent: React.FC = () => {
                             </div>
                         </div>
                         
-                        {/* Linha 6: Idade Mínima (Preço Base removido) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* O campo de preço base foi removido, mantendo apenas a idade mínima */}
+                        {/* Linha 6: Capacidade, Duração e Idade Mínima */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label htmlFor="capacity" className="block text-sm font-medium text-white mb-2">Capacidade Máxima (Pessoas) *</label>
+                                <Input 
+                                    id="capacity" 
+                                    type="number"
+                                    value={formData.capacity} 
+                                    onChange={handleChange} 
+                                    placeholder="Ex: 500"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    min="1"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Número máximo de pessoas permitidas.</p>
+                            </div>
+                            <div>
+                                <label htmlFor="duration" className="block text-sm font-medium text-white mb-2">Duração (Ex: 2h30min) *</label>
+                                <Input 
+                                    id="duration" 
+                                    type="text"
+                                    value={formData.duration} 
+                                    onChange={handleChange} 
+                                    placeholder="Ex: 3 horas ou 2h30min"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Duração estimada do evento.</p>
+                            </div>
                             <div>
                                 <label htmlFor="min_age" className="block text-sm font-medium text-white mb-2">Idade Mínima (Anos) *</label>
                                 <Input 

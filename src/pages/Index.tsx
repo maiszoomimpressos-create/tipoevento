@@ -2,23 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { eventSlides, categories } from '@/data/events';
+import { categories, eventSlides as mockEventSlides } from '@/data/events'; // Mantendo mockEventSlides apenas para o carrossel temporariamente
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from "@/components/ui/input";
 import MobileMenu from '@/components/MobileMenu';
 import { supabase } from '@/integrations/supabase/client';
 import { trackAdvancedFilterUse } from '@/utils/metrics';
+import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
+import { Loader2 } from 'lucide-react';
 
 const EVENTS_PER_PAGE = 12;
+
+// Helper function to get the minimum price display
+const getMinPriceDisplay = (price: number | null): string => {
+    if (price === null || price === 0) return 'Grátis';
+    return `R$ ${price.toFixed(2).replace('.', ',')}`;
+};
 
 const Index: React.FC = () => {
     const [currentSlide, setCurrentSlide] = useState(0);
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | undefined>(undefined);
     
+    // Carregamento de eventos do Supabase
+    const { events: allEvents, isLoading: isLoadingEvents, isError: isErrorEvents } = usePublicEvents();
+    
     // Paginação
     const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = Math.ceil(eventSlides.length / EVENTS_PER_PAGE);
+    const totalPages = Math.ceil(allEvents.length / EVENTS_PER_PAGE);
 
     // Fetch user ID on mount
     useEffect(() => {
@@ -27,25 +38,23 @@ const Index: React.FC = () => {
         });
     }, []);
 
+    // Carrossel (usando mockEventSlides para ter conteúdo visual enquanto o DB não tem muitos banners)
     useEffect(() => {
         const interval = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % eventSlides.length);
+            setCurrentSlide((prev) => (prev + 1) % mockEventSlides.length);
         }, 6000);
         return () => clearInterval(interval);
-    }, [eventSlides.length]);
+    }, [mockEventSlides.length]);
 
-    const handleEventClick = (event: any) => {
+    const handleEventClick = (event: PublicEvent) => {
         navigate(`/events/${event.id}`);
     };
     
     const handleApplyFilters = () => {
-        // Track the usage if the user is logged in
         if (userId) {
             trackAdvancedFilterUse(userId);
         }
-        // Placeholder for actual filtering logic
         console.log("Aplicando filtros avançados...");
-        // Reset page to 1 after applying filters
         setCurrentPage(1);
     };
     
@@ -53,13 +62,9 @@ const Index: React.FC = () => {
         if (page >= 1 && page <= totalPages) {
             setCurrentPage(page);
             
-            // Rola para o topo da seção de eventos, ajustando para o cabeçalho fixo e a barra de filtros
             const eventsSection = document.getElementById('eventos');
             if (eventsSection) {
-                // O cabeçalho fixo + a barra de pesquisa/filtros rápidos ocupam cerca de 180px no topo da seção #eventos
                 const offset = 180; 
-                
-                // Calcula a posição absoluta do elemento e subtrai o offset
                 const topPosition = eventsSection.getBoundingClientRect().top + window.scrollY - offset;
                 
                 window.scrollTo({
@@ -73,9 +78,8 @@ const Index: React.FC = () => {
     // Lógica de Paginação
     const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
     const endIndex = startIndex + EVENTS_PER_PAGE;
-    const displayedEvents = eventSlides.slice(startIndex, endIndex);
+    const displayedEvents = allEvents.slice(startIndex, endIndex);
     
-    // Lógica para exibir 5 botões de paginação
     const getPageNumbers = () => {
         const maxPagesToShow = 5;
         const pages = [];
@@ -92,19 +96,18 @@ const Index: React.FC = () => {
         return pages;
     };
 
-    // Função para determinar a transformação do carrossel (simplificada para mobile)
+    // Lógica de transformação do carrossel (mantida)
     const getTransform = (pos: number) => {
         if (pos === 0) return 'translateX(-50%) scale(1)';
         if (pos === -1) return 'translateX(calc(-50% - 18rem)) scale(0.85)';
         if (pos === 1) return 'translateX(calc(-50% + 18rem)) scale(0.85)';
-        // Esconde slides mais distantes em telas menores
         return 'translateX(-50%) scale(0.5)';
     };
     
     const getOpacity = (pos: number) => {
         if (pos === 0) return 1;
         if (Math.abs(pos) === 1) return 0.9;
-        return 0; // Esconde slides mais distantes
+        return 0;
     };
     
     const getZIndex = (pos: number) => {
@@ -138,7 +141,7 @@ const Index: React.FC = () => {
                         <div className="hidden md:block">
                             <AuthStatusMenu />
                         </div>
-                        <MobileMenu /> {/* Menu Hambúrguer para Mobile */}
+                        <MobileMenu />
                     </div>
                 </div>
             </header>
@@ -146,13 +149,12 @@ const Index: React.FC = () => {
                 <div className="max-w-7xl mx-auto">
                     <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] overflow-hidden">
                         <div className="flex items-center justify-center h-full">
-                            {eventSlides.map((slide, index) => {
-                                let position = (index - currentSlide + eventSlides.length) % eventSlides.length;
-                                if (position > eventSlides.length / 2) position -= eventSlides.length;
+                            {/* Usando mockEventSlides para o carrossel, pois a lista de eventos do DB pode ser pequena */}
+                            {mockEventSlides.map((slide, index) => {
+                                let position = (index - currentSlide + mockEventSlides.length) % mockEventSlides.length;
+                                if (position > mockEventSlides.length / 2) position -= mockEventSlides.length;
                                 
-                                // Lógica de transformação simplificada para mobile
                                 const isCenter = position === 0;
-                                const isVisible = Math.abs(position) <= 1;
 
                                 return (
                                     <div
@@ -163,11 +165,10 @@ const Index: React.FC = () => {
                                             transform: isCenter ? 'translateX(-50%) scale(1)' : getTransform(position),
                                             opacity: isCenter ? 1 : getOpacity(position),
                                             zIndex: getZIndex(position),
-                                            // Força a visibilidade apenas do slide central em telas pequenas
                                             ...(window.innerWidth < 1024 && !isCenter && { display: 'none' })
                                         }}
                                     >
-                                        <div className="relative h-[300px] sm:h-[450px] bg-black rounded-2xl overflow-hidden shadow-2xl shadow-yellow-500/20 cursor-pointer" onClick={() => handleEventClick(slide)}>
+                                        <div className="relative h-[300px] sm:h-[450px] bg-black rounded-2xl overflow-hidden shadow-2xl shadow-yellow-500/20 cursor-pointer" onClick={() => navigate(`/events/${slide.id}`)}>
                                             <img
                                                 src={slide.image}
                                                 alt={slide.title}
@@ -197,11 +198,12 @@ const Index: React.FC = () => {
                                                     </div>
                                                     <div className="flex items-center space-x-4">
                                                         <span className="text-xl sm:text-2xl font-bold text-yellow-500">
-                                                            {slide.price}
+                                                            {/* Usando o preço mockado para o carrossel */}
+                                                            {slide.ticketTypes && slide.ticketTypes.length > 0 ? getMinPriceDisplay(Math.min(...slide.ticketTypes.map(t => t.price))) : 'Grátis'}
                                                         </span>
                                                         <Button
                                                             className="bg-yellow-500 text-black hover:bg-yellow-600 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
-                                                            onClick={() => handleEventClick(slide)}
+                                                            onClick={() => navigate(`/events/${slide.id}`)}
                                                         >
                                                             Ver Evento
                                                         </Button>
@@ -214,19 +216,19 @@ const Index: React.FC = () => {
                             })}
                         </div>
                         <button
-                            onClick={() => setCurrentSlide((prev) => (prev - 1 + eventSlides.length) % eventSlides.length)}
+                            onClick={() => setCurrentSlide((prev) => (prev - 1 + mockEventSlides.length) % mockEventSlides.length)}
                             className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 z-50 w-10 h-10 sm:w-14 sm:h-14 bg-black/80 border-2 border-yellow-500/60 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 hover:scale-110 transition-all duration-300 cursor-pointer shadow-lg shadow-black/50"
                         >
                             <i className="fas fa-chevron-left text-sm sm:text-lg"></i>
                         </button>
                         <button
-                            onClick={() => setCurrentSlide((prev) => (prev + 1) % eventSlides.length)}
+                            onClick={() => setCurrentSlide((prev) => (prev + 1) % mockEventSlides.length)}
                             className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 z-50 w-10 h-10 sm:w-14 sm:h-14 bg-black/80 border-2 border-yellow-500/60 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 hover:scale-110 transition-all duration-300 cursor-pointer shadow-lg shadow-black/50"
                         >
                             <i className="fas fa-chevron-right text-sm sm:text-lg"></i>
                         </button>
                         <div className="absolute bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex space-x-2 sm:space-x-3 bg-black/70 backdrop-blur-sm px-4 sm:px-6 py-2 sm:py-3 rounded-full border border-yellow-500/30">
-                            {eventSlides.map((_, index) => (
+                            {mockEventSlides.map((_, index) => (
                                 <button
                                     key={index}
                                     onClick={() => setCurrentSlide(index)}
@@ -350,105 +352,117 @@ const Index: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex-1">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
-                                    {displayedEvents.map((event) => (
-                                        <Card
-                                            key={event.id}
-                                            className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
-                                            onClick={() => handleEventClick(event)}
-                                        >
-                                            <div className="relative overflow-hidden">
-                                                <img
-                                                    src={event.image}
-                                                    alt={event.title}
-                                                    className="w-full h-48 sm:h-56 object-cover object-top group-hover:scale-110 transition-transform duration-500"
-                                                />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                                <div className="absolute top-4 left-4">
-                                                    <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-semibold">
-                                                        {event.category}
-                                                    </span>
-                                                </div>
-                                                <div className="absolute top-4 right-4">
-                                                    <button className="w-10 h-10 bg-black/60 border border-yellow-500/30 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300">
-                                                        <i className="fas fa-heart"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="p-6">
-                                                <h3 className="text-xl font-semibold text-white mb-3 line-clamp-2 group-hover:text-yellow-500 transition-colors duration-300">
-                                                    {event.title}
-                                                </h3>
-                                                <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                                                    {event.description}
-                                                </p>
-                                                <div className="space-y-2 mb-4">
-                                                    <div className="flex items-center text-gray-300 text-sm">
-                                                        <i className="fas fa-calendar-alt text-yellow-500 mr-3 w-4"></i>
-                                                        {event.date}
-                                                    </div>
-                                                    <div className="flex items-center text-gray-300 text-sm">
-                                                        <i className="fas fa-map-marker-alt text-yellow-500 mr-3 w-4"></i>
-                                                        {event.location}
-                                                    </div>
-                                                    <div className="flex items-center text-gray-300 text-sm">
-                                                        <i className="fas fa-clock text-yellow-500 mr-3 w-4"></i>
-                                                        {event.time || '20:00 - 23:00'}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between pt-4 border-t border-yellow-500/20">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm text-gray-400">A partir de</span>
-                                                        <span className="text-2xl font-bold text-yellow-500">
-                                                            {event.price}
+                                {isLoadingEvents ? (
+                                    <div className="text-center py-20">
+                                        <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
+                                        <p className="text-gray-400">Carregando eventos...</p>
+                                    </div>
+                                ) : isErrorEvents || allEvents.length === 0 ? (
+                                    <div className="text-center py-20">
+                                        <i className="fas fa-calendar-times text-5xl text-gray-600 mb-4"></i>
+                                        <p className="text-gray-400 text-lg">Nenhum evento encontrado.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                                        {displayedEvents.map((event) => (
+                                            <Card
+                                                key={event.id}
+                                                className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
+                                                onClick={() => handleEventClick(event)}
+                                            >
+                                                <div className="relative overflow-hidden">
+                                                    <img
+                                                        src={event.image_url}
+                                                        alt={event.title}
+                                                        className="w-full h-48 sm:h-56 object-cover object-top group-hover:scale-110 transition-transform duration-500"
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                                                    <div className="absolute top-4 left-4">
+                                                        <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-semibold">
+                                                            {event.category}
                                                         </span>
                                                     </div>
-                                                    <Button
-                                                        className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
-                                                    >
-                                                        Ver Detalhes
-                                                    </Button>
+                                                    <div className="absolute top-4 right-4">
+                                                        <button className="w-10 h-10 bg-black/60 border border-yellow-500/30 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300">
+                                                            <i className="fas fa-heart"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                                <div className="flex items-center justify-center mt-12 space-x-2">
-                                    {/* Botão Anterior */}
-                                    <button 
-                                        onClick={() => handlePageChange(currentPage - 1)}
-                                        disabled={currentPage === 1}
-                                        className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <i className="fas fa-chevron-left"></i>
-                                    </button>
-                                    
-                                    {/* Botões de Páginas */}
-                                    {getPageNumbers().map((page) => (
-                                        <button
-                                            key={page}
-                                            onClick={() => handlePageChange(page)}
-                                            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 cursor-pointer text-sm sm:text-base ${page === currentPage
-                                                    ? 'bg-yellow-500 text-black'
-                                                    : 'bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500'
-                                                }`}
+                                                <div className="p-6">
+                                                    <h3 className="text-xl font-semibold text-white mb-3 line-clamp-2 group-hover:text-yellow-500 transition-colors duration-300">
+                                                        {event.title}
+                                                    </h3>
+                                                    <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                                                        {event.description}
+                                                    </p>
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="flex items-center text-gray-300 text-sm">
+                                                            <i className="fas fa-calendar-alt text-yellow-500 mr-3 w-4"></i>
+                                                            {event.date}
+                                                        </div>
+                                                        <div className="flex items-center text-gray-300 text-sm">
+                                                            <i className="fas fa-map-marker-alt text-yellow-500 mr-3 w-4"></i>
+                                                            {event.location}
+                                                        </div>
+                                                        <div className="flex items-center text-gray-300 text-sm">
+                                                            <i className="fas fa-clock text-yellow-500 mr-3 w-4"></i>
+                                                            {event.time}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between pt-4 border-t border-yellow-500/20">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm text-gray-400">A partir de</span>
+                                                            <span className="text-2xl font-bold text-yellow-500">
+                                                                {getMinPriceDisplay(event.min_price)}
+                                                            </span>
+                                                        </div>
+                                                        <Button
+                                                            className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
+                                                        >
+                                                            Ver Detalhes
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {allEvents.length > EVENTS_PER_PAGE && (
+                                    <div className="flex items-center justify-center mt-12 space-x-2">
+                                        <button 
+                                            onClick={() => handlePageChange(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                            className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {page}
+                                            <i className="fas fa-chevron-left"></i>
                                         </button>
-                                    ))}
-                                    
-                                    {/* Botão Próximo */}
-                                    <button 
-                                        onClick={() => handlePageChange(currentPage + 1)}
-                                        disabled={currentPage === totalPages}
-                                        className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <i className="fas fa-chevron-right"></i>
-                                    </button>
-                                </div>
+                                        
+                                        {getPageNumbers().map((page) => (
+                                            <button
+                                                key={page}
+                                                onClick={() => handlePageChange(page)}
+                                                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300 cursor-pointer text-sm sm:text-base ${page === currentPage
+                                                        ? 'bg-yellow-500 text-black'
+                                                        : 'bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500'
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ))}
+                                        
+                                        <button 
+                                            onClick={() => handlePageChange(currentPage + 1)}
+                                            disabled={currentPage === totalPages}
+                                            className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <i className="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="text-center mt-8">
                                     <p className="text-gray-400 text-sm sm:text-base">
-                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, eventSlides.length)}</span> de <span className="text-yellow-500 font-semibold">{eventSlides.length}</span> eventos
+                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, allEvents.length)}</span> de <span className="text-yellow-500 font-semibold">{allEvents.length}</span> eventos
                                     </p>
                                 </div>
                             </div>

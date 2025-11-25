@@ -14,14 +14,15 @@ const fetchManagerEvents = async (userId: string): Promise<ManagerEvent[]> => {
         return [];
     }
 
-    // Buscamos todos os eventos que o usuário tem permissão de ver (garantido pelo RLS)
-    // Se a política "Authenticated users can read all events" estiver ativa, ele verá todos.
+    // Filtra explicitamente os eventos onde o user_id é igual ao userId logado.
+    // Isso garante que, mesmo que haja uma política RLS pública, o gestor veja apenas os seus.
     const { data, error } = await supabase
         .from('events')
         .select(`
             id,
             title
         `)
+        .eq('user_id', userId) // FILTRO ADICIONADO AQUI
         .order('created_at', { ascending: false });
 
     if (error) {

@@ -8,22 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ImageOff, ArrowLeft } from 'lucide-react';
-import { DatePicker } from '@/components/DatePicker';
-import { parseISO } from 'date-fns'; // Importando parseISO para converter string ISO para Date
+import { Loader2, ImageOff } from 'lucide-react';
 
 // Define the structure for the form data
 interface EventFormData {
     title: string;
     description: string;
-    date: Date | undefined; // Alterado para Date | undefined
+    date: string;
     time: string;
     location: string; // General location name
     address: string; // Detailed address
     image_url: string; // Image URL
     min_age: number | string; // Minimum age
     category: string;
-    // price: string; // REMOVIDO
+    capacity: number | string; // Capacidade
+    duration: string; // NOVO: Duração
 }
 
 const ManagerEditEvent: React.FC = () => {
@@ -77,15 +76,15 @@ const ManagerEditEvent: React.FC = () => {
             setFormData({
                 title: eventData.title || '',
                 description: eventData.description || '',
-                // Converte a string ISO do DB para objeto Date
-                date: eventData.date ? parseISO(eventData.date) : undefined,
+                date: eventData.date || '',
                 time: eventData.time || '',
                 location: eventData.location || '',
                 address: eventData.address || '',
                 image_url: eventData.image_url || '',
                 min_age: eventData.min_age || 0,
                 category: eventData.category || '',
-                // price: String(eventData.price || 0), // REMOVIDO
+                capacity: eventData.capacity || '', // Carregando capacidade
+                duration: eventData.duration || '', // Carregando duração
             });
             setIsFetching(false);
         };
@@ -99,15 +98,8 @@ const ManagerEditEvent: React.FC = () => {
             if (!prev) return null;
             return { 
                 ...prev, 
-                [id]: (id === 'min_age' && type === 'number') ? (value === '' ? '' : Number(value)) : value 
+                [id]: type === 'number' ? (value === '' ? '' : Number(value)) : value 
             };
-        });
-    };
-    
-    const handleDateChange = (date: Date | undefined) => {
-        setFormData(prev => {
-            if (!prev) return null;
-            return { ...prev, date };
         });
     };
 
@@ -118,46 +110,42 @@ const ManagerEditEvent: React.FC = () => {
         });
     };
 
-    const validateForm = (): { isValid: boolean, isoDate: string | null } => {
-        if (!formData) return { isValid: false, isoDate: null };
+    const validateForm = () => {
+        if (!formData) return false;
         const errors: string[] = [];
-        let isoDate: string | null = null;
         
         if (!formData.title) errors.push("Título é obrigatório.");
         if (!formData.description) errors.push("Descrição é obrigatória.");
+        if (!formData.date) errors.push("Data é obrigatória.");
         if (!formData.time) errors.push("Horário é obrigatório.");
         if (!formData.location) errors.push("Localização é obrigatória.");
         if (!formData.address) errors.push("Endereço detalhado é obrigatório.");
         if (!formData.image_url) errors.push("URL da Imagem/Banner é obrigatória.");
+        if (!formData.duration) errors.push("Duração é obrigatória."); // Validação de Duração
         
-        // Validação da Data
-        if (!formData.date) {
-            errors.push("Data é obrigatória.");
-        } else {
-            // Converte para o formato ISO (YYYY-MM-DD) para salvar no Supabase
-            isoDate = format(formData.date, 'yyyy-MM-dd');
-        }
-
         const minAge = Number(formData.min_age);
         if (formData.min_age === '' || formData.min_age === null || isNaN(minAge) || minAge < 0) {
             errors.push("Idade Mínima é obrigatória e deve ser 0 ou maior.");
         }
+        
+        const capacity = Number(formData.capacity);
+        if (formData.capacity === '' || formData.capacity === null || isNaN(capacity) || capacity <= 0) {
+            errors.push("Capacidade é obrigatória e deve ser maior que zero.");
+        }
 
         if (!formData.category) errors.push("Categoria é obrigatória.");
-        // if (!formData.price || Number(formData.price) <= 0) errors.push("Preço Base é obrigatório e deve ser maior que zero."); // REMOVIDO
+        // REMOVIDO: if (!formData.price || Number(formData.price) <= 0) errors.push("Preço Base é obrigatório e deve ser maior que zero.");
 
         if (errors.length > 0) {
             showError(`Por favor, preencha todos os campos obrigatórios.`);
-            return { isValid: false, isoDate: null };
+            return false;
         }
-        return { isValid: true, isoDate };
+        return true;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const validationResult = validateForm();
-        
-        if (!validationResult.isValid || !userId || !id || !formData || !validationResult.isoDate) return;
+        if (!validateForm() || !userId || !id || !formData) return;
 
         const toastId = showLoading("Atualizando evento...");
         setIsLoading(true);
@@ -168,14 +156,15 @@ const ManagerEditEvent: React.FC = () => {
                 .update({
                     title: formData.title,
                     description: formData.description,
-                    date: validationResult.isoDate, // Usando a data formatada para ISO
+                    date: formData.date,
                     time: formData.time,
                     location: formData.location,
                     address: formData.address,
                     image_url: formData.image_url,
                     min_age: Number(formData.min_age),
                     category: formData.category,
-                    price: 0, // Definindo preço como 0 ou um valor padrão, já que foi removido do formulário
+                    capacity: Number(formData.capacity), // SALVANDO CAPACIDADE
+                    duration: formData.duration, // SALVANDO DURAÇÃO
                 })
                 .eq('id', id)
                 .eq('user_id', userId); // Ensure only the owner can update
@@ -215,7 +204,7 @@ const ManagerEditEvent: React.FC = () => {
                     variant="outline"
                     className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
                 >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    <i className="fas fa-arrow-left mr-2"></i>
                     Voltar para a Lista
                 </Button>
             </div>
@@ -292,7 +281,7 @@ const ManagerEditEvent: React.FC = () => {
                                         onError={(e) => {
                                             // Fallback se a URL da imagem estiver quebrada
                                             e.currentTarget.onerror = null; 
-                                            e.currentTarget.src = '/placeholder.svg'; // Usar um placeholder local
+                                            e.currentTarget.src = 'placeholder.svg'; // Usar um placeholder local
                                             e.currentTarget.className = "w-16 h-16 text-gray-500";
                                         }}
                                     />
@@ -323,10 +312,13 @@ const ManagerEditEvent: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label htmlFor="date" className="block text-sm font-medium text-white mb-2">Data *</label>
-                                <DatePicker 
-                                    date={formData.date}
-                                    setDate={handleDateChange}
-                                    placeholder="DD/MM/AAAA ou Selecione"
+                                <Input 
+                                    id="date" 
+                                    type="date"
+                                    value={formData.date} 
+                                    onChange={handleChange} 
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    required
                                 />
                             </div>
                             <div>
@@ -336,7 +328,7 @@ const ManagerEditEvent: React.FC = () => {
                                     type="time"
                                     value={formData.time} 
                                     onChange={handleChange} 
-                                    className="w-full bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
                                     required
                                 />
                             </div>
@@ -357,9 +349,35 @@ const ManagerEditEvent: React.FC = () => {
                             </div>
                         </div>
                         
-                        {/* Linha 6: Idade Mínima (Preço Base removido) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* O campo de preço base foi removido, mantendo apenas a idade mínima */}
+                        {/* Linha 6: Capacidade, Duração e Idade Mínima */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label htmlFor="capacity" className="block text-sm font-medium text-white mb-2">Capacidade Máxima (Pessoas) *</label>
+                                <Input 
+                                    id="capacity" 
+                                    type="number"
+                                    value={formData.capacity} 
+                                    onChange={handleChange} 
+                                    placeholder="Ex: 500"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    min="1"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Número máximo de pessoas.</p>
+                            </div>
+                            <div>
+                                <label htmlFor="duration" className="block text-sm font-medium text-white mb-2">Duração (Ex: 2h30min) *</label>
+                                <Input 
+                                    id="duration" 
+                                    type="text"
+                                    value={formData.duration} 
+                                    onChange={handleChange} 
+                                    placeholder="Ex: 3 horas ou 2h30min"
+                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Duração estimada do evento.</p>
+                            </div>
                             <div>
                                 <label htmlFor="min_age" className="block text-sm font-medium text-white mb-2">Idade Mínima (Anos) *</label>
                                 <Input 
@@ -380,7 +398,7 @@ const ManagerEditEvent: React.FC = () => {
                             <Button
                                 type="submit"
                                 disabled={isLoading || !userId}
-                                className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 flex-1"
+                                className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 flex-1"
                             >
                                 {isLoading ? (
                                     <div className="flex items-center justify-center">
@@ -400,7 +418,7 @@ const ManagerEditEvent: React.FC = () => {
                                 variant="outline"
                                 className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer flex-1"
                             >
-                                <ArrowLeft className="mr-2 h-5 w-5" />
+                                <i className="fas fa-arrow-left mr-2"></i>
                                 Voltar para a Lista
                             </Button>
                         </div>

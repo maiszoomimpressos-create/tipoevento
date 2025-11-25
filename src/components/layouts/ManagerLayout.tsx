@@ -86,9 +86,9 @@ const ManagerLayout: React.FC = () => {
     
     const dashboardTitle = isAdminMaster && location.pathname.startsWith('/admin') ? 'ADMIN' : 'PRO';
     
+    // Removendo a declaração duplicada de userRole
     const userName = profile?.first_name || 'Gestor';
-    const userRole = userTypeName;
-
+    const userRole = userTypeName; // Usando o valor do hook useUserType
 
     const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
         <nav className="flex flex-col md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0">

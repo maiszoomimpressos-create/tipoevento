@@ -33,13 +33,7 @@ const fetchProfile = async (userId: string): Promise<ProfileData | null> => {
         .single();
 
     if (error) {
-        // Se o erro for 'No rows found' (PGRST116), retornamos null.
-        // Se for qualquer outro erro (RLS, network, etc.), logamos e retornamos null.
-        if (error.code !== 'PGRST116') {
-            console.error("Error fetching profile:", error);
-            // Não lançamos o erro aqui para evitar que o useQuery entre em estado de erro permanente,
-            // mas retornamos null para indicar que o perfil não está disponível.
-        }
+        console.error("Error fetching profile:", error);
         return null;
     }
     
@@ -70,11 +64,6 @@ export const useProfile = (userId: string | undefined) => {
         queryFn: () => fetchProfile(userId!),
         enabled: !!userId,
         staleTime: 1000 * 60 * 5, // 5 minutes
-        // Adicionando tratamento de erro para exibir um toast genérico se a busca falhar
-        onError: (error) => {
-            console.error("Query Error: Failed to load user profile.", error);
-            // showError("Erro ao carregar perfil. Tente recarregar a página."); // Removido para evitar spam de toast
-        }
     });
 
     return {

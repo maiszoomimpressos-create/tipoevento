@@ -127,13 +127,6 @@ const Register: React.FC = () => {
         if (message.includes('Password should be at least 6 characters')) {
             return 'A senha deve ter no mínimo 6 caracteres.';
         }
-        if (message.includes('duplicate key value violates unique constraint')) {
-            return 'Erro de cadastro: O CPF ou outro dado único já está em uso.';
-        }
-        // Captura erros genéricos de rede/API
-        if (message.includes('Failed to fetch') || message.includes('Network request failed')) {
-            return 'Falha na comunicação com o servidor. Verifique sua conexão ou tente novamente mais tarde.';
-        }
         return 'Ocorreu um erro ao processar seu cadastro. Tente novamente.';
     };
 
@@ -166,17 +159,7 @@ const Register: React.FC = () => {
                 return;
             }
 
-            // Se o Supabase estiver configurado para exigir confirmação de e-mail, 
-            // data.user e data.session podem ser null, mas o erro será null.
-            // Verificamos se a operação foi bem-sucedida.
             if (data.user || data.session) {
-                showSuccess("Cadastro realizado! Verifique seu e-mail para ativar sua conta.");
-                setShowSuccessMessage(true);
-                setTimeout(() => {
-                    navigate('/login');
-                }, 3000);
-            } else {
-                // Caso de sucesso sem sessão (confirmação de e-mail pendente)
                 showSuccess("Cadastro realizado! Verifique seu e-mail para ativar sua conta.");
                 setShowSuccessMessage(true);
                 setTimeout(() => {
@@ -184,9 +167,9 @@ const Register: React.FC = () => {
                 }, 3000);
             }
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Erro inesperado no cadastro:', error);
-            showError(translateSupabaseError(error.message || 'Erro desconhecido.'));
+            showError("Ocorreu um erro inesperado. Tente novamente.");
         } finally {
             setIsLoading(false);
         }

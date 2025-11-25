@@ -93,25 +93,35 @@ const useWristbandManagement = (id: string | undefined) => {
     };
 };
 
-// Função utilitária para formatar moeda
+// Função utilitária para formatar a entrada do usuário (apenas dígitos e vírgula, limitando a 2 casas decimais)
 const formatPriceInput = (value: string): string => {
-    // Remove tudo que não for dígito ou vírgula
+    // 1. Remove tudo que não for dígito ou vírgula
     let cleanValue = value.replace(/[^\d,]/g, '');
     
-    // Garante que haja no máximo uma vírgula
+    // 2. Garante que haja no máximo uma vírgula
     const parts = cleanValue.split(',');
     if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
     }
+    
+    // 3. Limita a 2 casas decimais após a vírgula
+    if (parts.length > 0 && cleanValue.includes(',')) {
+        const decimalPart = cleanValue.split(',')[1];
+        if (decimalPart && decimalPart.length > 2) {
+            cleanValue = cleanValue.split(',')[0] + ',' + decimalPart.substring(0, 2);
+        }
+    }
+
     return cleanValue;
 };
+
 
 const ManagerManageWristband: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { data, isLoading, isError, invalidate, refetch } = useWristbandManagement(id);
     const [newStatus, setNewStatus] = useState<WristbandDetails['status'] | string>('');
-    const [newPrice, setNewPrice] = useState<string>(''); // NOVO: Estado para o novo preço
+    const [newPrice, setNewPrice] = useState<string>(''); 
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [searchTerm, setSearchTerm] = useState(''); 
 
@@ -290,6 +300,11 @@ const ManagerManageWristband: React.FC = () => {
             <span className="text-white font-medium text-right truncate max-w-[60%]">{value}</span>
         </div>
     );
+    
+    // Verifica se houve alguma alteração para habilitar o botão de salvar
+    const priceNumeric = parseFloat(newPrice.replace(',', '.') || '0');
+    const hasChanges = newStatus !== details.status || priceNumeric !== details.price;
+
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -392,7 +407,7 @@ const ManagerManageWristband: React.FC = () => {
                             <div className="flex space-x-4 pt-2">
                                 <Button
                                     onClick={handleStatusUpdate}
-                                    disabled={isUpdatingStatus || (!newStatus || newStatus === details.status) && (parseFloat(newPrice.replace(',', '.')) === details.price)}
+                                    disabled={isUpdatingStatus || !hasChanges}
                                     className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-2 text-base font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 h-10"
                                 >
                                     {isUpdatingStatus ? (

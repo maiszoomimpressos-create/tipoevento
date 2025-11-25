@@ -2,14 +2,25 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { eventSlides } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from '@/components/ui/input';
+import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
+import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// Helper function to get the minimum price from ticket types
+const getMinPriceDisplay = (ticketTypes: TicketType[] | undefined) => {
+    if (!ticketTypes || ticketTypes.length === 0) return 'Grátis';
+    const minPrice = Math.min(...ticketTypes.map(t => t.price));
+    return `R$ ${minPrice.toFixed(2).replace('.', ',')}`;
+};
 
 const EventDetails: React.FC = () => {
-    const { id } = useParams();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const selectedEvent = eventSlides.find(event => event.id.toString() === id);
+    
+    const { details, isLoading, isError } = useEventDetails(id);
+    
     const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
 
     const handleTicketChange = (ticketId: string, quantity: number) => {
@@ -20,9 +31,9 @@ const EventDetails: React.FC = () => {
     };
 
     const getTotalPrice = () => {
-        if (!selectedEvent) return 0;
+        if (!details) return 0;
         return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
-            const ticket = selectedEvent.ticketTypes.find((t: any) => t.id.toString() === ticketId);
+            const ticket = details.ticketTypes.find((t: TicketType) => t.id === ticketId);
             return total + (ticket ? ticket.price * quantity : 0);
         }, 0);
     };
@@ -31,16 +42,40 @@ const EventDetails: React.FC = () => {
         return Object.values(selectedTickets).reduce((total, quantity) => total + quantity, 0);
     };
 
-    if ( !selectedEvent) {
-        return <div>Event not found</div>;
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center pt-20">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
+            </div>
+        );
     }
+
+    if (isError || !details) {
+        return (
+            <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center pt-20 px-4">
+                <h1 className="text-4xl font-serif text-red-500 mb-4">Erro 404</h1>
+                <p className="text-xl text-gray-400 mb-6">Evento não encontrado ou indisponível.</p>
+                <Button onClick={() => navigate('/')} className="bg-yellow-500 text-black hover:bg-yellow-600">
+                    Voltar para a Home
+                </Button>
+            </div>
+        );
+    }
+    
+    const { event, ticketTypes } = details;
+    const minPriceDisplay = getMinPriceDisplay(ticketTypes);
+    
+    // Extraindo dados do organizador
+    const organizerName = event.companies?.corporate_name || 'N/A';
+    const capacityDisplay = event.capacity > 0 ? event.capacity.toLocaleString('pt-BR') : 'N/A';
+    const durationDisplay = event.duration || 'N/A';
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-4 sm:space-x-8">
-                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold">
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
                             Mazoy
                         </div>
                         <nav className="hidden md:flex items-center space-x-8">
@@ -69,8 +104,8 @@ const EventDetails: React.FC = () => {
             <section className="pt-20 pb-0">
                 <div className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
                     <img
-                        src={selectedEvent.image}
-                        alt={selectedEvent.title}
+                        src={event.image_url}
+                        alt={event.title}
                         className="w-full h-full object-cover object-top"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40"></div>
@@ -78,40 +113,40 @@ const EventDetails: React.FC = () => {
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
                             <div className="max-w-full lg:max-w-3xl">
                                 <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold mb-2 sm:mb-4">
-                                    {selectedEvent.category}
+                                    {event.category}
                                 </div>
                                 <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif text-white mb-3 sm:mb-6 leading-tight">
-                                    {selectedEvent.title}
+                                    {event.title}
                                 </h1>
                                 <p className="text-base sm:text-xl text-gray-200 mb-4 sm:mb-8 leading-relaxed line-clamp-3">
-                                    {selectedEvent.description}
+                                    {event.description}
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                                     <div className="flex items-center">
                                         <i className="fas fa-calendar-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
                                         <div>
                                             <div className="text-xs sm:text-sm text-gray-400">Data</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{selectedEvent.date}</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{new Date(event.date).toLocaleDateString('pt-BR')}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center">
                                         <i className="fas fa-clock text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
                                         <div>
                                             <div className="text-xs sm:text-sm text-gray-400">Horário</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{selectedEvent.time}</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.time}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center">
                                         <i className="fas fa-map-marker-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
                                         <div>
                                             <div className="text-xs sm:text-sm text-gray-400">Local</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{selectedEvent.location}</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.location}</div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
                                     <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
-                                        A partir de {selectedEvent.price}
+                                        A partir de {minPriceDisplay}
                                     </span>
                                     <Button className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
                                         Comprar Ingressos
@@ -131,27 +166,27 @@ const EventDetails: React.FC = () => {
                                 <h2 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-6">Sobre o Evento</h2>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-6">
-                                        {selectedEvent.description}
+                                        {event.description}
                                     </p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                         <div className="space-y-3 sm:space-y-4">
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-users text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Capacidade: {selectedEvent.capacity} pessoas</span>
+                                                <span className="text-white">Capacidade: {capacityDisplay}</span>
                                             </div>
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-clock text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Duração: {selectedEvent.duration}</span>
+                                                <span className="text-white">Duração: {durationDisplay}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-3 sm:space-y-4">
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-user-check text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Classificação: {selectedEvent.ageRating}</span>
+                                                <span className="text-white">Classificação: {event.min_age === 0 ? 'Livre' : `${event.min_age} anos`}</span>
                                             </div>
                                             <div className="flex items-center text-sm sm:text-base">
                                                 <i className="fas fa-user-tie text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Organizador: {selectedEvent.organizer}</span>
+                                                <span className="text-white">Organizador: {organizerName}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -160,13 +195,9 @@ const EventDetails: React.FC = () => {
                             <div>
                                 <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Destaques do Evento</h3>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                                        {selectedEvent.highlights.map((highlight: string, index: number) => (
-                                            <div key={index} className="flex items-center text-sm sm:text-base">
-                                                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-500 rounded-full mr-3 sm:mr-4 flex-shrink-0"></div>
-                                                <span className="text-white">{highlight}</span>
-                                            </div>
-                                        ))}
+                                    <div className="text-gray-400">
+                                        {/* Placeholder para destaques, pois não temos este campo no DB */}
+                                        <p>Destaques não disponíveis no momento. Consulte a descrição.</p>
                                     </div>
                                 </div>
                             </div>
@@ -176,8 +207,8 @@ const EventDetails: React.FC = () => {
                                     <div className="flex items-start space-x-4 mb-6">
                                         <i className="fas fa-map-marker-alt text-yellow-500 text-xl mt-1 flex-shrink-0"></i>
                                         <div>
-                                            <h4 className="text-white font-semibold text-base sm:text-lg mb-2">{selectedEvent.location}</h4>
-                                            <p className="text-gray-300 text-sm sm:text-base">{selectedEvent.address}</p>
+                                            <h4 className="text-white font-semibold text-base sm:text-lg mb-2">{event.location}</h4>
+                                            <p className="text-gray-300 text-sm sm:text-base">{event.address}</p>
                                         </div>
                                     </div>
                                     <div className="bg-black/40 rounded-xl h-48 sm:h-64 flex items-center justify-center">
@@ -194,40 +225,48 @@ const EventDetails: React.FC = () => {
                                 <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-6">Selecionar Ingressos</h3>
                                     <div className="space-y-6">
-                                        {selectedEvent.ticketTypes.map((ticket: any) => (
-                                            <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div>
-                                                        <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
-                                                        <p className="text-gray-400 text-xs sm:text-sm mt-1">{ticket.description}</p>
+                                        {ticketTypes.length > 0 ? (
+                                            ticketTypes.map((ticket: TicketType) => (
+                                                <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
+                                                            <p className="text-gray-400 text-xs sm:text-sm mt-1">{ticket.description}</p>
+                                                        </div>
+                                                        <div className="text-right flex-shrink-0 ml-4">
+                                                            <div className="text-xl sm:text-2xl font-bold text-yellow-500">R$ {ticket.price.toFixed(2).replace('.', ',')}</div>
+                                                            <div className="text-xs sm:text-sm text-gray-400">{ticket.available} disponíveis</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right flex-shrink-0 ml-4">
-                                                        <div className="text-xl sm:text-2xl font-bold text-yellow-500">R$ {ticket.price}</div>
-                                                        <div className="text-xs sm:text-sm text-gray-400">{ticket.available} disponíveis</div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-white text-sm sm:text-base">Quantidade:</span>
+                                                        <div className="flex items-center space-x-3">
+                                                            <button
+                                                                onClick={() => handleTicketChange(ticket.id, (selectedTickets[ticket.id] || 0) - 1)}
+                                                                className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
+                                                                disabled={ticket.available === 0 || (selectedTickets[ticket.id] || 0) === 0}
+                                                            >
+                                                                <i className="fas fa-minus text-xs"></i>
+                                                            </button>
+                                                            <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
+                                                                {selectedTickets[ticket.id] || 0}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleTicketChange(ticket.id, (selectedTickets[ticket.id] || 0) + 1)}
+                                                                className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
+                                                                disabled={(selectedTickets[ticket.id] || 0) >= ticket.available}
+                                                            >
+                                                                <i className="fas fa-plus text-xs"></i>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-white text-sm sm:text-base">Quantidade:</span>
-                                                    <div className="flex items-center space-x-3">
-                                                        <button
-                                                            onClick={() => handleTicketChange(ticket.id.toString(), (selectedTickets[ticket.id.toString()] || 0) - 1)}
-                                                            className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
-                                                        >
-                                                            <i className="fas fa-minus text-xs"></i>
-                                                        </button>
-                                                        <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
-                                                            {selectedTickets[ticket.id.toString()] || 0}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => handleTicketChange(ticket.id.toString(), (selectedTickets[ticket.id.toString()] || 0) + 1)}
-                                                            className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
-                                                        >
-                                                            <i className="fas fa-plus text-xs"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center p-4 bg-black/60 rounded-xl border border-red-500/30">
+                                                <p className="text-red-400 text-sm">Nenhum tipo de ingresso ativo encontrado para este evento.</p>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                     {getTotalTickets() > 0 && (
                                         <>
@@ -238,7 +277,7 @@ const EventDetails: React.FC = () => {
                                                 </div>
                                                 <div className="flex justify-between items-center mb-6">
                                                     <span className="text-white text-lg sm:text-xl">Total a Pagar:</span>
-                                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {getTotalPrice()}</span>
+                                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {getTotalPrice().toFixed(2).replace('.', ',')}</span>
                                                 </div>
                                             </div>
                                             <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105">
@@ -258,66 +297,6 @@ const EventDetails: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </section>
-            <div className="w-full h-px bg-yellow-500"></div>
-            <section className="py-12 sm:py-20 px-4 sm:px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-10 sm:mb-16">
-                        <h2 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-4">Eventos Relacionados</h2>
-                        <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-                        {eventSlides
-                            .filter(event => event.category === selectedEvent.category && event.id !== selectedEvent.id)
-                            .slice(0, 4)
-                            .map((event) => (
-                                <Card
-                                    key={event.id}
-                                    className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
-                                    onClick={() => navigate(`/events/${event.id}`)}
-                                >
-                                    <div className="relative overflow-hidden">
-                                        <img
-                                            src={event.image}
-                                            alt={event.title}
-                                            className="w-full h-48 object-cover object-top group-hover:scale-110 transition-transform duration-500"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                        <div className="absolute top-4 left-4">
-                                            <span className="bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold">
-                                                {event.category}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="p-6">
-                                        <h3 className="text-lg font-semibold text-white mb-3 line-clamp-2 group-hover:text-yellow-500 transition-colors duration-300">
-                                            {event.title}
-                                        </h3>
-                                        <div className="space-y-2 mb-4">
-                                            <div className="flex items-center text-gray-300 text-sm">
-                                                <i className="fas fa-calendar-alt text-yellow-500 mr-3 w-4"></i>
-                                                {event.date}
-                                            </div>
-                                            <div className="flex items-center text-gray-300 text-sm">
-                                                <i className="fas fa-map-marker-alt text-yellow-500 mr-3 w-4"></i>
-                                                {event.location}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-4 border-t border-yellow-500/20">
-                                            <span className="text-xl font-bold text-yellow-500">
-                                                {event.price}
-                                            </span>
-                                            <Button
-                                                className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 text-sm"
-                                            >
-                                                Ver Evento
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </Card>
-                            ))}
                     </div>
                 </div>
             </section>
