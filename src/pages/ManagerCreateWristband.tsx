@@ -4,20 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Loader2, QrCode, Tag, User, Calendar, Hash, DollarSign, Settings } from 'lucide-react';
+import { ArrowLeft, Loader2, QrCode, Tag, User, Calendar, Hash, DollarSign } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useManagerCompany } from '@/hooks/use-manager-company';
 import { useManagerEvents, ManagerEvent } from '@/hooks/use-manager-events';
-import { useAccessTypes } from '@/hooks/use-access-types'; // Importando o novo hook
 
 interface WristbandFormData {
     eventId: string;
     baseCode: string; // Código principal da pulseira
     quantity: number; // Quantidade de registros de analytics a gerar
-    accessTypeId: string; // Agora armazena o ID do tipo de acesso
+    accessType: string;
     price: string; // Novo campo para o valor da pulseira
 }
+
+const ACCESS_TYPES = [
+    'Standard',
+    'VIP',
+    'Staff',
+    'Press',
+    'Organizador'
+];
 
 // Função utilitária para converter string formatada (ex: "150,00") para float (ex: 150.00)
 const parsePriceToNumeric = (value: string): number => {
@@ -37,11 +44,9 @@ const formatPriceInput = (value: string): string => {
     }
     
     // 3. Limita a 2 casas decimais após a vírgula
-    if (parts.length > 0 && cleanValue.includes(',')) {
-        const decimalPart = cleanValue.split(',')[1];
-        if (decimalPart && decimalPart.length > 2) {
-            cleanValue = cleanValue.split(',')[0] + ',' + decimalPart.substring(0, 2);
-        }
+    if (parts.length === 2) {
+        parts[1] = parts[1].substring(0, 2);
+        cleanValue = parts[0] + ',' + parts[1];
     }
 
     return cleanValue;
@@ -55,7 +60,7 @@ const ManagerCreateWristband: React.FC = () => {
         eventId: '',
         baseCode: '',
         quantity: 1,
-        accessTypeId: '', // Inicializado como string vazia
+        accessType: ACCESS_TYPES[0],
         price: '0,00', // Usando vírgula para padrão brasileiro
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -70,11 +75,8 @@ const ManagerCreateWristband: React.FC = () => {
     // Fetch manager's company ID and events
     const { company, isLoading: isLoadingCompany } = useManagerCompany(userId || undefined);
     const { events, isLoading: isLoadingEvents } = useManagerEvents(userId || undefined);
-    
-    // Fetch access types for the selected event
-    const { accessTypes, isLoading: isLoadingAccessTypes } = useAccessTypes(formData.eventId);
 
-    const isLoading = isLoadingCompany || isLoadingEvents || isLoadingAccessTypes || !userId;
+    const isLoading = isLoadingCompany || isLoadingEvents || !userId;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target;
@@ -99,10 +101,6 @@ const ManagerCreateWristband: React.FC = () => {
     const handleSelectChange = (field: keyof Omit<WristbandFormData, 'quantity' | 'baseCode' | 'price'>, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
-    
-    const handleEventSelectChange = (value: string) => {
-        setFormData(prev => ({ ...prev, eventId: value, accessTypeId: '' })); // Limpa o tipo de acesso ao mudar o evento
-    };
 
     const validateForm = (priceNumeric: number) => {
         const errors: string[] = [];
@@ -110,7 +108,7 @@ const ManagerCreateWristband: React.FC = () => {
         if (!formData.eventId) errors.push("Selecione o evento.");
         if (!formData.baseCode.trim()) errors.push("O Código Base é obrigatório.");
         if (formData.quantity < 1 || formData.quantity > 100) errors.push("A quantidade deve ser entre 1 e 100.");
-        if (!formData.accessTypeId) errors.push("O Tipo de Acesso é obrigatório.");
+        if (!formData.accessType) errors.push("O Tipo de Acesso é obrigatório.");
         if (!company?.id) errors.push("O Perfil da Empresa não está cadastrado. Cadastre-o em Configurações.");
         
         if (isNaN(priceNumeric) || priceNumeric < 0) errors.push("O Valor deve ser um número positivo.");
@@ -134,19 +132,13 @@ const ManagerCreateWristband: React.FC = () => {
         try {
             const baseCodeClean = formData.baseCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
             
-            // Buscar o nome do tipo de acesso selecionado
-            const selectedAccessType = accessTypes.find(at => at.id === formData.accessTypeId);
-            if (!selectedAccessType) {
-                throw new Error("Tipo de acesso selecionado inválido.");
-            }
-
             // 1. Inserir APENAS UM registro na tabela wristbands
             const wristbandData = {
                 event_id: formData.eventId,
                 company_id: company.id,
                 manager_user_id: userId,
                 code: baseCodeClean, // Usando o Código Base como o código principal
-                access_type: selectedAccessType.name, // Usando o nome do tipo de acesso
+                access_type: formData.accessType,
                 status: 'active',
                 price: priceNumeric, // Salvando o preço
             };
@@ -178,7 +170,7 @@ const ManagerCreateWristband: React.FC = () => {
                     sequential_number: i + 1, // Adicionando o número sequencial
                     event_data: {
                         code: insertedWristband.code, // Mantendo no event_data para histórico
-                        access_type: selectedAccessType.name, // Incluindo o nome do tipo de acesso
+                        access_type: formData.accessType,
                         price: priceNumeric, // Incluindo o preço no histórico
                         manager_id: userId,
                         event_id: formData.eventId,
@@ -204,7 +196,7 @@ const ManagerCreateWristband: React.FC = () => {
                 eventId: prev.eventId,
                 baseCode: '',
                 quantity: 1,
-                accessTypeId: '', // Resetar o tipo de acesso
+                accessType: ACCESS_TYPES[0],
                 price: '0,00',
             }));
 
@@ -277,7 +269,7 @@ const ManagerCreateWristband: React.FC = () => {
                                 <Calendar className="h-4 w-4 mr-2 text-yellow-500" />
                                 Evento Associado *
                             </label>
-                            <Select onValueChange={handleEventSelectChange} value={formData.eventId}>
+                            <Select onValueChange={(value) => handleSelectChange('eventId', value)} value={formData.eventId}>
                                 <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
                                     <SelectValue placeholder="Selecione o Evento" />
                                 </SelectTrigger>
@@ -331,44 +323,22 @@ const ManagerCreateWristband: React.FC = () => {
                                 <p className="text-xs text-gray-500 mt-1">O número de registros de 'criação' no histórico será igual a esta quantidade (máx. 100).</p>
                             </div>
                             <div>
-                                <label htmlFor="accessTypeId" className="block text-sm font-medium text-white mb-2 flex items-center">
+                                <label htmlFor="accessType" className="block text-sm font-medium text-white mb-2 flex items-center">
                                     <Tag className="h-4 w-4 mr-2 text-yellow-500" />
                                     Tipo de Acesso *
                                 </label>
-                                <Select 
-                                    onValueChange={(value) => handleSelectChange('accessTypeId', value)} 
-                                    value={formData.accessTypeId}
-                                    disabled={!formData.eventId || isLoadingAccessTypes}
-                                >
+                                <Select onValueChange={(value) => handleSelectChange('accessType', value)} value={formData.accessType}>
                                     <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
                                         <SelectValue placeholder="Selecione o Tipo" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                        {isLoadingAccessTypes ? (
-                                            <SelectItem value="" disabled>Carregando...</SelectItem>
-                                        ) : accessTypes.length === 0 ? (
-                                            <SelectItem value="" disabled>Nenhum tipo de acesso cadastrado</SelectItem>
-                                        ) : (
-                                            accessTypes.map(type => (
-                                                <SelectItem key={type.id} value={type.id} className="hover:bg-yellow-500/10 cursor-pointer">
-                                                    {type.name}
-                                                </SelectItem>
-                                            ))
-                                        )}
+                                        {ACCESS_TYPES.map(type => (
+                                            <SelectItem key={type} value={type} className="hover:bg-yellow-500/10 cursor-pointer">
+                                                {type}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
-                                {formData.eventId && accessTypes.length === 0 && !isLoadingAccessTypes && (
-                                    <p className="text-gray-500 text-xs mt-1 flex items-center">
-                                        <Info className="h-3 w-3 mr-1" />
-                                        <Button 
-                                            variant="link" 
-                                            className="h-auto p-0 text-yellow-500 hover:text-yellow-400 text-xs"
-                                            onClick={() => navigate('/manager/settings/access-types')}
-                                        >
-                                            Cadastrar Tipos de Acesso
-                                        </Button>
-                                    </p>
-                                )}
                             </div>
                         </div>
                         
@@ -407,7 +377,7 @@ const ManagerCreateWristband: React.FC = () => {
                         <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                             <Button
                                 type="submit"
-                                disabled={isSaving || isLoading || !company || !formData.accessTypeId}
+                                disabled={isSaving || isLoading || !company}
                                 className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                             >
                                 {isSaving ? (

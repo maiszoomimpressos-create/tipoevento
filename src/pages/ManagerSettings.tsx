@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Settings, User, CreditCard, Bell, Loader2, Tag } from 'lucide-react'; // Importando Tag
+import { Settings, User, CreditCard, Bell, Loader2 } from 'lucide-react';
 import { useProfile } from '@/hooks/use-profile';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,7 +25,6 @@ const ManagerSettings: React.FC = () => {
         { icon: <User className="h-6 w-6 text-yellow-500" />, title: "Perfil da Empresa", description: "Atualize informações de contato e dados corporativos.", path: "/manager/settings/company-profile" },
         { icon: <Bell className="h-6 w-6 text-yellow-500" />, title: "Notificações e Alertas", description: "Defina preferências de notificação por e-mail e sistema.", path: "/manager/settings/notifications" },
         { icon: <CreditCard className="h-6 w-6 text-yellow-500" />, title: "Configurações de Pagamento", description: "Gerencie contas bancárias e gateways de pagamento.", path: "/manager/settings/payment" },
-        { icon: <Tag className="h-6 w-6 text-yellow-500" />, title: "Tipos de Acesso", description: "Crie e gerencie tipos de acesso para suas pulseiras.", path: "/manager/settings/access-types" }, // Novo item
     ];
     
     if (isAdminMaster) {
