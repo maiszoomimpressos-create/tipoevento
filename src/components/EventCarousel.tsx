@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useEmblaCarousel, { EmblaCarouselType } from 'embla-carousel-react';
-import {
-    CarouselContent,
-    CarouselItem,
-    CarouselNext,
-    CarouselPrevious,
-} from "@/components/ui/carousel"; // Reutilizando componentes de navegação
 import { Card, CardContent } from "@/components/ui/card";
 import { PublicEvent } from '@/hooks/use-public-events';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface EventCarouselProps {
@@ -31,6 +25,9 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
     });
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+    const [prevBtnDisabled, setPrevBtnDisabled] = useState(true);
+    const [nextBtnDisabled, setNextBtnDisabled] = useState(true);
+
 
     // --- Lógica de Auto-Play ---
     const autoplay = useCallback(() => {
@@ -55,6 +52,9 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
     // --- Lógica de Navegação e Indicadores ---
     const onSelect = useCallback((emblaApi: EmblaCarouselType) => {
         setSelectedIndex(emblaApi.selectedScrollSnap());
+        // Como estamos usando loop: true, os botões nunca estarão desabilitados, mas mantemos a função
+        setPrevBtnDisabled(!emblaApi.canScrollPrev());
+        setNextBtnDisabled(!emblaApi.canScrollNext());
     }, []);
 
     const onInit = useCallback((emblaApi: EmblaCarouselType) => {
@@ -72,6 +72,15 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
     const scrollTo = useCallback((index: number) => {
         emblaApi && emblaApi.scrollTo(index);
     }, [emblaApi]);
+    
+    const scrollPrev = useCallback(() => {
+        emblaApi && emblaApi.scrollPrev();
+    }, [emblaApi]);
+
+    const scrollNext = useCallback(() => {
+        emblaApi && emblaApi.scrollNext();
+    }, [emblaApi]);
+
 
     if (featuredEvents.length === 0) {
         return (
@@ -88,9 +97,9 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
     return (
         <div className="relative">
             <div className="overflow-hidden" ref={emblaRef}>
-                <CarouselContent className="flex touch-pan-y ml-0">
+                <div className="flex touch-pan-y ml-0">
                     {featuredEvents.map((event, index) => (
-                        <CarouselItem key={event.id} className="pl-0 basis-full">
+                        <div key={event.id} className="pl-0 basis-full flex-shrink-0 min-w-0">
                             <div className="p-1">
                                 <Card 
                                     className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden h-full cursor-pointer hover:border-yellow-500/60 transition-all duration-300 group"
@@ -133,20 +142,28 @@ const EventCarousel: React.FC<EventCarouselProps> = ({ events }) => {
                                     </CardContent>
                                 </Card>
                             </div>
-                        </CarouselItem>
+                        </div>
                     ))}
-                </CarouselContent>
+                </div>
             </div>
             
-            {/* Setas de Navegação */}
-            <CarouselPrevious 
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-yellow-500 border-yellow-500 hover:bg-yellow-500/10" 
-                onClick={() => emblaApi?.scrollPrev()}
-            />
-            <CarouselNext 
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-yellow-500 border-yellow-500 hover:bg-yellow-500/10" 
-                onClick={() => emblaApi?.scrollNext()}
-            />
+            {/* Setas de Navegação Customizadas */}
+            <Button
+                variant="outline"
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-yellow-500 border-yellow-500 hover:bg-yellow-500/10 w-10 h-10 p-0 rounded-full"
+                onClick={scrollPrev}
+                disabled={prevBtnDisabled && featuredEvents.length > 1} // Desabilitar se não puder rolar (apenas se não houver loop)
+            >
+                <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+                variant="outline"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-yellow-500 border-yellow-500 hover:bg-yellow-500/10 w-10 h-10 p-0 rounded-full"
+                onClick={scrollNext}
+                disabled={nextBtnDisabled && featuredEvents.length > 1} // Desabilitar se não puder rolar (apenas se não houver loop)
+            >
+                <ChevronRight className="h-5 w-5" />
+            </Button>
 
             {/* Indicadores (Bolinhas) */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2 z-10">
