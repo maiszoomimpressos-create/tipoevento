@@ -33,7 +33,7 @@ const Index: React.FC = () => {
     const [stagedSearchTerm, setStagedSearchTerm] = useState('');
     const [stagedPriceRanges, setStagedPriceRanges] = useState<string[]>([]);
     const [stagedTimeRanges, setStagedTimeRanges] = useState<string[]>([]);
-    const [stagedStatuses, setStagedStatuses] = useState<string[]>([]);
+    setStagedStatuses] = useState<string[]>([]);
 
     // Estados para os filtros "aplicados" (usados para filtrar os eventos)
     const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
@@ -245,7 +245,8 @@ const Index: React.FC = () => {
                     <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center overflow-hidden">
                         
                         {/* Contêiner Flexível para os Banners (apenas em telas maiores) */}
-                        <div className="hidden md:flex items-center justify-center w-full h-full">
+                        {/* Usamos absolute e centralização para garantir que o ponto de partida seja o centro da tela */}
+                        <div className="hidden md:flex items-center absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                             
                             {/* Banner Central (Maior) - Z-index 10 para sobreposição */}
                             <div className="relative z-10 w-[650px] h-[400px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 shadow-2xl">
@@ -253,7 +254,8 @@ const Index: React.FC = () => {
                             </div>
 
                             {/* Banner da Direita (Menor) - Margem negativa para sobreposição */}
-                            <div className="w-[250px] h-[300px] bg-gray-300 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 -ml-16 mt-20 shadow-lg">
+                            {/* Ajustamos a margem negativa para que o banner central (650px) se sobreponha ao lateral (250px) */}
+                            <div className="w-[250px] h-[300px] bg-gray-300 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 -ml-[100px] mt-20 shadow-lg">
                                 <p className="text-black text-sm font-semibold">Banner Lateral (250x300)</p>
                             </div>
                         </div>
