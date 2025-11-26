@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { categories } from '@/data/events'; // Mantendo categories
@@ -23,8 +23,14 @@ const getMinPriceDisplay = (price: number | null): string => {
 
 const Index: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation(); // Hook para acessar a localização atual
     const [userId, setUserId] = useState<string | undefined>(undefined);
-    const [searchTerm, setSearchTerm] = useState(''); // NOVO: Estado para o termo de busca
+    
+    // Extrai o termo de busca da URL (ex: /?search=termo)
+    const queryParams = new URLSearchParams(location.search);
+    const initialSearchTerm = queryParams.get('search') || '';
+    
+    const [searchTerm, setSearchTerm] = useState(initialSearchTerm); // Inicializa com o termo da URL
     
     // Carregamento de eventos do Supabase
     const { events: allEvents, isLoading: isLoadingEvents, isError: isErrorEvents } = usePublicEvents();
@@ -35,6 +41,16 @@ const Index: React.FC = () => {
             setUserId(user?.id);
         });
     }, []);
+    
+    // Sincroniza o estado de busca com a URL quando o componente é montado ou a URL muda
+    useEffect(() => {
+        const newSearchTerm = queryParams.get('search') || '';
+        if (newSearchTerm !== searchTerm) {
+            setSearchTerm(newSearchTerm);
+            setCurrentPage(1);
+        }
+    }, [location.search]);
+
 
     // Lógica de Filtragem
     const filteredEventsBySearch = allEvents.filter(event =>
@@ -98,6 +114,19 @@ const Index: React.FC = () => {
         }
         return pages;
     };
+    
+    // Função para atualizar o termo de busca e a URL
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value);
+        setCurrentPage(1);
+        
+        // Atualiza a URL sem recarregar a página
+        if (value) {
+            navigate(`/?search=${encodeURIComponent(value)}`, { replace: true });
+        } else {
+            navigate('/', { replace: true });
+        }
+    };
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
@@ -121,10 +150,7 @@ const Index: React.FC = () => {
                                 type="search" 
                                 placeholder="Buscar eventos..." 
                                 value={searchTerm}
-                                onChange={(e) => {
-                                    setSearchTerm(e.target.value);
-                                    setCurrentPage(1); // Resetar para a primeira página ao pesquisar
-                                }}
+                                onChange={(e) => handleSearchChange(e.target.value)}
                                 className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-48 md:w-64 pl-4 pr-10 py-2 rounded-xl"
                             />
                             <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
