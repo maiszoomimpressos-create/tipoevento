@@ -241,20 +241,9 @@ const Index: React.FC = () => {
                 </div>
             </header>
             <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
-                <div className="w-full mx-auto">
-                    {/* Container principal que ocupa a largura total e define a altura responsiva */}
-                    <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] flex items-center justify-center">
-                        {/* Banner interno de 650x400px, centralizado. Usamos max-w-full para garantir que não quebre em telas menores que 650px */}
-                        <div 
-                            className="bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center"
-                            style={{ 
-                                width: 'min(650px, 100%)', // Garante que não exceda 650px, mas se adapta a 100% em telas menores
-                                height: '400px',
-                                maxHeight: '100%', // Garante que não exceda a altura do container pai em telas menores
-                            }}
-                        >
-                            {/* Conteúdo do banner em branco */}
-                        </div>
+                <div className="max-w-7xl mx-auto">
+                    <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center">
+                        {/* Conteúdo do hero em branco */}
                     </div>
                 </div>
             </section>
