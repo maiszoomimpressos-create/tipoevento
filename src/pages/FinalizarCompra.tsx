@@ -1,13 +1,12 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useEventDetails } from '@/hooks/use-event-details';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { showError } from '@/utils/toast';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import EventBanner from '@/components/EventBanner';
 import CheckoutImageBanner from '@/components/CheckoutImageBanner';
 
+// Tipos de dados mockados para manter a estrutura de renderização
 interface TicketPurchase {
     ticketId: string;
     quantity: number;
@@ -15,61 +14,58 @@ interface TicketPurchase {
     name: string;
 }
 
-interface LocationState {
-    eventId: string;
-    tickets: TicketPurchase[];
-    totalPrice: number;
+interface EventDataMock {
+    id: string;
+    title: string;
+    description: string;
+    date: string;
+    time: string;
+    location: string;
+    address: string;
+    image_url: string;
+    min_age: number;
+    category: string;
+    capacity: number;
+    duration: string;
+    companies: { corporate_name: string; } | null;
 }
 
-// Helper function to get the minimum price display
+// Helper function to get the price display
 const getPriceDisplay = (price: number): string => {
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
 const FinalizarCompra: React.FC = () => {
-    const location = useLocation();
     const navigate = useNavigate();
     
-    // 1. Obter o ID do evento e os detalhes da compra do estado de navegação
-    const state = location.state as LocationState | undefined;
-    const eventId = state?.eventId;
-    const ticketsToPurchase = state?.tickets || [];
-    const totalPrice = state?.totalPrice || 0;
-
-    // 2. Buscar os detalhes do evento
-    const { details, isLoading, isError } = useEventDetails(eventId);
-
-    React.useEffect(() => {
-        if (!eventId || ticketsToPurchase.length === 0) {
-            showError("Nenhum evento ou ingresso selecionado para a compra.");
-            navigate('/', { replace: true });
-        }
-    }, [eventId, ticketsToPurchase.length, navigate]);
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-            </div>
-        );
-    }
-
-    if (isError || !details || !eventId || ticketsToPurchase.length === 0) {
-        // Se a validação do useEffect falhar, o usuário será redirecionado.
-        // Enquanto isso, mostramos um spinner ou um erro genérico.
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-            </div>
-        );
-    }
+    // Dados mockados para garantir que a renderização não quebre após a remoção da lógica
+    const event: EventDataMock = {
+        id: 'mock-id',
+        title: 'Evento de Teste Premium',
+        description: 'Descrição mockada para a tela de checkout.',
+        date: '2025-12-31',
+        time: '20:00',
+        location: 'Local de Teste',
+        address: 'Endereço de Teste, 123',
+        image_url: 'https://readdy.ai/api/search-image?query=luxury%20music%20concert%20stage%20with%20golden%20lighting%20effects%20and%20black%20elegant%20backdrop%2C%20premium%20entertainment%20venue%20with%20sophisticated%20atmosphere%20and%20dramatic%20illumination&width=1200&height=400&seq=banner1&orientation=landscape',
+        min_age: 18,
+        category: 'Teste',
+        capacity: 100,
+        duration: '3 horas',
+        companies: { corporate_name: 'Empresa Teste' },
+    };
     
-    const { event } = details;
-    const minPriceDisplay = getPriceDisplay(totalPrice); // Usando o preço total para o banner
+    const ticketsToPurchase: TicketPurchase[] = [
+        { ticketId: 'mock-1', quantity: 2, price: 150.00, name: 'Ingresso VIP' },
+        { ticketId: 'mock-2', quantity: 1, price: 80.00, name: 'Ingresso Standard' },
+    ];
+    
+    const totalPrice = ticketsToPurchase.reduce((total, t) => total + t.price * t.quantity, 0);
+    const minPriceDisplay = getPriceDisplay(totalPrice);
 
     return (
         <div className="bg-black text-white">
-            {/* Componente de Banner no Topo (sem botão de ação) */}
+            {/* Componente de Banner no Topo */}
             <EventBanner event={event} minPriceDisplay={minPriceDisplay} showActionButton={false} />
             
             {/* Conteúdo principal da finalização de compra */}
@@ -77,7 +73,7 @@ const FinalizarCompra: React.FC = () => {
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-3xl font-serif text-yellow-500">Finalizar Compra</h2>
                     <Button 
-                        // Ação de navegação removida
+                        onClick={() => navigate(`/events/${event.id}`)}
                         variant="outline"
                         className="bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm"
                     >
