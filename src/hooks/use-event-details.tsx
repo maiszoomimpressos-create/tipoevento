@@ -4,7 +4,8 @@ import { showError } from '@/utils/toast';
 
 // Estrutura de dados do Evento (simplificada)
 export interface EventData {
-    id: string;
+    id: string; // UUID original
+    id_url: number; // ID numérico para URL
     title: string;
     description: string;
     date: string;
@@ -38,19 +39,23 @@ export interface EventDetailsData {
     ticketTypes: TicketType[];
 }
 
-const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | null> => {
-    if (!eventId) return null;
+const fetchEventDetails = async (idUrl: string): Promise<EventDetailsData | null> => {
+    if (!idUrl) return null;
+    
+    const numericId = parseInt(idUrl);
+    if (isNaN(numericId)) {
+        console.error("ID de URL inválido:", idUrl);
+        return null;
+    }
 
-    // 1. Buscar detalhes do Evento, incluindo capacidade, duração e o nome da empresa organizadora
-    // Usamos 'left join' implícito (padrão do Supabase/PostgREST) para que o evento seja retornado
-    // mesmo que 'companies' seja nulo.
+    // 1. Buscar detalhes do Evento usando id_url
     const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select(`
-            id, title, description, date, time, location, address, image_url, min_age, category, capacity, duration,
+            id, id_url, title, description, date, time, location, address, image_url, min_age, category, capacity, duration,
             companies (corporate_name)
         `)
-        .eq('id', eventId)
+        .eq('id_url', numericId) // BUSCANDO PELO NOVO CAMPO id_url
         .single();
 
     if (eventError) {
@@ -61,23 +66,21 @@ const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | nu
         throw new Error(eventError.message);
     }
     
-    // Se o evento foi encontrado, mas o JOIN falhou (companies é null), isso é aceitável.
     if (!eventData) {
         return null;
     }
     
-    // 2. Buscar Tipos de Pulseira (Wristbands) associados a este evento
-    // Agrupamos por access_type e contamos o número de pulseiras ativas e o preço.
+    const eventUUID = eventData.id; // Usamos o UUID para buscar pulseiras
     
+    // 2. Buscar Tipos de Pulseira (Wristbands) associados a este evento
     const { data: wristbandsData, error: wristbandsError } = await supabase
         .from('wristbands')
         .select('id, access_type, price, status')
-        .eq('event_id', eventId)
+        .eq('event_id', eventUUID)
         .eq('status', 'active'); // Apenas pulseiras ativas estão 'disponíveis'
 
     if (wristbandsError) {
         console.error("Error fetching wristbands for event:", wristbandsError);
-        // Se houver erro nas pulseiras, retornamos o evento com ticketTypes vazio, mas não falhamos o evento inteiro.
         return {
             event: eventData as EventData,
             ticketTypes: [],
@@ -86,8 +89,6 @@ const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | nu
     
     // 3. Agrupar e formatar os tipos de ingresso
     const groupedTickets = wristbandsData.reduce((acc, wristband) => {
-        // Usamos o ID da pulseira como chave para garantir que cada tipo de ingresso/preço tenha um ID único
-        // que pode ser usado na compra (usePurchaseTicket).
         const key = `${wristband.access_type}-${wristband.price}-${wristband.id}`; 
         
         if (!acc[key]) {
@@ -111,11 +112,11 @@ const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | nu
     };
 };
 
-export const useEventDetails = (eventId: string | undefined) => {
+export const useEventDetails = (idUrl: string | undefined) => {
     const query = useQuery({
-        queryKey: ['eventDetails', eventId],
-        queryFn: () => fetchEventDetails(eventId!),
-        enabled: !!eventId,
+        queryKey: ['eventDetails', idUrl],
+        queryFn: () => fetchEventDetails(idUrl!),
+        enabled: !!idUrl,
         staleTime: 1000 * 60 * 5, // 5 minutes
         onError: (error) => {
             console.error("Query Error: Failed to load event details.", error);
