@@ -39,9 +39,9 @@ const Index: React.FC = () => {
         });
     }, []);
 
-    // ALTERADO: Redireciona para a tela de finalização de compra, passando o ID do evento
+    // CORRIGIDO: Redireciona para a tela de detalhes do evento
     const handleEventClick = (event: PublicEvent) => {
-        navigate(`/finalizar-compra`, { state: { eventId: event.id } });
+        navigate(`/events/${event.id}`);
     };
     
     const handleApplyFilters = () => {
