@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { categories } from '@/data/events'; // Mantendo categories
+import { categories } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from "@/components/ui/input";
 import MobileMenu from '@/components/MobileMenu';
@@ -10,15 +10,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
 import { Loader2 } from 'lucide-react';
-// import EventCarousel from '@/components/EventCarousel'; // Importação removida
-import { showError } from '@/utils/toast'; // Importando showError
+import { showError } from '@/utils/toast';
 
 const EVENTS_PER_PAGE = 12;
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null) return 'Grátis'; // Se não houver ingressos ativos ou preço nulo
-    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
+    if (price === null) return 'Grátis';
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
@@ -26,32 +24,26 @@ const Index: React.FC = () => {
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | undefined>(undefined);
     
-    // Carregamento de eventos do Supabase
     const { events: allEvents, isLoading: isLoadingEvents, isError: isErrorEvents } = usePublicEvents();
     
-    // Estados para os filtros "em rascunho" (atualizados pelos inputs, mas não aplicados ainda)
     const [stagedSearchTerm, setStagedSearchTerm] = useState('');
     const [stagedPriceRanges, setStagedPriceRanges] = useState<string[]>([]);
     const [stagedTimeRanges, setStagedTimeRanges] = useState<string[]>([]);
     const [stagedStatuses, setStagedStatuses] = useState<string[]>([]);
 
-    // Estados para os filtros "aplicados" (usados para filtrar os eventos)
     const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
     const [appliedPriceRanges, setAppliedPriceRanges] = useState<string[]>([]);
     const [appliedTimeRanges, setAppliedTimeRanges] = useState<string[]>([]);
     const [appliedStatuses, setAppliedStatuses] = useState<string[]>([]);
 
-    // Paginação
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Fetch user ID on mount
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
             setUserId(user?.id);
         });
     }, []);
 
-    // Sincroniza os filtros "em rascunho" com os "aplicados" quando a página carrega ou eventos mudam
     useEffect(() => {
         setStagedSearchTerm(appliedSearchTerm);
         setStagedPriceRanges(appliedPriceRanges);
@@ -61,12 +53,10 @@ const Index: React.FC = () => {
 
 
     const handleEventClick = (event: PublicEvent) => {
-        // Mantido: Navega para a página de finalizar compra
         navigate(`/finalizar-compra`);
         console.log(`Navegando para Finalizar Compra para o evento: ${event.title}`);
     };
     
-    // Funções para manipular a seleção dos filtros "em rascunho"
     const handleStagedPriceRangeChange = (range: string, isChecked: boolean) => {
         setStagedPriceRanges(prev => 
             isChecked ? [...prev, range] : prev.filter(r => r !== range)
@@ -85,17 +75,15 @@ const Index: React.FC = () => {
         );
     };
 
-    // Função chamada ao clicar em "Aplicar Filtros"
     const handleApplyFilters = () => {
         if (userId) {
             trackAdvancedFilterUse(userId);
         }
-        // Copia os filtros "em rascunho" para os filtros "aplicados"
         setAppliedSearchTerm(stagedSearchTerm);
         setAppliedPriceRanges(stagedPriceRanges);
         setAppliedTimeRanges(stagedTimeRanges);
         setAppliedStatuses(stagedStatuses);
-        setCurrentPage(1); // Resetar para a primeira página ao aplicar novos filtros
+        setCurrentPage(1);
         console.log("Filtros aplicados!");
     };
     
@@ -118,11 +106,9 @@ const Index: React.FC = () => {
         }
     };
 
-    // Lógica de Filtragem (agora depende dos estados 'applied')
     const filteredEvents = useMemo(() => {
         let tempEvents = allEvents;
 
-        // 1. Filtro por termo de busca (título, descrição, localização, categoria)
         if (appliedSearchTerm) {
             tempEvents = tempEvents.filter(event =>
                 event.title.toLowerCase().includes(appliedSearchTerm.toLowerCase()) ||
@@ -132,7 +118,6 @@ const Index: React.FC = () => {
             );
         }
 
-        // 2. Filtro por Faixa de Preço
         if (appliedPriceRanges.length > 0) {
             tempEvents = tempEvents.filter(event => {
                 const price = event.min_price;
@@ -149,10 +134,9 @@ const Index: React.FC = () => {
             });
         }
 
-        // 3. Filtro por Horário
         if (appliedTimeRanges.length > 0) {
             tempEvents = tempEvents.filter(event => {
-                const eventTime = event.time; // Ex: "20:00 - 23:00"
+                const eventTime = event.time;
                 const [startTimeStr] = eventTime.split(' - ');
                 const [hours] = startTimeStr.split(':').map(Number);
                 const eventHour = hours;
@@ -161,21 +145,19 @@ const Index: React.FC = () => {
                     switch (range) {
                         case 'morning': return eventHour >= 6 && eventHour < 12;
                         case 'afternoon': return eventHour >= 12 && eventHour < 18;
-                        case 'night': return eventHour >= 18 || eventHour < 6; // Inclui 18:00 até 05:59
+                        case 'night': return eventHour >= 18 || eventHour < 6;
                         default: return false;
                     }
                 });
             });
         }
 
-        // 4. Filtro por Status
         if (appliedStatuses.length > 0) {
             tempEvents = tempEvents.filter(event => {
                 return appliedStatuses.some(status => {
                     switch (status) {
                         case 'open_sales': return event.total_available_tickets > 0;
                         case 'low_stock': 
-                            // Considera "Últimos Ingressos" se menos de 10% da capacidade estiver disponível
                             return event.total_available_tickets > 0 && event.capacity > 0 && 
                                    (event.total_available_tickets / event.capacity) <= 0.1;
                         default: return false;
@@ -187,7 +169,6 @@ const Index: React.FC = () => {
         return tempEvents;
     }, [allEvents, appliedSearchTerm, appliedPriceRanges, appliedTimeRanges, appliedStatuses]);
 
-    // Lógica de Paginação
     const totalFilteredPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
     const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
     const endIndex = startIndex + EVENTS_PER_PAGE;
@@ -209,6 +190,7 @@ const Index: React.FC = () => {
         return pages;
     };
 
+    // Fim da lógica JavaScript do componente. O JSX começa abaixo.
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
@@ -246,21 +228,17 @@ const Index: React.FC = () => {
                 <div className="max-w-7xl mx-auto">
                     <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center overflow-hidden">
                         
-                        {/* Contêiner Flexível para os Banners (apenas em telas maiores) */}
                         <div className="hidden md:flex items-center justify-center w-full h-full">
                             
-                            {/* Banner Central (Maior) - Z-index 10 para sobreposição */}
                             <div className="relative z-10 w-[600px] h-[400px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 shadow-2xl">
                                 <p className="text-black text-lg font-semibold">Banner Central (600x400)</p>
                             </div>
 
-                            {/* Banner da Direita (Menor) - Margem negativa para sobreposição */}
                             <div className="w-[250px] h-[300px] bg-gray-300 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 -ml-16 mt-20 shadow-lg">
                                 <p className="text-black text-sm font-semibold">Banner Lateral (250x300)</p>
                             </div>
                         </div>
 
-                        {/* Conteúdo para Mobile (Apenas o banner central) */}
                         <div className="md:hidden w-full h-full flex items-center justify-center p-4">
                             <div className="w-full h-full max-w-[300px] max-h-[300px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4">
                                 <p className="text-black text-lg font-semibold">Banner (Mobile)</p>
@@ -429,7 +407,7 @@ const Index: React.FC = () => {
                                 {isLoadingEvents ? (
                                     <div className="text-center py-20">
                                         <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
-                                        <p className className="text-gray-400">Carregando eventos...</p>
+                                        <p className="text-gray-400">Carregando eventos...</p>
                                     </div>
                                 ) : isErrorEvents || filteredEvents.length === 0 ? (
                                     <div className="text-center py-20">
@@ -443,7 +421,7 @@ const Index: React.FC = () => {
                                             <Card
                                                 key={event.id}
                                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] group"
-                                                onClick={() => handleEventClick(event)} // Redireciona para FinalizarCompra
+                                                onClick={() => handleEventClick(event)}
                                             >
                                                 <div className="relative overflow-hidden">
                                                     <img
@@ -492,7 +470,6 @@ const Index: React.FC = () => {
                                                             </span>
                                                         </div>
                                                         <Button
-                                                            // Garante que o clique no botão também chame a função de redirecionamento
                                                             onClick={(e) => { e.stopPropagation(); handleEventClick(event); }}
                                                             className="bg-yellow-500 text-black hover:bg-yellow-600 transition-all duration-300 cursor-pointer px-4 sm:px-6"
                                                         >
