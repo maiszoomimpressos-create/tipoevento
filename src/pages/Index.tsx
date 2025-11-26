@@ -39,8 +39,10 @@ const Index: React.FC = () => {
         });
     }, []);
 
+    // ALTERADO: Redireciona para a tela de finalização de compra
     const handleEventClick = (event: PublicEvent) => {
-        navigate(`/events/${event.id}`);
+        // Em vez de ir para /events/:id, navega para a tela de checkout
+        navigate(`/finalizar-compra`);
     };
     
     const handleApplyFilters = () => {

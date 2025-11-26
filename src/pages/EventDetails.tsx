@@ -45,7 +45,7 @@ const EventDetails: React.FC = () => {
     };
     
     const handleCheckout = () => {
-        // CORREÇÃO: Agora navega para a tela de finalização de compra
+        // Navega para a tela de finalização de compra
         navigate('/finalizar-compra');
     };
 
