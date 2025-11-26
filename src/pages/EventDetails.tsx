@@ -77,8 +77,8 @@ const EventDetails: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
-            {/* 1. Banner do Evento (Usando o componente EventBanner) */}
-            <EventBanner event={event} minPriceDisplay={minPriceDisplay} />
+            {/* 1. Banner do Evento (Usando o componente EventBanner com botão de ação) */}
+            <EventBanner event={event} minPriceDisplay={minPriceDisplay} showActionButton={true} />
             
             {/* Linha divisória que estava no banner embutido */}
             <div className="w-full h-px bg-yellow-500"></div>

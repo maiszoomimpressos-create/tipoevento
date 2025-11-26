@@ -6,9 +6,11 @@ import { useNavigate } from 'react-router-dom';
 interface EventBannerProps {
     event: EventData;
     minPriceDisplay: string;
+    // Adicionando uma prop opcional para renderizar o botão de ação
+    showActionButton?: boolean; 
 }
 
-const EventBanner: React.FC<EventBannerProps> = ({ event, minPriceDisplay }) => {
+const EventBanner: React.FC<EventBannerProps> = ({ event, minPriceDisplay, showActionButton = false }) => {
     const navigate = useNavigate();
     
     return (
@@ -60,12 +62,14 @@ const EventBanner: React.FC<EventBannerProps> = ({ event, minPriceDisplay }) => 
                             <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
                                 A partir de {minPriceDisplay}
                             </span>
-                            <Button 
-                                onClick={() => navigate(`/events/${event.id}`)}
-                                className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
-                            >
-                                Ver Detalhes do Evento
-                            </Button>
+                            {showActionButton && (
+                                <Button 
+                                    onClick={() => navigate(`/events/${event.id}`)}
+                                    className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
+                                >
+                                    Ver Detalhes do Evento
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>

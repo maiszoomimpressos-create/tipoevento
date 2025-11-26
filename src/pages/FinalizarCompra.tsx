@@ -61,8 +61,8 @@ const FinalizarCompra: React.FC = () => {
 
     return (
         <div className="bg-black text-white">
-            {/* Componente de Banner no Topo */}
-            <EventBanner event={event} minPriceDisplay={minPriceDisplay} />
+            {/* Componente de Banner no Topo (sem botão de ação) */}
+            <EventBanner event={event} minPriceDisplay={minPriceDisplay} showActionButton={false} />
             
             {/* Conteúdo principal da finalização de compra */}
             <main className="py-12 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto">
