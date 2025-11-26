@@ -248,8 +248,8 @@ const Index: React.FC = () => {
                         <div className="hidden md:flex items-center justify-center w-full h-full">
                             
                             {/* Banner Central (Maior) - Z-index 10 para sobreposição */}
-                            <div className="relative z-10 w-[650px] h-[400px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 shadow-2xl">
-                                <p className="text-black text-lg font-semibold">Banner Central (650x400)</p>
+                            <div className="relative z-10 w-[400px] h-[400px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 shadow-2xl">
+                                <p className="text-black text-lg font-semibold">Banner Central (400x400)</p>
                             </div>
 
                             {/* Banner da Direita (Menor) - Margem negativa para sobreposição */}
