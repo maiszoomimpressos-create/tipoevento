@@ -187,7 +187,7 @@ const Home: React.FC = () => {
             pages.push(i);
         }
         return pages;
-    };
+    }
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
