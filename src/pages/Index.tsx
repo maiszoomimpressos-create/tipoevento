@@ -243,7 +243,10 @@ const Index: React.FC = () => {
             <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center">
-                        {/* Conteúdo do hero em branco */}
+                        {/* Banner Centralizado */}
+                        <div className="w-[650px] h-[400px] max-w-full max-h-full bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4">
+                            <p className="text-black text-lg font-semibold">Banner de 650px x 400px</p>
+                        </div>
                     </div>
                 </div>
             </section>
