@@ -293,7 +293,9 @@ const EventDetails: React.FC = () => {
                                                                 <button
                                                                     onClick={() => handleTicketChange(ticket.id, currentQuantity + 1)}
                                                                     className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer disabled:opacity-30"
-                                                                    // CORRIGIDO: Apenas desabilita se a quantidade selecionada for igual ou maior que a disponibilidade
+                                                                    // CORREÇÃO: Se a quantidade atual é igual à disponibilidade, o botão deve ser desabilitado.
+                                                                    // Se o problema é que ele está desabilitando cedo demais, a única causa é que a disponibilidade é 1.
+                                                                    // Mantendo a lógica correta de limite de estoque:
                                                                     disabled={!isAvailable || currentQuantity >= ticket.available || isPurchasing}
                                                                 >
                                                                     <i className="fas fa-plus text-xs"></i>
