@@ -56,6 +56,7 @@ const FinalizarCompra: React.FC = () => {
     }
     
     const { event, ticketTypes } = details;
+    // Usando event.min_price que agora é calculado no hook
     const minPriceDisplay = getMinPriceDisplay(event.min_price);
 
     return (
