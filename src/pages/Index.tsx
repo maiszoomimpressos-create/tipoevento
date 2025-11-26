@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
 import { Loader2 } from 'lucide-react';
-// import EventCarousel from '@/components/EventCarousel'; // Importação removida
+import EventCarousel from '@/components/EventCarousel'; // Importando o novo componente
 import { showError } from '@/utils/toast'; // Importando showError
 
 const EVENTS_PER_PAGE = 12;
@@ -242,28 +242,14 @@ const Index: React.FC = () => {
             </header>
             <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="relative w-full h-[250px] sm:h-[350px] md:h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center overflow-hidden">
-                        
-                        {/* Contêiner Flexível para os Banners (apenas em telas maiores) */}
-                        <div className="hidden md:flex items-center justify-center w-full h-full">
-                            
-                            {/* Banner Central (Maior) - Z-index 10 para sobreposição */}
-                            <div className="relative z-10 w-[600px] h-[400px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 shadow-2xl">
-                                <p className="text-black text-lg font-semibold">Banner Central (600x400)</p>
+                    <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] overflow-hidden">
+                        {isLoadingEvents ? (
+                            <div className="flex items-center justify-center h-full bg-black/60 border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/20">
+                                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
                             </div>
-
-                            {/* Banner da Direita (Menor) - Margem negativa para sobreposição */}
-                            <div className="w-[250px] h-[300px] bg-gray-300 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4 -ml-16 mt-20 shadow-lg">
-                                <p className="text-black text-sm font-semibold">Banner Lateral (250x300)</p>
-                            </div>
-                        </div>
-
-                        {/* Conteúdo para Mobile (Apenas o banner central) */}
-                        <div className="md:hidden w-full h-full flex items-center justify-center p-4">
-                            <div className="w-full h-full max-w-[300px] max-h-[300px] bg-gray-200 rounded-xl border-4 border-yellow-500 flex items-center justify-center p-4">
-                                <p className="text-black text-lg font-semibold">Banner (Mobile)</p>
-                            </div>
-                        </div>
+                        ) : (
+                            <EventCarousel events={allEvents} />
+                        )}
                     </div>
                 </div>
             </section>
@@ -593,7 +579,7 @@ const Index: React.FC = () => {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Links Úteis</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
@@ -602,7 +588,7 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Suporte</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Suporte</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
@@ -611,7 +597,7 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-instagram text-xl sm:text-2xl"></i>
