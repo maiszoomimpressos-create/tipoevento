@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
 import { Loader2 } from 'lucide-react';
-import EventCarousel from '@/components/EventCarousel'; // Importando o novo componente
+// import EventCarousel from '@/components/EventCarousel'; // Importação removida
 import { showError } from '@/utils/toast'; // Importando showError
 
 const EVENTS_PER_PAGE = 12;
@@ -242,14 +242,8 @@ const Index: React.FC = () => {
             </header>
             <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] overflow-hidden">
-                        {isLoadingEvents ? (
-                            <div className="flex items-center justify-center h-full bg-black/60 border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/20">
-                                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-                            </div>
-                        ) : (
-                            <EventCarousel events={allEvents} />
-                        )}
+                    <div className="relative mx-auto w-[650px] h-[450px] bg-white rounded-2xl border-4 border-green-500 flex items-center justify-center">
+                        {/* Conteúdo do hero em branco */}
                     </div>
                 </div>
             </section>
