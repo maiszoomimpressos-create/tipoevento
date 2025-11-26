@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, MapPin, Clock, Users, UserCheck, User, Shield, ArrowLeft } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
-import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
+import { useEventDetails, TicketType } from '@/hooks/use-event-details';
 import EventBanner from '@/components/EventBanner';
 import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
 
@@ -114,7 +114,7 @@ const EventDetails: React.FC = () => {
     const organizerName = event.companies?.corporate_name || 'Organizador Desconhecido';
 
     return (
-        <React.Fragment>
+        <>
             <div className="min-h-screen bg-black text-white overflow-x-hidden">
                 
                 {/* 1. Cabeçalho do Evento (Banner) */}
@@ -375,7 +375,7 @@ const EventDetails: React.FC = () => {
                     </div>
                 </footer>
             </div>
-        </React.Fragment>
+        </>
     );
 };
 
