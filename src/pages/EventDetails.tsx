@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, MapPin, Clock, Users, UserCheck, User, Shield, ArrowLeft, Search } from 'lucide-react';
@@ -7,7 +7,8 @@ import { showError, showSuccess } from '@/utils/toast';
 import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
 import EventBanner from '@/components/EventBanner';
 import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
-import { Input } from '@/components/ui/input'; // Importando Input
+import { Input } from '@/components/ui/input';
+import { useAuthRedirect } from '@/hooks/use-auth-redirect'; // Importando o novo hook
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (ticketTypes: TicketType[]): string => {
@@ -19,13 +20,25 @@ const getMinPriceDisplay = (ticketTypes: TicketType[]): string => {
 
 const EventDetails: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { id } = useParams<{ id: string }>(); 
     
     const { details, isLoading, isError } = useEventDetails(id);
     const { isLoading: isPurchasing, purchaseTicket } = usePurchaseTicket();
+    const { isAuthenticated, redirectToLogin } = useAuthRedirect();
 
-    const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
-    // Removendo o estado searchTerm, pois o campo de busca foi removido.
+    // Inicializa o estado dos ingressos a partir do estado de navegação (se houver)
+    const initialSelectedTickets = location.state?.selectedTickets || {};
+    const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>(initialSelectedTickets);
+
+    // Limpa o estado de navegação após a montagem para evitar loops de re-renderização
+    useEffect(() => {
+        if (location.state?.selectedTickets) {
+            // Remove o estado de navegação após usá-lo
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.state, location.pathname, navigate]);
+
 
     if (isLoading) {
         return (
@@ -36,12 +49,9 @@ const EventDetails: React.FC = () => {
     }
 
     if (isError || !details?.event) {
-        // Lógica de erro: Exibe apenas a mensagem de erro
         return (
             <div className="min-h-screen bg-black text-white pt-20 px-4">
                 <div className="max-w-4xl mx-auto py-10">
-                    {/* Campo de pesquisa removido daqui */}
-                    
                     <Card className="bg-black/80 backdrop-blur-sm border border-red-500/30 rounded-2xl p-8 text-center">
                         <i className="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
                         <h1 className="text-2xl font-serif text-white mb-2">Evento Não Encontrado</h1>
@@ -85,6 +95,15 @@ const EventDetails: React.FC = () => {
             showError("Selecione pelo menos um ingresso para continuar.");
             return;
         }
+        
+        // 1. VERIFICAÇÃO DE AUTENTICAÇÃO
+        if (!isAuthenticated) {
+            // Salva o estado atual dos ingressos selecionados antes de redirecionar
+            redirectToLogin({ selectedTickets });
+            return;
+        }
+        
+        // 2. LÓGICA DE COMPRA (Se autenticado)
         
         // Para simplificar, vamos simular a compra do primeiro tipo de ingresso selecionado
         const firstSelectedTicket = Object.entries(selectedTickets).find(([, quantity]) => quantity > 0);

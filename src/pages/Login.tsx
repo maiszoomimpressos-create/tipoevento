@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -64,8 +65,13 @@ const Login: React.FC = () => {
                 }
                 
                 showSuccess(successMessage);
-                // 4. Roteamento unificado para a Home, conforme solicitado.
-                navigate('/');
+                
+                // 4. Roteamento: Verifica se há uma rota de retorno salva no estado
+                const from = location.state?.from || '/';
+                const eventState = location.state?.eventState;
+
+                // Redireciona para a rota de origem, mantendo o estado original (como os ingressos selecionados)
+                navigate(from, { state: eventState, replace: true });
             } else {
                 // Isso pode acontecer se o e-mail não estiver confirmado, dependendo da configuração do Supabase
                 showError("Login falhou. Verifique seu e-mail e senha.");
