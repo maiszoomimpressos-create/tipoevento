@@ -66,6 +66,7 @@ const Index: React.FC = () => {
 
     // CORRIGIDO: Redireciona para a tela de detalhes do evento
     const handleEventClick = (event: PublicEvent) => {
+        console.log("Navegando para o evento com ID:", event.id); // LOG DE DEBUG
         navigate(`/events/${event.id}`);
     };
     
