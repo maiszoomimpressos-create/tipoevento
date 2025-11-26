@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import AuthStatusMenu from '@/components/AuthStatusMenu';
-import { Input } from '@/components/ui/input';
-import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
+import { useEventDetails, TicketType } from '@/hooks/use-event-details';
 import { Loader2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { showError } from '@/utils/toast'; // Importando showError
+import { showError } from '@/utils/toast';
+import EventBanner from '@/components/EventBanner'; // Importando o EventBanner
 
 // Helper function to get the minimum price from ticket types
 const getMinPriceDisplay = (ticketTypes: TicketType[] | undefined) => {
@@ -45,8 +43,8 @@ const EventDetails: React.FC = () => {
     };
     
     const handleCheckout = () => {
-        // Navega para a tela de finalização de compra
-        navigate('/finalizar-compra');
+        // Navega para a tela de finalização de compra, passando o ID do evento
+        navigate('/finalizar-compra', { state: { eventId: id } });
     };
 
     if (isLoading) {
@@ -79,95 +77,12 @@ const EventDetails: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
-            <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-4 sm:space-x-8">
-                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
-                            Mazoy
-                        </div>
-                        <nav className="hidden md:flex items-center space-x-8">
-                            <button onClick={() => navigate('/')} className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</button>
-                            <a href="/#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
-                            <a href="/#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
-                            <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
-                        </nav>
-                    </div>
-                    <div className="flex items-center space-x-3 sm:space-x-4">
-                        <div className="relative hidden lg:block">
-                            <Input 
-                                type="search" 
-                                placeholder="Buscar eventos..." 
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-64 pl-4 pr-10 py-2 rounded-xl"
-                            />
-                            <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
-                        </div>
-                        <AuthStatusMenu />
-                        <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer px-3 sm:px-4">
-                            Voltar
-                        </Button>
-                    </div>
-                </div>
-            </header>
-            <section className="pt-20 pb-0">
-                <div className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
-                    <img
-                        src={event.image_url}
-                        alt={event.title}
-                        className="w-full h-full object-cover object-top"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40"></div>
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
-                            <div className="max-w-full lg:max-w-3xl">
-                                <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold mb-2 sm:mb-4">
-                                    {event.category}
-                                </div>
-                                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif text-white mb-3 sm:mb-6 leading-tight">
-                                    {event.title}
-                                </h1>
-                                <p className="text-base sm:text-xl text-gray-200 mb-4 sm:mb-8 leading-relaxed line-clamp-3">
-                                    {event.description}
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                                    <div className="flex items-center">
-                                        <i className="fas fa-calendar-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-gray-400">Data</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{new Date(event.date).toLocaleDateString('pt-BR')}</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <i className="fas fa-clock text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-gray-400">Horário</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.time}</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-gray-400">Local</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.location}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                                    <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
-                                        A partir de {minPriceDisplay}
-                                    </span>
-                                    <Button 
-                                        onClick={handleCheckout} // Usando a função de checkout
-                                        className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
-                                    >
-                                        Comprar Ingressos
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {/* 1. Banner do Evento (Usando o componente EventBanner) */}
+            <EventBanner event={event} minPriceDisplay={minPriceDisplay} />
+            
+            {/* Linha divisória que estava no banner embutido */}
             <div className="w-full h-px bg-yellow-500"></div>
+            
             <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">

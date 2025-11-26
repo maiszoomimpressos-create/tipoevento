@@ -61,10 +61,10 @@ const EventBanner: React.FC<EventBannerProps> = ({ event, minPriceDisplay }) => 
                                 A partir de {minPriceDisplay}
                             </span>
                             <Button 
-                                onClick={() => navigate('/')}
+                                onClick={() => navigate(`/events/${event.id}`)}
                                 className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
                             >
-                                Voltar para Eventos
+                                Ver Detalhes do Evento
                             </Button>
                         </div>
                     </div>
