@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useEmblaCarousel, { EmblaCarouselType } from 'embla-carousel-react';
@@ -15,8 +17,8 @@ const AUTOPLAY_DELAY = 6000; // 6 segundos
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null) return 'Grátis'; // Se não houver ingressos ativos ou preço nulo
-    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
+    if (price === null || price === 0) return 'Grátis';
+    // Formata para R$ X.XX, usando vírgula como separador decimal
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
@@ -117,8 +119,8 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                         >
                             <Card 
                                 className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl overflow-hidden h-full cursor-pointer hover:border-yellow-500/60 transition-all duration-300 group"
-                                // Mantido: Redireciona para a página de finalizar compra
-                                onClick={() => navigate(`/finalizar-compra`)} 
+                                // ALTERADO: Navega para a tela de finalização de compra, passando o ID do evento
+                                onClick={() => navigate(`/finalizar-compra`, { state: { eventId: event.id } })}
                             >
                                 <CardContent className="flex flex-col p-0">
                                     <div className="relative h-48 overflow-hidden">
@@ -146,14 +148,17 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                             {event.location}
                                         </div>
                                         <div className="flex justify-between items-center pt-2">
-                                            <span className="text-lg font-bold text-yellow-500">
+                                            <span className="text-xl font-bold text-yellow-500 whitespace-nowrap">
                                                 {getMinPriceDisplay(event.min_price)}
                                             </span>
                                             <Button 
                                                 variant="default" 
                                                 className="bg-yellow-500 text-black hover:bg-yellow-600 px-4 py-2 text-xs"
-                                                // Mantido: Redireciona para a página de finalizar compra
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/finalizar-compra`); }}
+                                                // ALTERADO: Botão também navega para a tela de finalização de compra, passando o ID
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // Evita que o clique no botão acione o clique do card
+                                                    navigate(`/finalizar-compra`, { state: { eventId: event.id } });
+                                                }}
                                             >
                                                 Detalhes <ArrowRight className="h-3 w-3 ml-1" />
                                             </Button>

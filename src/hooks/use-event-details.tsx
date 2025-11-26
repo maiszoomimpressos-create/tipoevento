@@ -16,6 +16,8 @@ export interface EventData {
     category: string;
     capacity: number; // Adicionando capacidade
     duration: string; // Adicionando duração
+    min_price: number | null; // NOVO: Preço mínimo calculado
+    min_price_wristband_id: string | null; // NOVO: ID da pulseira mais barata
     
     // Dados do Organizador (JOIN)
     companies: {
@@ -42,7 +44,7 @@ const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | nu
     if (!eventId) return null;
 
     // 1. Buscar detalhes do Evento, incluindo capacidade, duração e o nome da empresa organizadora
-    const { data: eventData, error: eventError } = await supabase
+    const { data: eventDataRaw, error: eventError } = await supabase
         .from('events')
         .select(`
             id, title, description, date, time, location, address, image_url, min_age, category, capacity, duration,
@@ -60,40 +62,59 @@ const fetchEventDetails = async (eventId: string): Promise<EventDetailsData | nu
     }
     
     // 2. Buscar Tipos de Pulseira (Wristbands) associados a este evento
-    // Agrupamos por access_type e contamos o número de pulseiras ativas e o preço.
-    
     const { data: wristbandsData, error: wristbandsError } = await supabase
         .from('wristbands')
         .select('id, access_type, price, status')
-        .eq('event_id', eventId)
-        .eq('status', 'active'); // Apenas pulseiras ativas estão 'disponíveis'
+        .eq('event_id', eventId);
 
     if (wristbandsError) {
         console.error("Error fetching wristbands for event:", wristbandsError);
         throw new Error(wristbandsError.message);
     }
     
-    // 3. Agrupar e formatar os tipos de ingresso
+    // 3. Agrupar, formatar e calcular preço mínimo/disponibilidade
+    let minPrice: number | null = null;
+    let minPriceWristbandId: string | null = null;
+    
     const groupedTickets = wristbandsData.reduce((acc, wristband) => {
-        const key = `${wristband.access_type}-${wristband.price}`;
+        const price = parseFloat(wristband.price as unknown as string) || 0;
         
-        if (!acc[key]) {
-            acc[key] = {
-                id: wristband.id, // Usamos o ID da primeira pulseira como ID do tipo (simplificação)
-                name: wristband.access_type,
-                price: wristband.price,
-                available: 0,
-                description: `Acesso ${wristband.access_type} para o evento.`,
-            };
+        // Apenas consideramos pulseiras ativas para venda e preço mínimo
+        if (wristband.status === 'active') {
+            const key = `${wristband.access_type}-${price}`;
+            
+            if (!acc[key]) {
+                acc[key] = {
+                    id: wristband.id, // Usamos o ID da primeira pulseira como ID do tipo (simplificação)
+                    name: wristband.access_type,
+                    price: price,
+                    available: 0,
+                    description: `Acesso ${wristband.access_type} para o evento.`,
+                };
+            }
+            acc[key].available += 1;
+
+            // Atualiza o preço mínimo
+            if (minPrice === null || price < minPrice) {
+                minPrice = price;
+                minPriceWristbandId = wristband.id;
+            }
         }
-        acc[key].available += 1;
         return acc;
     }, {} as { [key: string]: TicketType });
 
     const ticketTypes = Object.values(groupedTickets).sort((a, b) => a.price - b.price);
+    
+    // 4. Combinar dados
+    const event: EventData = {
+        ...eventDataRaw,
+        min_price: minPrice,
+        min_price_wristband_id: minPriceWristbandId,
+    } as EventData;
+
 
     return {
-        event: eventData as EventData,
+        event: event,
         ticketTypes: ticketTypes,
     };
 };

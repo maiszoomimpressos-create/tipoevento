@@ -80,6 +80,7 @@ const ManagerWristbandsList: React.FC = () => {
                     <QrCode className="h-7 w-7 mr-3" />
                     Gestão de Pulseiras ({wristbands.length})
                 </h1>
+                {/* Este botão permanece no cabeçalho */}
                 <Button 
                     onClick={() => navigate('/manager/wristbands/create')}
                     className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-base font-semibold transition-all duration-300 cursor-pointer"
@@ -90,6 +91,15 @@ const ManagerWristbandsList: React.FC = () => {
             </div>
 
             <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
+                {/* Botão movido para o topo do card, antes do campo de pesquisa */}
+                <Button 
+                    onClick={() => navigate('/manager/wristbands/create')}
+                    className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 px-8 text-lg font-semibold transition-all duration-300 cursor-pointer shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 mb-6"
+                >
+                    <Plus className="mr-2 h-6 w-6" />
+                    Cadastrar Nova Pulseira
+                </Button>
+
                 <div className="relative mb-6">
                     <Input 
                         type="search" 
@@ -165,15 +175,7 @@ const ManagerWristbandsList: React.FC = () => {
                 )}
             </Card>
             
-            <div className="mt-10 text-center">
-                <Button 
-                    onClick={() => navigate('/manager/wristbands/create')}
-                    className="bg-yellow-500 text-black hover:bg-yellow-600 py-3 px-8 text-lg font-semibold transition-all duration-300 cursor-pointer shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50"
-                >
-                    <Plus className="mr-2 h-6 w-6" />
-                    Cadastrar Nova Pulseira
-                </Button>
-            </div>
+            {/* O botão duplicado na parte inferior foi removido */}
         </div>
     );
 };
