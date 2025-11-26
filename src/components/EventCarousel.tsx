@@ -147,10 +147,6 @@ const EventCarousel = ({ events }: EventCarouselProps) => {
                                             <i className="fas fa-map-marker-alt mr-2 text-yellow-500"></i>
                                             {event.location}
                                         </div>
-                                        <div className="flex items-center text-sm text-gray-300">
-                                            <i className="fas fa-clock text-yellow-500 mr-2 w-4"></i>
-                                            {event.time}
-                                        </div>
                                         <div className="flex justify-between items-center pt-2">
                                             <span className="text-xl font-bold text-yellow-500 whitespace-nowrap">
                                                 {getMinPriceDisplay(event.min_price)}
