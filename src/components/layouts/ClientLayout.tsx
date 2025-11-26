@@ -26,14 +26,7 @@ const ClientLayout: React.FC = () => {
                         </nav>
                     </div>
                     <div className="flex items-center space-x-3 sm:space-x-4">
-                        <div className="relative hidden lg:block">
-                            <Input 
-                                type="search" 
-                                placeholder="Buscar eventos..." 
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-48 md:w-64 pl-4 pr-10 py-2 rounded-xl"
-                            />
-                            <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
-                        </div>
+                        {/* O campo de busca foi removido daqui e movido para Index.tsx */}
                         <div className="hidden md:block">
                             <AuthStatusMenu />
                         </div>
