@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +19,11 @@ const getMinPriceDisplay = (ticketTypes: TicketType[]): string => {
 const EventDetails: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>(); 
+    
+    // Log para depuração
+    useEffect(() => {
+        console.log("EventDetails: ID do evento lido da URL:", id);
+    }, [id]);
     
     const { details, isLoading, isError } = useEventDetails(id);
     const { isLoading: isPurchasing, purchaseTicket } = usePurchaseTicket();
@@ -289,7 +294,7 @@ const EventDetails: React.FC = () => {
                                             >
                                                 {isPurchasing ? (
                                                     <div className="flex items-center justify-center">
-                                                        <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2" />
+                                                        <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2"></div>
                                                         Finalizando...
                                                     </div>
                                                 ) : (
