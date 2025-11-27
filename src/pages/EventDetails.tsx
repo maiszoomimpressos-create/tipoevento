@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, MapPin, Clock, Users, UserCheck, User, Shield, ArrowLeft, Search } from 'lucide-react';
+import { Loader2, MapPin, Clock, Users, UserCheck, User, Shield, ArrowLeft } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
-import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
+import { useEventDetails, TicketType } from '@/hooks/use-event-details';
 import EventBanner from '@/components/EventBanner';
 import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
 import { Input } from '@/components/ui/input';
-import { useAuthRedirect } from '@/hooks/use-auth-redirect'; // Importando o novo hook
+import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (ticketTypes: TicketType[]): string => {
