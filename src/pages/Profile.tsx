@@ -132,6 +132,15 @@ const Profile: React.FC = () => {
     const isManager = profile && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
     const currentProfileSchema = createProfileSchema(isManager);
 
+    // Efeito para ativar o modo de edição se o perfil do gestor estiver incompleto
+    useEffect(() => {
+        if (!loading && isManager && needsPersonalProfileCompletion) {
+            setIsEditing(true);
+            showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais para liberar o Dashboard PRO.");
+        }
+    }, [loading, isManager, needsPersonalProfileCompletion]);
+
+
     const formatCPF = (value: string) => {
         if (!value) return '';
         const cleanValue = value.replace(/\D/g, '');
@@ -201,7 +210,7 @@ const Profile: React.FC = () => {
                 first_name: profile.first_name || '',
                 last_name: profile.last_name || '',
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || "", 
+                gender: profile.gender || "",
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -320,6 +329,11 @@ const Profile: React.FC = () => {
                 // Invalida a query para forçar a re-busca e atualização imediata do status de notificação em todos os componentes
                 queryClient.invalidateQueries({ queryKey: ['profile', userId] });
                 setIsEditing(false);
+                
+                // Se o perfil estava incompleto e agora foi salvo, tenta navegar para o dashboard
+                if (needsPersonalProfileCompletion) {
+                    navigate('/manager/dashboard', { replace: true });
+                }
             }
         } catch (e) {
             // Captura erros inesperados (como falhas de rede/timeout)
@@ -433,7 +447,7 @@ const Profile: React.FC = () => {
                             <div>
                                 <h4 className="font-semibold text-white mb-1">Perfil Incompleto</h4>
                                 <p className="text-sm text-gray-300">
-                                    Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais para liberar todas as funcionalidades de gestor.
+                                    Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais para liberar o Dashboard PRO.
                                 </p>
                                 {!isEditing && (
                                     <Button 
