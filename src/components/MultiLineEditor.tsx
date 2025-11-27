@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Edit, Save, CheckSquare, XSquare, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useProfile } = from '@/hooks/use-profile';
+import { useProfile } from '@/hooks/use-profile'; // Linha corrigida aqui
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
