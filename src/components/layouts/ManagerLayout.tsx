@@ -88,18 +88,20 @@ const ManagerLayout: React.FC = () => {
     const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
         <nav className="flex flex-col md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0">
             {navItems.map(item => {
-                let isActive = false;
-                
-                if (item.path === '/') {
-                    isActive = location.pathname === '/';
-                } else if (item.path !== '#') {
-                    isActive = location.pathname.startsWith(item.path);
+                // Verifica se o caminho atual começa com o caminho do item para considerar ativo
+                const isLinkActive = location.pathname.startsWith(item.path) && (item.path !== '/' || location.pathname === '/');
+
+                // Se o link for para a página atual, não renderiza o botão
+                if (isLinkActive) {
+                    return (
+                        <span 
+                            key={item.path}
+                            className="text-yellow-500 md:border-b-2 border-yellow-500 font-semibold py-2 md:py-0 md:pb-1 text-left"
+                        >
+                            {item.label}
+                        </span>
+                    );
                 }
-                
-                const isManagerDashboardActive = location.pathname === '/manager/dashboard' && item.path === '/manager/dashboard';
-                const isAdminDashboardActive = location.pathname === '/admin/dashboard' && item.path === '/admin/dashboard';
-                
-                const isLinkActive = isActive || isManagerDashboardActive || isAdminDashboardActive;
 
                 return (
                     <button 
@@ -108,11 +110,7 @@ const ManagerLayout: React.FC = () => {
                             if (item.path !== '#') navigate(item.path);
                             if (onClick) onClick();
                         }} 
-                        className={`transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left ${
-                            isLinkActive
-                            ? 'text-yellow-500 md:border-b-2 border-yellow-500 font-semibold' 
-                            : 'text-white hover:text-yellow-500'
-                        }`}
+                        className="transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left text-white hover:text-yellow-500"
                     >
                         {item.label}
                     </button>
