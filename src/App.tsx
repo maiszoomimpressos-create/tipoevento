@@ -30,7 +30,8 @@ import AdminMasterRouteGuard from "./components/AdminMasterRouteGuard";
 import ManagerLayout from "./components/layouts/ManagerLayout";
 import ClientLayout from "./components/layouts/ClientLayout";
 import ForgotPassword from "./pages/ForgotPassword";
-import FinalizarCompra from "./pages/FinalizarCompra"; // Nova importação
+import FinalizarCompra from "./pages/FinalizarCompra";
+import ManagerRegister from "./pages/ManagerRegister"; // Nova importação
 
 const queryClient = new QueryClient();
 
@@ -55,8 +56,9 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/tickets" element={<MyTickets />} />
-          <Route path="/finalizar-compra" element={<FinalizarCompra />} /> {/* Nova rota */}
+          <Route path="/finalizar-compra" element={<FinalizarCompra />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
+          <Route path="/manager/register" element={<ManagerRegister />} /> {/* Nova rota */}
           
           {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}
           <Route element={<ManagerLayout />}>

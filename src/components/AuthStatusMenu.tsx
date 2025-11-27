@@ -8,8 +8,8 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import NotificationBell from './NotificationBell';
-import { Shield } from 'lucide-react'; // Importando ícone para Admin
-import { useUserType } from '@/hooks/use-user-type'; // Importando novo hook
+import { Shield, PlusCircle } from 'lucide-react'; // Importando ícone para Admin e PlusCircle para Criar Evento
+import { useUserType } from '@/hooks/use-user-type';
 
 const AuthStatusMenu: React.FC = () => {
     const navigate = useNavigate();
@@ -37,7 +37,6 @@ const AuthStatusMenu: React.FC = () => {
     
     const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
     
-    // Novo: Obtém o nome do tipo de usuário
     const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
 
     const handleLogout = async () => {
@@ -51,27 +50,24 @@ const AuthStatusMenu: React.FC = () => {
     };
 
     if (loadingSession || isLoadingProfile || statusLoading || isLoadingUserType) {
-        // Pode retornar um Skeleton ou null durante o carregamento inicial
         return <div className="w-10 h-10 bg-yellow-500/20 rounded-full animate-pulse"></div>;
     }
 
     if (session && profile) {
         const initials = profile.first_name ? profile.first_name.charAt(0).toUpperCase() : 'U';
         const isManager = profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2;
-        const isAdmin = profile.tipo_usuario_id === 1; // Novo: Verifica se é Admin Master
+        const isAdmin = profile.tipo_usuario_id === 1;
+        const isClient = profile.tipo_usuario_id === 3; // Novo: Verifica se é Cliente
         
-        // Combina primeiro e último nome (se disponível)
         const fullName = profile.first_name + (profile.last_name ? ` ${profile.last_name}` : '');
 
         return (
             <div className="flex items-center space-x-4">
-                {/* Ícone de Notificação (Agora é um Popover) */}
                 <NotificationBell 
                     hasPendingNotifications={hasPendingNotifications} 
                     loading={statusLoading} 
                 />
 
-                {/* Menu de Perfil */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="cursor-pointer p-1 rounded-full border-2 border-yellow-500/50 hover:border-yellow-500 transition-all duration-300">
@@ -121,6 +117,15 @@ const AuthStatusMenu: React.FC = () => {
                                 Dashboard Admin
                             </DropdownMenuItem>
                         )}
+                        {isClient && ( // Botão "Criar Evento" visível apenas para clientes
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/manager/register')} 
+                                className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
+                            >
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Criar Evento
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator className="bg-yellow-500/20" />
                         <DropdownMenuItem 
                             onClick={handleLogout} 
@@ -135,7 +140,6 @@ const AuthStatusMenu: React.FC = () => {
         );
     }
 
-    // Se não estiver logado, retorna os botões de Login/Cadastro
     return (
         <div className="flex items-center space-x-3">
             <Button
