@@ -404,7 +404,7 @@ const ManagerManageWristband: React.FC = () => {
                             )}
 
                             {/* Botões de Ação (Ajustados) */}
-                            <div className="flex space-x-4 pt-2">
+                            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
                                 <Button
                                     onClick={handleStatusUpdate}
                                     disabled={isUpdatingStatus || !hasChanges}
