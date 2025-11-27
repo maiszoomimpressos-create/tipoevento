@@ -54,7 +54,7 @@ const ManagerRegister: React.FC = () => {
             showSuccess(`Você selecionou o cadastro como Pessoa Jurídica.`);
             setTimeout(() => {
                 setIsSubmitting(false);
-                navigate('/manager/register/company');
+                navigate('/manager/register/company'); // Redireciona para a nova página de registro de empresa
             }, 1500);
         }
     };
