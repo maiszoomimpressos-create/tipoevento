@@ -390,7 +390,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                             <FormLabel className="text-white">Gênero *</FormLabel>
                                             <Select 
                                                 onValueChange={field.onChange} 
-                                                defaultValue={field.value || "not_specified"} // Mapeia null/undefined para "not_specified"
+                                                value={field.value || "not_specified"} // Usar 'value' para componente controlado
                                             >
                                                 <FormControl>
                                                     <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">

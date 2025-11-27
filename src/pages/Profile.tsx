@@ -549,7 +549,7 @@ const Profile: React.FC = () => {
                                                             <FormLabel className="text-white">Gênero *</FormLabel>
                                                             <Select 
                                                                 onValueChange={field.onChange} 
-                                                                defaultValue={field.value || "not_specified"} // Mapeia null/undefined para "not_specified"
+                                                                value={field.value || "not_specified"} // Usar 'value' para componente controlado
                                                                 disabled={!isEditing}
                                                             >
                                                                 <FormControl>
