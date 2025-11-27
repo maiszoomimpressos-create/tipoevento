@@ -173,19 +173,20 @@ const ManagerLayout: React.FC = () => {
                             </DropdownMenu>
                         )}
 
-                        <div className="hidden md:block">
+                        {/* REMOVIDO: Os links de navegação principais foram removidos daqui */}
+                        {/* <div className="hidden md:block">
                             <NavLinks />
-                        </div>
+                        </div> */}
                     </div>
                     <div className="flex items-center space-x-3 sm:space-x-4">
-                        {/* O botão 'Gestão PRO' foi removido daqui */}
-
                         <button className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer hidden sm:block">
                             <i className="fas fa-bell text-lg"></i>
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">3</span>
                         </button>
                         <div className="flex items-center space-x-3 hidden sm:flex">
-                            {/* O ícone de coroa foi removido daqui, pois agora é o gatilho do dropdown */}
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-sm">
+                                <Crown className="h-5 w-5" />
+                            </div>
                             <div className="text-right hidden lg:block">
                                 <div className="text-white font-semibold text-sm">{userName}</div>
                                 <div className="text-gray-400 text-xs">{userRole}</div>
