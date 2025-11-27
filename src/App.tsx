@@ -31,7 +31,7 @@ import ManagerLayout from "./components/layouts/ManagerLayout";
 import ClientLayout from "./components/layouts/ClientLayout";
 import ForgotPassword from "./pages/ForgotPassword";
 import FinalizarCompra from "./pages/FinalizarCompra";
-import ManagerRegister from "./pages/ManagerRegister"; // Nova importação
+import ManagerRegister from "./pages/ManagerRegister";
 
 const queryClient = new QueryClient();
 
@@ -48,17 +48,16 @@ const App = () => (
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/tickets" element={<MyTickets />} />
+            <Route path="/manager/register" element={<ManagerRegister />} /> {/* Movido para cá */}
           </Route>
           
           {/* Auth Routes (No layout/Full screen) */}
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/tickets" element={<MyTickets />} />
+          {/* As rotas /profile e /tickets foram movidas para dentro do ClientLayout acima */}
           <Route path="/finalizar-compra" element={<FinalizarCompra />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
-          <Route path="/manager/register" element={<ManagerRegister />} /> {/* Nova rota */}
           
           {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}
           <Route element={<ManagerLayout />}>
