@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import mercadopago from 'https://esm.sh/mercadopago@2.0.8';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +44,7 @@ serve(async (req) => {
   const clientUserId = user.id;
 
   try {
-    const { eventId, purchaseItems } = await req.json(); // purchaseItems: [{ ticketTypeId, quantity, price }]
+    const { eventId, purchaseItems } = await req.json(); // purchaseItems: [{ ticketTypeId, quantity, price, name }]
 
     if (!eventId || !purchaseItems || purchaseItems.length === 0) {
       return new Response(JSON.stringify({ error: 'Missing event details or purchase items' }), { 
@@ -72,19 +73,21 @@ serve(async (req) => {
     const managerUserId = eventData.user_id;
     const paymentSettings = eventData.companies?.payment_settings?.[0];
     
-    if (!paymentSettings?.api_key || !paymentSettings?.api_token) {
-        return new Response(JSON.stringify({ error: 'Payment gateway keys (Mercado Pago) are not configured by the manager.' }), { 
+    // Usamos api_token como o Access Token do Mercado Pago
+    const mpAccessToken = paymentSettings?.api_token; 
+    
+    if (!mpAccessToken) {
+        return new Response(JSON.stringify({ error: 'Payment gateway access token is not configured by the manager.' }), { 
             status: 403, 
             headers: corsHeaders 
         });
     }
     
     // 3. Reserve/Identify available wristband analytics records
-    const analyticsIdsToUpdate: string[] = [];
-    const itemDetailsMap = new Map<string, { price: number, quantity: number }>(); // Map to store unit price and quantity per wristband ID
+    const analyticsIdsToReserve: string[] = [];
     
     for (const item of purchaseItems) {
-        const { ticketTypeId, quantity, price } = item;
+        const { ticketTypeId, quantity } = item;
         
         // Fetch N records of analytics that are 'active' and not associated with a client
         const { data: availableAnalytics, error: fetchAnalyticsError } = await supabaseService
@@ -104,8 +107,7 @@ serve(async (req) => {
             });
         }
         
-        analyticsIdsToUpdate.push(...availableAnalytics.map(a => a.id));
-        itemDetailsMap.set(ticketTypeId, { price, quantity });
+        analyticsIdsToReserve.push(...availableAnalytics.map(a => a.id));
     }
     
     // 4. Insert pending transaction into receivables
@@ -117,98 +119,62 @@ serve(async (req) => {
             event_id: eventId,
             total_value: totalValue,
             status: 'pending',
-            wristband_analytics_ids: analyticsIdsToUpdate,
+            wristband_analytics_ids: analyticsIdsToReserve, // IDs reservados
         })
         .select('id')
         .single();
 
     if (insertTransactionError) throw insertTransactionError;
     const transactionId = transactionData.id;
+    
+    // 5. Configure Mercado Pago SDK
+    mercadopago.configure({
+        access_token: mpAccessToken,
+    });
 
-    // 5. Simulate Mercado Pago Call (using fetched keys)
-    // --- SIMULAÇÃO DE PAGAMENTO ---
+    // 6. Prepare MP Preference Items
+    const mpItems = purchaseItems.map((item: any) => ({
+        title: item.name || 'Ingresso Evento',
+        unit_price: item.price,
+        quantity: item.quantity,
+        currency_id: 'BRL',
+    }));
     
-    const paymentSuccess = Math.random() > 0.1; // 90% success rate simulation
-    const paymentGatewayId = paymentSuccess ? `MP-${Date.now()}` : null;
-    
-    // 6. Update transaction status and wristband analytics based on simulation
-    let finalStatus = paymentSuccess ? 'paid' : 'failed';
-    
-    const updatePayload: any = {
-        status: finalStatus,
-        payment_gateway_id: paymentGatewayId,
-        updated_at: new Date().toISOString(),
+    // 7. Create MP Preference
+    const preference = {
+        items: mpItems,
+        external_reference: transactionId, // Usamos o ID da transação como referência externa
+        notification_url: `https://yzwfjyejqvawhooecbem.supabase.co/functions/v1/mercadopago-webhook`, // URL da Edge Function de Webhook
+        back_urls: {
+            success: `${Deno.env.get('SUPABASE_URL')}/tickets?status=success&transaction_id=${transactionId}`,
+            pending: `${Deno.env.get('SUPABASE_URL')}/tickets?status=pending&transaction_id=${transactionId}`,
+            failure: `${Deno.env.get('SUPABASE_URL')}/tickets?status=failure&transaction_id=${transactionId}`,
+        },
+        auto_return: "approved",
     };
 
-    // Update receivables status
-    const { error: updateTransactionError } = await supabaseService
-        .from('receivables')
-        .update(updatePayload)
-        .eq('id', transactionId);
-
-    if (updateTransactionError) {
-        console.error("Failed to update transaction status:", updateTransactionError);
-    }
-
-    if (paymentSuccess) {
-        // Update wristband analytics: associate client and mark as used/sold
-        
-        // We need to fetch the wristband_id for each analytics record to get the unit price/quantity details
-        const { data: analyticsToUpdate, error: fetchUpdateError } = await supabaseService
-            .from('wristband_analytics')
-            .select('id, wristband_id')
-            .in('id', analyticsIdsToUpdate);
-            
-        if (fetchUpdateError) {
-            console.error("CRITICAL: Failed to fetch analytics records for update:", fetchUpdateError);
-            throw new Error("Payment successful, but failed to retrieve ticket details for assignment.");
-        }
-        
-        // Prepare batch update for analytics records
-        const updates = analyticsToUpdate.map(record => {
-            const itemDetails = itemDetailsMap.get(record.wristband_id);
-            
-            return {
-                id: record.id,
-                client_user_id: clientUserId,
-                status: 'used', 
-                event_type: 'purchase',
-                event_data: {
-                    purchase_date: new Date().toISOString(),
-                    total_paid: totalValue, // Total value of the entire transaction (for context)
-                    client_id: clientUserId,
-                    transaction_id: transactionId,
-                    // Explicitly storing unit price and quantity (1 per analytics record)
-                    unit_price: itemDetails?.price || 0, 
-                    quantity_purchased: 1, // Each analytics record represents 1 ticket
-                }
-            };
-        });
-
-        const { error: updateAnalyticsError } = await supabaseService
-            .from('wristband_analytics')
-            .upsert(updates); // Using upsert for batch update by ID
-
-        if (updateAnalyticsError) {
-            console.error("CRITICAL: Failed to update wristband analytics after successful payment:", updateAnalyticsError);
-            return new Response(JSON.stringify({ error: 'Payment successful, but failed to assign tickets. Contact support.' }), { 
-                status: 500, 
-                headers: corsHeaders 
-            });
-        }
-    } else {
-        // Payment failed simulation.
-        return new Response(JSON.stringify({ error: 'Falha na transação de pagamento (simulação Mercado Pago).', status: finalStatus }), { 
-            status: 402, 
+    const mpResponse = await mercadopago.preferences.create(preference);
+    
+    if (!mpResponse.body.init_point) {
+        // Se falhar, reverter a transação pendente (opcional, mas boa prática)
+        await supabaseService.from('receivables').delete().eq('id', transactionId);
+        return new Response(JSON.stringify({ error: 'Failed to create Mercado Pago preference.' }), { 
+            status: 500, 
             headers: corsHeaders 
         });
     }
 
+    // 8. Update receivables with payment gateway ID (MP preference ID)
+    await supabaseService
+        .from('receivables')
+        .update({ payment_gateway_id: mpResponse.body.id })
+        .eq('id', transactionId);
+
+    // 9. Return checkout URL
     return new Response(JSON.stringify({ 
-        message: 'Purchase completed successfully.',
+        message: 'Payment preference created successfully.',
+        checkoutUrl: mpResponse.body.init_point,
         transactionId: transactionId,
-        status: finalStatus,
-        ticketsAssigned: analyticsIdsToUpdate.length
     }), { 
         status: 200, 
         headers: corsHeaders 
@@ -216,6 +182,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Edge Function Error:', error);
+    // Em caso de erro, tentamos reverter a transação pendente se ela existir
+    // (Lógica de reversão mais robusta seria necessária em produção)
     return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), { 
       status: 500, 
       headers: corsHeaders 

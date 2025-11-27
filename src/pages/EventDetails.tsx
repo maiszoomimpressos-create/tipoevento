@@ -105,39 +105,39 @@ const EventDetails: React.FC = () => {
         
         // 2. LÓGICA DE COMPRA (Se autenticado)
         
-        // Para simplificar, vamos processar TODOS os ingressos selecionados.
-        // Criamos uma lista de promessas de compra.
-        const purchasePromises = Object.entries(selectedTickets)
+        // Prepara os itens para o Mercado Pago
+        const purchaseItems = Object.entries(selectedTickets)
             .filter(([, quantity]) => quantity > 0)
-            .map(async ([ticketId, quantity]) => {
+            .map(([ticketId, quantity]) => {
                 const ticketDetails = ticketTypes.find(t => t.id === ticketId);
                 
                 if (!ticketDetails) {
                     throw new Error(`Detalhes do ingresso ${ticketId} não encontrados.`);
                 }
 
-                return purchaseTicket({
-                    eventId: event.id,
+                return {
                     ticketTypeId: ticketId,
                     quantity: quantity,
                     price: ticketDetails.price,
-                });
+                    name: `${event.title} - ${ticketDetails.name}`,
+                };
             });
 
         try {
-            const results = await Promise.all(purchasePromises);
+            const result = await purchaseTicket({
+                eventId: event.id, // UUID do evento
+                purchaseItems: purchaseItems,
+            });
             
-            // Se todas as compras foram bem-sucedidas (o hook purchaseTicket retorna true em caso de sucesso)
-            if (results.every(result => result === true)) {
-                // Após a compra bem-sucedida, limpa a seleção e navega para a página de ingressos
-                setSelectedTickets({});
-                navigate('/tickets');
+            if (result && result.checkoutUrl) {
+                showSuccess("Redirecionando para o pagamento...");
+                // Redireciona o usuário para o checkout do Mercado Pago
+                window.location.href = result.checkoutUrl;
             } else {
-                // Se alguma falhou, o purchaseTicket já deve ter exibido um erro.
-                showError("Algumas compras falharam. Verifique a disponibilidade.");
+                showError("Falha ao gerar o link de pagamento. Verifique as configurações do gestor.");
             }
         } catch (e: any) {
-            console.error("Erro durante o processamento de múltiplas compras:", e);
+            console.error("Erro durante o processamento de checkout:", e);
             showError(e.message || "Ocorreu um erro ao processar a compra.");
         }
     };
@@ -294,8 +294,6 @@ const EventDetails: React.FC = () => {
                                                                     onClick={() => handleTicketChange(ticket.id, currentQuantity + 1)}
                                                                     className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer disabled:opacity-30"
                                                                     // CORREÇÃO: Se a quantidade atual é igual à disponibilidade, o botão deve ser desabilitado.
-                                                                    // Se o problema é que ele está desabilitando cedo demais, a única causa é que a disponibilidade é 1.
-                                                                    // Mantendo a lógica correta de limite de estoque:
                                                                     disabled={!isAvailable || currentQuantity >= ticket.available || isPurchasing}
                                                                 >
                                                                     <i className="fas fa-plus text-xs"></i>
@@ -331,10 +329,10 @@ const EventDetails: React.FC = () => {
                                                 {isPurchasing ? (
                                                     <div className="flex items-center justify-center">
                                                         <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2" />
-                                                        Finalizando...
+                                                        Redirecionando...
                                                     </div>
                                                 ) : (
-                                                    'Comprar Ingressos'
+                                                    'Comprar e Pagar'
                                                 )}
                                             </Button>
                                         </>
@@ -345,7 +343,7 @@ const EventDetails: React.FC = () => {
                                         <div>
                                             <h4 className="text-white font-semibold text-sm mb-1">Compra Segura</h4>
                                             <p className="text-gray-400 text-xs">
-                                                Seus dados estão protegidos e a compra é 100% segura.
+                                                Você será redirecionado ao Mercado Pago para finalizar o pagamento.
                                             </p>
                                         </div>
                                     </div>

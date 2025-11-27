@@ -30,7 +30,8 @@ import AdminMasterRouteGuard from "./components/AdminMasterRouteGuard";
 import ManagerLayout from "./components/layouts/ManagerLayout";
 import ClientLayout from "./components/layouts/ClientLayout";
 import ForgotPassword from "./pages/ForgotPassword";
-import FinalizarCompra from "./pages/FinalizarCompra"; // Nova importação
+import FinalizarCompra from "./pages/FinalizarCompra";
+import ScrollToTop from "./components/ScrollToTop"; // Importação do novo componente
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop /> {/* Adicionado aqui */}
         <Routes>
           {/* Public/Client Routes wrapped in ClientLayout */}
           <Route element={<ClientLayout />}>
@@ -55,7 +57,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/tickets" element={<MyTickets />} />
-          <Route path="/finalizar-compra" element={<FinalizarCompra />} /> {/* Nova rota */}
+          <Route path="/finalizar-compra" element={<FinalizarCompra />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
           
           {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}

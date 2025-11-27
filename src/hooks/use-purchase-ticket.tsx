@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError } from '@/utils/toast';
 
 interface PurchaseItem {
     ticketTypeId: string; // ID da pulseira base (wristband ID)
     quantity: number;
     price: number; // Valor unitário
+    name: string; // Nome do item para o Mercado Pago
 }
 
 interface PurchaseDetails {
@@ -13,10 +14,15 @@ interface PurchaseDetails {
     purchaseItems: PurchaseItem[];
 }
 
+interface PurchaseResponse {
+    checkoutUrl: string;
+    transactionId: string;
+}
+
 export const usePurchaseTicket = () => {
     const [isLoading, setIsLoading] = useState(false);
 
-    const purchaseTicket = async (details: PurchaseDetails) => {
+    const purchaseTicket = async (details: PurchaseDetails): Promise<PurchaseResponse | false> => {
         const { eventId, purchaseItems } = details;
         
         const { data: { user } } = await supabase.auth.getUser();
@@ -34,8 +40,8 @@ export const usePurchaseTicket = () => {
         setIsLoading(true);
 
         try {
-            // 1. Chamar a Edge Function para processar a transação
-            const { data: responseData, error: edgeError } = await supabase.functions.invoke('process-ticket-purchase', {
+            // 1. Chamar a Edge Function para criar a preferência de pagamento
+            const { data: responseData, error: edgeError } = await supabase.functions.invoke('create-payment-preference', {
                 body: {
                     eventId: eventId,
                     purchaseItems: purchaseItems,
@@ -43,22 +49,22 @@ export const usePurchaseTicket = () => {
             });
 
             if (edgeError) {
-                // Erro de rede ou erro interno da Edge Function
                 throw new Error(edgeError.message);
             }
             
             if (responseData.error) {
-                // Erro de lógica de negócio retornado pela Edge Function (ex: sem estoque, falha no pagamento)
                 throw new Error(responseData.error);
             }
             
-            // 2. Sucesso
-            showSuccess(`Compra de ${totalTickets} ingressos concluída com sucesso!`);
-            return true;
+            // 2. Sucesso: Retorna o URL de checkout e o ID da transação
+            return {
+                checkoutUrl: responseData.checkoutUrl,
+                transactionId: responseData.transactionId,
+            };
 
         } catch (error: any) {
             console.error("Transaction Error:", error);
-            showError(error.message || "Falha na transação de compra. Tente novamente.");
+            showError(error.message || "Falha ao iniciar a transação de compra. Tente novamente.");
             return false;
         } finally {
             setIsLoading(false);
