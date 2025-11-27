@@ -14,15 +14,18 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface MultiLineEditorProps {
     onAgree: (agreed: boolean) => void;
     initialAgreedState?: boolean;
+    showAgreementCheckbox?: boolean; // Nova prop
+    termsType?: 'general' | 'manager_registration'; // Novo: Tipo de termos a serem carregados
 }
 
 const ADMIN_MASTER_USER_TYPE_ID = 1;
 
-// Hook para buscar os termos e condições
-const fetchTermsAndConditions = async () => {
+// Hook para buscar os termos e condições, agora com filtro por tipo
+const fetchTermsAndConditions = async (type: 'general' | 'manager_registration') => {
     const { data, error } = await supabase
         .from('terms_and_conditions')
         .select('*')
+        .eq('type', type) // Filtra pelo novo campo 'type'
         .order('updated_at', { ascending: false })
         .limit(1)
         .single();
@@ -33,16 +36,16 @@ const fetchTermsAndConditions = async () => {
     return data;
 };
 
-const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgreedState = false }) => {
+const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgreedState = false, showAgreementCheckbox = true, termsType = 'general' }) => {
     const queryClient = useQueryClient();
     const { data: termsData, isLoading: isLoadingTerms, isError: isErrorTerms, refetch } = useQuery({
-        queryKey: ['termsAndConditions'],
-        queryFn: fetchTermsAndConditions,
+        queryKey: ['termsAndConditions', termsType], // Inclui termsType na chave de cache
+        queryFn: () => fetchTermsAndConditions(termsType),
         enabled: true, // Sempre tenta buscar os termos
         staleTime: 1000 * 60 * 60, // Cache por 1 hora
         onError: (error) => {
-            console.error("Erro ao carregar termos e condições:", error);
-            showError("Erro ao carregar os termos e condições. Tente recarregar a página.");
+            console.error(`Erro ao carregar termos e condições (${termsType}):`, error);
+            showError(`Erro ao carregar os termos e condições (${termsType}). Tente recarregar a página.`);
         }
     });
 
@@ -66,6 +69,8 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
     useEffect(() => {
         if (termsData?.content) {
             setEditedContent(termsData.content);
+        } else {
+            setEditedContent(''); // Limpa o conteúdo se não houver termos para o tipo
         }
     }, [termsData]);
 
@@ -109,8 +114,9 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
                         content: editedContent, 
                         updated_by: userId,
                         updated_at: new Date().toISOString(),
+                        type: termsType, // Garante que o tipo seja salvo corretamente
                     },
-                    { onConflict: 'id' } // Tenta atualizar pelo ID, se não existir, insere
+                    { onConflict: 'type' } // Conflito agora é no 'type' para garantir unicidade por tipo
                 );
 
             if (error) {
@@ -120,7 +126,7 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
             dismissToast(toastId);
             showSuccess("Termos e condições atualizados com sucesso!");
             setIsEditing(false);
-            queryClient.invalidateQueries({ queryKey: ['termsAndConditions'] }); // Invalida a query para forçar a re-busca
+            queryClient.invalidateQueries({ queryKey: ['termsAndConditions', termsType] }); // Invalida a query para forçar a re-busca
             refetch(); // Rebusca os termos para garantir que o cache seja atualizado
 
         } catch (e: any) {
@@ -134,34 +140,53 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
 
     if (isLoadingTerms || isLoadingProfile) {
         return (
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
-                <div className="text-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
-                    <p className="text-gray-400">Carregando termos e condições...</p>
-                </div>
-            </Card>
+            <div className="text-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
+                <p className="text-gray-400">Carregando termos e condições...</p>
+            </div>
         );
     }
 
     if (isErrorTerms || !termsData) {
-        return (
-            <Card className="bg-black/80 backdrop-blur-sm border border-red-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
-                <CardHeader>
-                    <CardTitle className="text-red-400 text-xl">Erro ao Carregar Termos</CardTitle>
-                    <CardDescription className="text-gray-400">Não foi possível carregar os termos e condições. Por favor, tente novamente mais tarde.</CardDescription>
-                </CardHeader>
-            </Card>
-        );
+        // Se não houver termos para o tipo, e for Admin Master, permite editar para criar
+        if (isAdminMaster && !isEditing) {
+            return (
+                <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 p-6 rounded-xl space-y-4">
+                    <h3 className="text-white text-xl">Termos de Uso ({termsType === 'general' ? 'Gerais' : 'Registro de Gestor'}) não encontrados.</h3>
+                    <p className="text-gray-300 text-sm">Clique em "Editar Termos" para criar o conteúdo inicial.</p>
+                    <Button 
+                        onClick={() => setIsEditing(true)}
+                        variant="outline"
+                        className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm h-9 px-4"
+                    >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Criar Termos
+                    </Button>
+                </div>
+            );
+        } else if (!isAdminMaster) {
+            return (
+                <div className="bg-red-500/20 border border-red-500/30 text-red-400 p-6 rounded-xl">
+                    <h3 className="text-red-400 text-xl">Erro ao Carregar Termos</h3>
+                    <p className="text-gray-400 text-sm">Não foi possível carregar os termos e condições. Por favor, tente novamente mais tarde.</p>
+                </div>
+            );
+        }
     }
 
+    const editorTitle = termsType === 'general' ? 'Termos e Condições Gerais' : 'Termos de Registro de Gestor';
+
     return (
-        <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="text-white text-xl sm:text-2xl font-semibold flex items-center">
-                    <CheckSquare className="h-6 w-6 mr-3 text-yellow-500" />
-                    Termos e Condições
-                </CardTitle>
-                {isAdminMaster && (
+        <div className="space-y-6">
+            <div className="flex flex-row items-center justify-between space-y-0 pb-4">
+                {/* Título e botão de edição só aparecem se não for um pop-up */}
+                {!showAgreementCheckbox && ( // Se não for para mostrar o checkbox, significa que é o editor principal
+                    <h2 className="text-white text-xl sm:text-2xl font-semibold flex items-center">
+                        <CheckSquare className="h-6 w-6 mr-3 text-yellow-500" />
+                        {editorTitle}
+                    </h2>
+                )}
+                {isAdminMaster && !showAgreementCheckbox && ( // Botão de edição só para Admin Master e se não for pop-up
                     <Button 
                         onClick={() => setIsEditing(!isEditing)}
                         variant="outline"
@@ -181,48 +206,50 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
                         )}
                     </Button>
                 )}
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div 
-                    ref={contentRef}
-                    onScroll={isClient ? handleScroll : undefined} // Apenas clientes precisam rolar até o fim
-                    className="max-h-96 overflow-y-auto p-4 bg-black/60 border border-yellow-500/20 rounded-xl text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"
-                >
-                    {isEditing ? (
-                        <Textarea
-                            value={editedContent}
-                            onChange={(e) => setEditedContent(e.target.value)}
-                            className="w-full h-full bg-transparent border-none focus:ring-0 text-white resize-none"
-                            rows={15}
-                            disabled={isSaving}
-                        />
-                    ) : (
-                        termsData.content
-                    )}
-                </div>
-
-                {isAdminMaster && isEditing && (
-                    <div className="flex justify-end">
-                        <Button
-                            onClick={handleSave}
-                            disabled={isSaving || !editedContent.trim()}
-                            className="bg-yellow-500 text-black hover:bg-yellow-600 py-2 text-base font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 h-10"
-                        >
-                            {isSaving ? (
-                                <div className="flex items-center justify-center">
-                                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                    Salvando...
-                                </div>
-                            ) : (
-                                <>
-                                    <Save className="w-4 h-4 mr-2" />
-                                    Salvar Alterações
-                                </>
-                            )}
-                        </Button>
+            </div>
+            <div 
+                ref={contentRef}
+                onScroll={isClient && showAgreementCheckbox ? handleScroll : undefined} // Apenas clientes precisam rolar até o final se o checkbox for visível
+                className="max-h-96 overflow-y-auto bg-black/60 border border-yellow-500/20 rounded-xl text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"
+            >
+                {isEditing ? (
+                    <Textarea
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        className="w-full h-full bg-transparent border-none focus:ring-0 text-white resize-none p-4"
+                        rows={15}
+                        disabled={isSaving}
+                    />
+                ) : (
+                    <div className="p-4">
+                        {termsData?.content || 'Nenhum termo disponível para este tipo.'}
                     </div>
                 )}
+            </div>
 
+            {isAdminMaster && isEditing && (
+                <div className="flex justify-end">
+                    <Button
+                        onClick={handleSave}
+                        disabled={isSaving || !editedContent.trim()}
+                        className="bg-yellow-500 text-black hover:bg-yellow-600 py-2 text-base font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 h-10"
+                    >
+                        {isSaving ? (
+                            <div className="flex items-center justify-center">
+                                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                Salvando...
+                            </div>
+                        ) : (
+                            <>
+                                <Save className="w-4 h-4 mr-2" />
+                                Salvar Alterações
+                            </>
+                        )}
+                    </Button>
+                </div>
+            )}
+
+            {showAgreementCheckbox && ( // Renderiza o checkbox apenas se a prop for true
                 <div className="flex items-center space-x-3 pt-4 border-t border-yellow-500/10">
                     <Checkbox 
                         id="agreeTerms" 
@@ -235,14 +262,14 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
                         Eu li e concordo com os Termos e Condições.
                     </label>
                 </div>
-                {isClient && !hasScrolledToEnd && (
-                    <p className="text-xs text-red-400 mt-2 flex items-center">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Role até o final para habilitar a opção de concordar.
-                    </p>
-                )}
-            </CardContent>
-        </Card>
+            )}
+            {isClient && showAgreementCheckbox && !hasScrolledToEnd && ( // Mensagem de rolar só para clientes e se o checkbox for visível
+                <p className="text-xs text-red-400 mt-2 flex items-center">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Role até o final para habilitar a opção de concordar.
+                </p>
+            )}
+        </div>
     );
 };
 

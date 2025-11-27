@@ -1,29 +1,58 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import MultiLineEditor from '@/components/MultiLineEditor'; // Importando o novo componente
+import MultiLineEditor from '@/components/MultiLineEditor';
 import { Loader2 } from 'lucide-react';
+import { showSuccess } from '@/utils/toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/use-profile';
+import ManagerTypeSelectionDialog from '@/components/ManagerTypeSelectionDialog'; // Importando o novo modal
+
+const ADMIN_MASTER_USER_TYPE_ID = 1;
 
 const ManagerRegister: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [agreedToTerms, setAgreedToTerms] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false); // Estado para simular o envio
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false); // Novo estado para o modal
+
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+    React.useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUserId(user?.id);
+        });
+    }, []);
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+
+    const isAdminRegisterRoute = location.pathname === '/admin/register-manager';
+    const isAdminMaster = profile?.tipo_usuario_id === ADMIN_MASTER_USER_TYPE_ID;
+
+    const shouldShowAgreementCheckbox = !isAdminRegisterRoute;
 
     const handleAgreeToTerms = (agreed: boolean) => {
         setAgreedToTerms(agreed);
     };
 
     const handleContinue = () => {
-        setIsSubmitting(true);
-        // Simular um processo de registro ou navegação
+        // Em vez de navegar, abre o modal de seleção de tipo
+        setShowTypeSelectionModal(true);
+    };
+
+    const handleSelectManagerType = (type: 'individual' | 'company') => {
+        setShowTypeSelectionModal(false); // Fecha o modal
+        setIsSubmitting(true); // Indica que está processando a navegação
+        showSuccess(`Você selecionou o cadastro como ${type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}.`);
+        
         setTimeout(() => {
             setIsSubmitting(false);
-            alert("Termos aceitos! Prossiga com o cadastro detalhado.");
-            // Aqui você navegaria para a próxima etapa do cadastro de gestor
-            // Por exemplo: navigate('/manager/register/details');
-            navigate('/'); // Por enquanto, volta para a home
+            if (type === 'individual') {
+                navigate('/manager/register/individual');
+            } else {
+                navigate('/manager/register/company');
+            }
         }, 1500);
     };
 
@@ -37,36 +66,55 @@ const ManagerRegister: React.FC = () => {
             </div>
             <div className="relative z-10 w-full max-w-sm sm:max-w-md space-y-6">
                 <div className="text-center mb-6 sm:mb-8">
-                    <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">Cadastro de Gestor</h1>
-                    <p className="text-gray-400 text-sm sm:text-base">Leia e aceite os termos para continuar</p>
+                    <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">
+                        {isAdminRegisterRoute && isAdminMaster ? "Editar Termos de Registro de Gestor" : "Cadastro de Gestor"}
+                    </h1>
+                    <p className="text-gray-400 text-sm sm:text-base">
+                        {isAdminRegisterRoute && isAdminMaster ? "Atualize o conteúdo dos termos para novos gestores." : "Leia e aceite os termos para continuar"}
+                    </p>
                 </div>
                 
-                <MultiLineEditor onAgree={handleAgreeToTerms} />
+                <MultiLineEditor 
+                    onAgree={handleAgreeToTerms} 
+                    initialAgreedState={agreedToTerms} 
+                    showAgreementCheckbox={shouldShowAgreementCheckbox}
+                    termsType="manager_registration"
+                />
 
-                <div className="space-y-4">
-                    <Button
-                        onClick={handleContinue}
-                        disabled={!agreedToTerms || isSubmitting}
-                        className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                        {isSubmitting ? (
-                            <div className="flex items-center justify-center">
-                                <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2" />
-                                Carregando...
-                            </div>
-                        ) : (
-                            'Continuar'
-                        )}
-                    </Button>
-                    <Button
-                        onClick={() => navigate('/')}
-                        variant="outline"
-                        className="w-full bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer"
-                    >
-                        Voltar para a Home
-                    </Button>
-                </div>
+                {!isAdminRegisterRoute && (
+                    <div className="space-y-4">
+                        <Button
+                            onClick={handleContinue}
+                            disabled={!agreedToTerms || isSubmitting}
+                            className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        >
+                            {isSubmitting ? (
+                                <div className="flex items-center justify-center">
+                                    <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2"></Loader2>
+                                    <span>Carregando...</span>
+                                </div>
+                            ) : (
+                                'Continuar'
+                            )}
+                        </Button>
+                        <Button
+                            onClick={() => navigate('/')}
+                            variant="outline"
+                            className="w-full bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer"
+                        >
+                            Voltar para a Home
+                        </Button>
+                    </div>
+                )}
             </div>
+
+            {/* Novo Modal de Seleção de Tipo de Gestor */}
+            <ManagerTypeSelectionDialog
+                isOpen={showTypeSelectionModal}
+                onClose={() => setShowTypeSelectionModal(false)}
+                onSelectType={handleSelectManagerType}
+                isSubmitting={isSubmitting}
+            />
         </div>
     );
 };

@@ -31,8 +31,10 @@ import ManagerLayout from "./components/layouts/ManagerLayout";
 import ClientLayout from "./components/layouts/ClientLayout";
 import ForgotPassword from "./pages/ForgotPassword";
 import FinalizarCompra from "./pages/FinalizarCompra";
-import ScrollToTop from "./components/ScrollToTop"; // Importação do novo componente
+import ScrollToTop from "./components/ScrollToTop";
 import ManagerRegister from "./pages/ManagerRegister";
+import ManagerIndividualRegister from "./pages/ManagerIndividualRegister"; // Nova importação
+import ManagerCompanyRegister from "./pages/ManagerCompanyRegister"; // Nova importação
 
 const queryClient = new QueryClient();
 
@@ -42,7 +44,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ScrollToTop /> {/* Adicionado aqui */}
+        <ScrollToTop />
         <Routes>
           {/* Public/Client Routes wrapped in ClientLayout */}
           <Route element={<ClientLayout />}>
@@ -51,6 +53,8 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/tickets" element={<MyTickets />} />
             <Route path="/manager/register" element={<ManagerRegister />} /> {/* Rota para clientes se tornarem gestores */}
+            <Route path="/manager/register/individual" element={<ManagerIndividualRegister />} /> {/* Nova rota */}
+            <Route path="/manager/register/company" element={<ManagerCompanyRegister />} /> {/* Nova rota */}
           </Route>
           
           {/* Auth Routes (No layout/Full screen) */}
