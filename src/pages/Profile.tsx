@@ -13,7 +13,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
-import { useProfileStatus } from '@/hooks/use-profile-status'; // Importando a lógica compartilhada
+import { useProfileStatus, isValueEmpty } from '@/hooks/use-profile-status'; // Importando a lógica compartilhada e isValueEmpty
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import { useQueryClient } from '@tanstack/react-query';
 import TermsAndConditionsDialog from '@/components/TermsAndConditionsDialog';
@@ -30,7 +30,23 @@ const GENDER_OPTIONS = [
 // Função de validação de CPF (simplificada para o frontend)
 const validateCPF = (cpf: string) => {
     const cleanCPF = cpf.replace(/\D/g, '');
-    return cleanCPF.length === 11;
+    if (cleanCPF.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+        sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+    }
+    let checkDigit = 11 - (sum % 11);
+    if (checkDigit === 10 || checkDigit === 11) checkDigit = 0;
+    if (checkDigit !== parseInt(cleanCPF.charAt(9))) return false;
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+        sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+    }
+    checkDigit = 11 - (sum % 11);
+    if (checkDigit === 10 || checkDigit === 11) checkDigit = 0;
+    if (checkDigit !== parseInt(cleanCPF.charAt(10))) return false;
+    return true;
 };
 
 // Função de validação de RG (apenas formato)
@@ -45,23 +61,45 @@ const validateCEP = (cep: string) => {
     return cleanCEP.length === 8;
 };
 
-const profileSchema = z.object({
-    first_name: z.string().optional(),
-    last_name: z.string().optional(), 
-    birth_date: z.string().optional(),
-    gender: z.string().optional().nullable(), 
-    
-    cpf: z.string().optional().refine((val) => !val || validateCPF(val), { message: "CPF inválido." }),
-    rg: z.string().optional().refine((val) => !val || validateRG(val), { message: "RG inválido." }),
+// Schema dinâmico baseado no tipo de usuário
+const createProfileSchema = (isManager: boolean) => {
+    const baseSchema = z.object({
+        first_name: z.string().optional(),
+        last_name: z.string().optional(), 
+        birth_date: z.string().optional(),
+        gender: z.string().optional().nullable(), 
+        
+        cpf: z.string().optional().refine((val) => !val || validateCPF(val), { message: "CPF inválido." }),
+        rg: z.string().optional().refine((val) => !val || validateRG(val), { message: "RG inválido." }),
 
-    cep: z.string().optional().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
-    rua: z.string().optional(),
-    bairro: z.string().optional(),
-    cidade: z.string().optional(),
-    estado: z.string().optional(),
-    numero: z.string().optional(),
-    complemento: z.string().optional().nullable(),
-});
+        cep: z.string().optional().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
+        rua: z.string().optional(),
+        bairro: z.string().optional(),
+        cidade: z.string().optional(),
+        estado: z.string().optional(),
+        numero: z.string().optional(),
+        complemento: z.string().optional().nullable(),
+    });
+
+    if (isManager) {
+        return baseSchema.extend({
+            first_name: z.string().min(1, "Nome é obrigatório para gestores."),
+            last_name: z.string().min(1, "Sobrenome é obrigatório para gestores."),
+            birth_date: z.string().min(1, "Data de nascimento é obrigatória para gestores."),
+            gender: z.string().min(1, "Gênero é obrigatório para gestores.").nullable(), 
+            cpf: z.string().min(1, "CPF é obrigatório para gestores.").refine(validateCPF, { message: "CPF inválido." }),
+            rg: z.string().min(1, "RG é obrigatório para gestores.").refine(validateRG, { message: "RG inválido." }),
+            cep: z.string().min(1, "CEP é obrigatório para gestores.").refine(validateCEP, { message: "CEP inválido (8 dígitos)." }),
+            rua: z.string().min(1, "Rua é obrigatória para gestores."),
+            bairro: z.string().min(1, "Bairro é obrigatório para gestores."),
+            cidade: z.string().min(1, "Cidade é obrigatória para gestores."),
+            estado: z.string().min(1, "Estado é obrigatório para gestores."),
+            numero: z.string().min(1, "Número é obrigatório para gestores."),
+        });
+    }
+    return baseSchema;
+};
+
 
 const Profile: React.FC = () => {
     const navigate = useNavigate();
@@ -87,9 +125,12 @@ const Profile: React.FC = () => {
 
     const userId = session?.user?.id;
     const { profile, isLoading: isLoadingProfile, refetch } = useProfile(userId);
-    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile); // isComplete não é mais usado para alertas
+    const { hasPendingNotifications, loading: statusLoading, needsPersonalProfileCompletion } = useProfileStatus(profile, isLoadingProfile); // isComplete não é mais usado para alertas
 
     const loading = loadingSession || isLoadingProfile;
+    
+    const isManager = profile && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
+    const currentProfileSchema = createProfileSchema(isManager);
 
     const formatCPF = (value: string) => {
         if (!value) return '';
@@ -120,8 +161,8 @@ const Profile: React.FC = () => {
             .replace(/(-\d{3})\d+?$/, '$1');
     };
 
-    const form = useForm<z.infer<typeof profileSchema>>({
-        resolver: zodResolver(profileSchema),
+    const form = useForm<z.infer<typeof currentProfileSchema>>({
+        resolver: zodResolver(currentProfileSchema),
         defaultValues: {
             first_name: '',
             last_name: '', 
@@ -232,7 +273,7 @@ const Profile: React.FC = () => {
         }
     };
 
-    const onSubmit = async (values: z.infer<typeof profileSchema>) => {
+    const onSubmit = async (values: z.infer<typeof currentProfileSchema>) => {
         if (!session) return;
         setFormLoading(true);
 
@@ -386,8 +427,26 @@ const Profile: React.FC = () => {
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
                     
-                    {/* REMOVIDO: Alerta de Perfil Incompleto para Clientes */}
-                    {/* REMOVIDO: Alerta de Perfil Incompleto para Gestores */}
+                    {needsPersonalProfileCompletion && isManager && (
+                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-start space-x-3 mb-6 animate-fadeInUp">
+                            <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
+                            <div>
+                                <h4 className="font-semibold text-white mb-1">Perfil Incompleto</h4>
+                                <p className="text-sm text-gray-300">
+                                    Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais para liberar todas as funcionalidades de gestor.
+                                </p>
+                                {!isEditing && (
+                                    <Button 
+                                        variant="link" 
+                                        className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
+                                        onClick={() => setIsEditing(true)}
+                                    >
+                                        Completar Perfil Agora
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="md:col-span-2 order-2 md:order-1">

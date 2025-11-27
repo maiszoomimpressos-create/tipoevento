@@ -29,7 +29,7 @@ const ManagerLayout: React.FC = () => {
 
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
     const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
-    const { isComplete: isProfileFullyComplete, loading: isLoadingProfileStatus } = useProfileStatus(profile, isLoadingProfile);
+    const { isComplete: isProfileFullyComplete, loading: isLoadingProfileStatus, needsCompanyProfile, needsPersonalProfileCompletion } = useProfileStatus(profile, isLoadingProfile);
     const { company, isLoading: isLoadingCompany } = useManagerCompany(userId); // Fetch company data
 
     const handleLogout = async () => {
@@ -53,7 +53,8 @@ const ManagerLayout: React.FC = () => {
     const isProfileCompletionPage = location.pathname === '/profile' || 
                                    location.pathname === '/manager/settings/company-profile' ||
                                    location.pathname === '/manager/register' || 
-                                   location.pathname === '/manager/register/company'; 
+                                   location.pathname === '/manager/register/company' ||
+                                   location.pathname === '/admin/register-manager'; 
 
     // Effect for redirection logic
     useEffect(() => {
@@ -75,18 +76,24 @@ const ManagerLayout: React.FC = () => {
             return;
         }
 
-        // REMOVIDO: Lógica de redirecionamento baseada na completude do perfil
-        // if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
-        //     if (userType === MANAGER_PRO_USER_TYPE_ID && !company) {
-        //         showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
-        //         navigate('/manager/settings/company-profile', { replace: true });
-        //         return;
-        //     }
-        //     showError("Seu perfil de gestor está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
-        //     navigate('/profile', { replace: true });
-        //     return;
-        // }
-    }, [isLoadingCombined, userId, isManager, isProfileFullyComplete, isProfileCompletionPage, userType, company, navigate, location.pathname]);
+        // 3. Redirect managers with incomplete profiles
+        if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
+            if (needsCompanyProfile) {
+                showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
+                navigate('/manager/settings/company-profile', { replace: true });
+                return;
+            }
+            if (needsPersonalProfileCompletion) {
+                showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
+                navigate('/profile', { replace: true });
+                return;
+            }
+            // Fallback for any other incomplete state not explicitly handled
+            showError("Seu perfil de gestor está incompleto. Por favor, complete seu cadastro.");
+            navigate('/profile', { replace: true }); // Default to personal profile completion
+            return;
+        }
+    }, [isLoadingCombined, userId, isManager, isProfileFullyComplete, isProfileCompletionPage, userType, company, navigate, location.pathname, needsCompanyProfile, needsPersonalProfileCompletion]);
 
 
     if (isLoadingCombined) {

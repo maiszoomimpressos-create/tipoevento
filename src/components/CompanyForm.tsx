@@ -74,32 +74,51 @@ const formatCEP = (value: string) => {
         .replace(/(-\d{3})\d+?$/, '$1');
 };
 
-// Zod Schema para os dados da empresa (compartilhado)
-export const companySchema = z.object({
-    corporate_name: z.string().optional(),
-    cnpj: z.string().optional().refine((val) => !val || validateCNPJ(val), { message: "CNPJ inválido. Verifique os dígitos." }),
-    trade_name: z.string().optional(),
-    phone: z.string().optional(),
-    email: z.string().email({ message: "E-mail inválido." }).optional(), // CORRIGIDO: .email() antes de .optional()
-    
-    cep: z.string().optional().refine((val) => !val || val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
-    street: z.string().optional(),
-    neighborhood: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    number: z.string().optional(),
-    complement: z.string().optional().nullable(),
-});
+// Zod Schema dinâmico para os dados da empresa
+export const createCompanySchema = (isManager: boolean) => {
+    const baseSchema = z.object({
+        corporate_name: z.string().optional(),
+        cnpj: z.string().optional().refine((val) => !val || validateCNPJ(val), { message: "CNPJ inválido. Verifique os dígitos." }),
+        trade_name: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().email({ message: "E-mail inválido." }).optional(), 
+        
+        cep: z.string().optional().refine((val) => !val || val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
+        street: z.string().optional(),
+        neighborhood: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        number: z.string().optional(),
+        complement: z.string().optional().nullable(),
+    });
 
-export type CompanyFormData = z.infer<typeof companySchema>;
+    if (isManager) {
+        return baseSchema.extend({
+            corporate_name: z.string().min(1, "Razão Social é obrigatória."),
+            cnpj: z.string().min(1, "CNPJ é obrigatório.").refine(validateCNPJ, { message: "CNPJ inválido. Verifique os dígitos." }),
+            phone: z.string().min(1, "Telefone é obrigatório."),
+            email: z.string().email({ message: "E-mail inválido." }).min(1, "E-mail é obrigatório."),
+            cep: z.string().min(1, "CEP é obrigatório.").refine((val) => val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
+            street: z.string().min(1, "Rua é obrigatória."),
+            neighborhood: z.string().min(1, "Bairro é obrigatório."),
+            city: z.string().min(1, "Cidade é obrigatória."),
+            state: z.string().min(1, "Estado é obrigatório."),
+            number: z.string().min(1, "Número é obrigatório."),
+        });
+    }
+    return baseSchema;
+};
+
+export type CompanyFormData = z.infer<ReturnType<typeof createCompanySchema>>;
 
 interface CompanyFormProps {
     isSaving: boolean;
     isCepLoading: boolean;
     fetchAddressByCep: (cep: string) => void;
+    isManagerContext: boolean; // Nova prop para indicar se o contexto é de gestor
 }
 
-const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetchAddressByCep }) => {
+const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetchAddressByCep, isManagerContext }) => {
     const form = useFormContext<CompanyFormData>();
 
     const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +152,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="corporate_name"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">Razão Social</FormLabel>
+                            <FormLabel className="text-white">Razão Social {isManagerContext && '*'}</FormLabel>
                             <FormControl>
                                 <Input 
                                     placeholder="Nome da Empresa S.A."
@@ -152,7 +171,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="cnpj"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">CNPJ</FormLabel>
+                            <FormLabel className="text-white">CNPJ {isManagerContext && '*'}</FormLabel>
                             <FormControl>
                                 <Input 
                                     placeholder="00.000.000/0000-00"
@@ -192,7 +211,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Telefone</FormLabel>
+                                <FormLabel className="text-white">Telefone {isManagerContext && '*'}</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="(00) 00000-0000"
@@ -214,7 +233,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">E-mail da Empresa (Para Notificações)</FormLabel>
+                            <FormLabel className="text-white">E-mail da Empresa (Para Notificações) {isManagerContext && '*'}</FormLabel>
                             <FormControl>
                                 <Input 
                                     placeholder="contato@empresa.com"
@@ -238,7 +257,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="cep"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">CEP</FormLabel>
+                            <FormLabel className="text-white">CEP {isManagerContext && '*'}</FormLabel>
                             <FormControl>
                                 <div className="relative">
                                     <Input 
@@ -268,7 +287,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                             name="street"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-white">Rua</FormLabel>
+                                    <FormLabel className="text-white">Rua {isManagerContext && '*'}</FormLabel>
                                     <FormControl>
                                         <Input id="street" placeholder="Ex: Av. Paulista" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                     </FormControl>
@@ -282,7 +301,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="number"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Número</FormLabel>
+                                <FormLabel className="text-white">Número {isManagerContext && '*'}</FormLabel>
                                 <FormControl>
                                     <Input id="number" placeholder="123" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>
@@ -312,7 +331,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="neighborhood"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Bairro</FormLabel>
+                                <FormLabel className="text-white">Bairro {isManagerContext && '*'}</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Jardim Paulista" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>
@@ -325,7 +344,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Cidade</FormLabel>
+                                <FormLabel className="text-white">Cidade {isManagerContext && '*'}</FormLabel>
                                 <FormControl>
                                     <Input placeholder="São Paulo" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>
@@ -338,7 +357,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Estado</FormLabel>
+                                <FormLabel className="text-white">Estado {isManagerContext && '*'}</FormLabel>
                                 <FormControl>
                                     <Input placeholder="SP" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>

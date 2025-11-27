@@ -8,8 +8,27 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Form } from '@/components/ui/form';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { Loader2, Building, ArrowLeft, User, AlertTriangle } from 'lucide-react';
-import CompanyForm, { companySchema, CompanyFormData } from '@/components/CompanyForm'; // Importando o novo componente e schema
+import CompanyForm, { createCompanySchema, CompanyFormData } from '@/components/CompanyForm'; // Importando o novo componente e schema
 import { useProfile } from '@/hooks/use-profile'; // Importando useProfile
+import { useProfileStatus, isValueEmpty } from '@/hooks/use-profile-status'; // Importando useProfileStatus e isValueEmpty
+
+// Campos essenciais do perfil do usuário que devem estar preenchidos para ser sócio
+const ESSENTIAL_PROFILE_FIELDS_FOR_PARTNER = [
+    'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
+    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
+];
+
+const isProfileCompleteForPartner = (profileData: typeof useProfile extends (...args: any[]) => { profile: infer T } ? T : never): boolean => {
+    if (!profileData) return false;
+
+    for (const field of ESSENTIAL_PROFILE_FIELDS_FOR_PARTNER) {
+        const value = profileData[field as keyof typeof profileData];
+        if (isValueEmpty(value)) {
+            return false;
+        }
+    }
+    return true;
+};
 
 const ManagerCompanyRegister: React.FC = () => {
     const navigate = useNavigate();
@@ -37,9 +56,13 @@ const ManagerCompanyRegister: React.FC = () => {
 
     // Fetch user profile for 'Sócios' tab
     const { profile, isLoading: isLoadingProfile } = useProfile(userId || undefined);
+    const isPersonalProfileComplete = isProfileCompleteForPartner(profile);
+
+    // Para o registro de empresa, todos os campos são obrigatórios
+    const currentCompanySchema = createCompanySchema(true); 
 
     const form = useForm<CompanyFormData>({
-        resolver: zodResolver(companySchema),
+        resolver: zodResolver(currentCompanySchema), 
         defaultValues: {
             corporate_name: '',
             cnpj: '',
@@ -95,11 +118,11 @@ const ManagerCompanyRegister: React.FC = () => {
             return;
         }
         
-        // REMOVIDO: Validação do perfil do sócio antes de prosseguir
-        // if (!profile || !isProfileComplete(profile)) {
-        //     showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais do seu perfil antes de registrar a empresa.");
-        //     return;
-        // }
+        // Validação do perfil do sócio antes de prosseguir
+        if (!profile || !isPersonalProfileComplete) {
+            showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais do seu perfil antes de registrar a empresa.");
+            return;
+        }
 
         setIsSaving(true);
         const toastId = showLoading("Registrando empresa...");
@@ -201,6 +224,7 @@ const ManagerCompanyRegister: React.FC = () => {
                                 isSaving={isSaving} 
                                 isCepLoading={isCepLoading} 
                                 fetchAddressByCep={fetchAddressByCep} 
+                                isManagerContext={true} // Sempre true para registro de empresa
                             />
 
                             {/* Seção de Sócios (Dados do Usuário Logado) */}
@@ -209,7 +233,24 @@ const ManagerCompanyRegister: React.FC = () => {
                                     <User className="h-5 w-5 mr-2 text-yellow-500" />
                                     Dados do Sócio (Você)
                                 </h3>
-                                {/* REMOVIDO: Alerta de Perfil Pessoal Incompleto */}
+                                {!isPersonalProfileComplete && (
+                                    <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-start space-x-3 mb-4">
+                                        <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
+                                        <div>
+                                            <h4 className="font-semibold text-white mb-1">Perfil Pessoal Incompleto</h4>
+                                            <p className="text-sm text-gray-300">
+                                                Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais do seu perfil para garantir a correta associação como sócio.
+                                            </p>
+                                            <Button 
+                                                variant="link" 
+                                                className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
+                                                onClick={() => navigate('/profile')}
+                                            >
+                                                Ir para o Perfil Pessoal
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                                 {profile ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
                                         <div>
@@ -237,7 +278,7 @@ const ManagerCompanyRegister: React.FC = () => {
                             <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                                 <Button
                                     type="submit"
-                                    disabled={isSaving} // REMOVIDO: || !isProfileComplete(profile)
+                                    disabled={isSaving || !isPersonalProfileComplete} 
                                     className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                                 >
                                     {isSaving ? (

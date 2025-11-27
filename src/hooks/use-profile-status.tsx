@@ -6,7 +6,8 @@ interface ProfileStatus {
     isComplete: boolean;
     hasPendingNotifications: boolean;
     loading: boolean;
-    needsCompanyProfile: boolean; // New: indicates if a manager needs to create a company profile
+    needsCompanyProfile: boolean; // Indica se um gestor PJ precisa criar um perfil de empresa
+    needsPersonalProfileCompletion: boolean; // Indica se um gestor (PF ou PJ) precisa completar o perfil pessoal
 }
 
 // Export this function so Profile.tsx can use it for consistency
@@ -16,20 +17,20 @@ export const isValueEmpty = (value: any): boolean => {
         const trimmedValue = value.trim();
         if (trimmedValue === '') return true;
         // Check common date/document placeholders that might have been saved
-        if (trimmedValue === '0000-00-00' || trimmedValue === '00.000.000-0' || trimmedValue === '00000-000') return true;
+        if (trimmedValue === '0000-00-00' || trimmedValue === '00.000.000-0' || trimmedValue === '00.000.000' || trimmedValue === '000.000.000-00' || trimmedValue === '00000-000') return true;
     }
     // For numbers, 0 is a valid value, so it's not empty.
     if (typeof value === 'number' && value === 0) return false;
     return false;
 };
 
-// Essential fields for a manager's personal profile
-const ESSENTIAL_MANAGER_PROFILE_FIELDS = [
+// Essential fields for a manager's personal profile (Admin Master or Manager PRO)
+const ESSENTIAL_MANAGER_PERSONAL_PROFILE_FIELDS = [
     'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
     'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
 ];
 
-// Essential fields for a company profile
+// Essential fields for a company profile (for Manager PRO - PJ)
 const ESSENTIAL_COMPANY_PROFILE_FIELDS = [
     'cnpj', 'corporate_name', 'phone', 'email',
     'cep', 'street', 'neighborhood', 'city', 'state', 'number'
@@ -59,6 +60,8 @@ const checkManagerSystemNotifications = async (userId: string): Promise<boolean>
 
     // Exemplo 1: Alerta de Baixo Estoque (se a configuração estiver ativa)
     if ((settings as any).low_stock_system) {
+        // Esta é uma simulação. Na vida real, você buscaria eventos reais e calcularia o estoque.
+        // Para fins de demonstração, se o gestor tiver mais de 2 eventos, ativamos o alerta.
         const { count, error } = await supabase
             .from('events')
             .select('id', { count: 'exact', head: true })
@@ -84,6 +87,7 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
         hasPendingNotifications: false,
         loading: isLoading,
         needsCompanyProfile: false,
+        needsPersonalProfileCompletion: false,
     });
 
     useEffect(() => {
@@ -92,7 +96,8 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
         if (isLoading) return;
 
         if (!profile) {
-            setStatus({ isComplete: true, hasPendingNotifications: false, loading: false, needsCompanyProfile: false });
+            // If no profile, it's not a manager or not logged in, so no special status needed.
+            setStatus({ isComplete: true, hasPendingNotifications: false, loading: false, needsCompanyProfile: false, needsPersonalProfileCompletion: false });
             return;
         }
 
@@ -100,13 +105,15 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
             let hasPendingNotifications = false;
             let isComplete = true;
             let needsCompanyProfile = false;
+            let needsPersonalProfileCompletion = false;
 
             // Check personal profile completeness for managers (Admin Master or Manager PRO)
             if (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2) {
-                for (const field of ESSENTIAL_MANAGER_PROFILE_FIELDS) {
+                for (const field of ESSENTIAL_MANAGER_PERSONAL_PROFILE_FIELDS) {
                     const value = profile[field as keyof ProfileData];
                     if (isValueEmpty(value)) {
                         isComplete = false;
+                        needsPersonalProfileCompletion = true;
                         console.log(`[ProfileStatus] Manager personal profile incomplete: Missing field '${field}'`);
                         break;
                     }
@@ -151,13 +158,14 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
                 hasPendingNotifications = await checkManagerSystemNotifications(profile.id);
             }
 
-            console.log(`[ProfileStatus] Final State - Profile Complete: ${isComplete}. Needs Company: ${needsCompanyProfile}. Notifications Active: ${hasPendingNotifications}`);
+            console.log(`[ProfileStatus] Final State - Profile Complete: ${isComplete}. Needs Personal: ${needsPersonalProfileCompletion}. Needs Company: ${needsCompanyProfile}. Notifications Active: ${hasPendingNotifications}`);
 
             setStatus({
                 isComplete: isComplete,
                 hasPendingNotifications: hasPendingNotifications,
                 loading: false,
                 needsCompanyProfile: needsCompanyProfile,
+                needsPersonalProfileCompletion: needsPersonalProfileCompletion,
             });
         };
 
