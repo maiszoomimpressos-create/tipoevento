@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import EventDetails from "./pages/EventDetails";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Profile from "./pages/Profile";
@@ -30,7 +29,7 @@ import AdminMasterRouteGuard from "./components/AdminMasterRouteGuard";
 import ManagerLayout from "./components/layouts/ManagerLayout";
 import ClientLayout from "./components/layouts/ClientLayout";
 import ForgotPassword from "./pages/ForgotPassword";
-import FinalizarCompra from "./pages/FinalizarCompra"; // Nova importação
+import FinalizarCompra from "./pages/FinalizarCompra";
 
 const queryClient = new QueryClient();
 
@@ -44,7 +43,7 @@ const App = () => (
           {/* Public/Client Routes wrapped in ClientLayout */}
           <Route element={<ClientLayout />}>
             <Route path="/" element={<Index />} />
-            <Route path="/events/:id" element={<EventDetails />} />
+            {/* Rota /events/:id removida */}
             <Route path="/profile" element={<Profile />} />
             <Route path="/tickets" element={<MyTickets />} />
           </Route>
@@ -55,7 +54,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/tickets" element={<MyTickets />} />
-          <Route path="/finalizar-compra" element={<FinalizarCompra />} /> {/* Nova rota */}
+          <Route path="/finalizar-compra" element={<FinalizarCompra />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
           
           {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}
