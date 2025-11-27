@@ -48,14 +48,13 @@ const App = () => (
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/tickets" element={<MyTickets />} />
-            <Route path="/manager/register" element={<ManagerRegister />} /> {/* Movido para cá */}
+            <Route path="/manager/register" element={<ManagerRegister />} /> {/* Rota para clientes se tornarem gestores */}
           </Route>
           
           {/* Auth Routes (No layout/Full screen) */}
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          {/* As rotas /profile e /tickets foram movidas para dentro do ClientLayout acima */}
           <Route path="/finalizar-compra" element={<FinalizarCompra />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
           
@@ -78,6 +77,9 @@ const App = () => (
           {/* Admin Master Routes (tipo_usuario_id = 1) */}
           <Route element={<AdminMasterRouteGuard />}>
             <Route element={<ManagerLayout />}>
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                {/* Nova rota para Admin Master acessar o cadastro de gestor */}
+                <Route path="/admin/register-manager" element={<ManagerRegister />} />
                 <Route path="/manager/settings/advanced" element={<ManagerAdvancedSettings />} />
             </Route>
           </Route>

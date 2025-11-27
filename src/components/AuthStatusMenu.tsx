@@ -8,7 +8,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import NotificationBell from './NotificationBell';
-import { Shield, PlusCircle } from 'lucide-react'; // Importando ícone para Admin e PlusCircle para Criar Evento
+import { Shield, PlusCircle, UserPlus } from 'lucide-react'; // Importando UserPlus para a nova funcionalidade
 import { useUserType } from '@/hooks/use-user-type';
 
 const AuthStatusMenu: React.FC = () => {
@@ -104,18 +104,28 @@ const AuthStatusMenu: React.FC = () => {
                                 onClick={() => navigate('/manager/dashboard')} 
                                 className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
                             >
-                                <i className="fas fa-crown mr-2"></i>
+                                <Crown className="mr-2 h-4 w-4" />
                                 Dashboard PRO
                             </DropdownMenuItem>
                         )}
                         {isAdmin && (
-                            <DropdownMenuItem 
-                                onClick={() => navigate('/admin/dashboard')} 
-                                className="cursor-pointer hover:bg-yellow-500/10 text-red-400 font-semibold"
-                            >
-                                <Shield className="mr-2 h-4 w-4" />
-                                Dashboard Admin
-                            </DropdownMenuItem>
+                            <>
+                                <DropdownMenuItem 
+                                    onClick={() => navigate('/admin/dashboard')} 
+                                    className="cursor-pointer hover:bg-yellow-500/10 text-red-400 font-semibold"
+                                >
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    Dashboard Admin
+                                </DropdownMenuItem>
+                                {/* Novo link para Admin Master registrar gestor */}
+                                <DropdownMenuItem 
+                                    onClick={() => navigate('/admin/register-manager')} 
+                                    className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
+                                >
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Registrar Novo Gestor
+                                </DropdownMenuItem>
+                            </>
                         )}
                         {isClient && ( // Botão "Criar Evento" visível apenas para clientes
                             <DropdownMenuItem 
