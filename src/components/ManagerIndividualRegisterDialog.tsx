@@ -73,22 +73,21 @@ const validateCEP = (cep: string) => {
 };
 
 const managerIndividualProfileSchema = z.object({
-    first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
-    last_name: z.string().min(1, { message: "Sobrenome é obrigatório." }),
-    birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    gender: z.string().min(1, { message: "Gênero é obrigatório." }).refine(val => val !== "", { message: "Selecione um gênero válido." }), // Tornando gênero obrigatório
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    birth_date: z.string().optional(),
+    gender: z.string().optional().nullable(), 
     
-    cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
-    rg: z.string().min(1, { message: "RG é obrigatório." }).refine(validateRG, { message: "RG inválido." }),
+    cpf: z.string().optional().refine((val) => !val || validateCPF(val), { message: "CPF inválido." }),
+    rg: z.string().optional().refine((val) => !val || validateRG(val), { message: "RG inválido." }),
 
-    // Campos de Endereço - Tornando todos obrigatórios, exceto complemento
-    cep: z.string().min(1, { message: "CEP é obrigatório." }).refine(validateCEP, { message: "CEP inválido (8 dígitos)." }),
-    rua: z.string().min(1, { message: "Rua é obrigatória." }),
-    bairro: z.string().min(1, { message: "Bairro é obrigatória." }),
-    cidade: z.string().min(1, { message: "Cidade é obrigatória." }),
-    estado: z.string().min(1, { message: "Estado é obrigatória." }),
-    numero: z.string().min(1, { message: "Número é obrigatório." }),
-    complemento: z.string().optional().nullable(), // Tornando complemento opcional
+    cep: z.string().optional().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
+    rua: z.string().optional(),
+    bairro: z.string().optional(),
+    cidade: z.string().optional(),
+    estado: z.string().optional(),
+    numero: z.string().optional(),
+    complemento: z.string().optional().nullable(), 
 });
 
 type ManagerIndividualProfileData = z.infer<typeof managerIndividualProfileSchema>;
@@ -110,7 +109,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             first_name: '',
             last_name: '',
             birth_date: '',
-            gender: "", // Default para string vazia
+            gender: "", 
             cpf: '',
             rg: '',
             cep: '',
@@ -127,9 +126,9 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
         if (profile) {
             form.reset({
                 first_name: profile.first_name || '',
-                last_name: profile.last_name || '', // Usando last_name do perfil
+                last_name: profile.last_name || '', 
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || "", // Se for null/vazio, o Zod vai pegar
+                gender: profile.gender || "", 
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -231,25 +230,25 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
         setIsSaving(true);
         const toastId = showLoading("Registrando como Gestor PF...");
 
-        const cleanCPF = values.cpf.replace(/\D/g, '');
+        const cleanCPF = values.cpf ? values.cpf.replace(/\D/g, '') : null;
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
-        // Se o gênero for string vazia, ele será tratado como null pelo Supabase
+        
         const genderToSave = values.gender || null; 
 
         const dataToSave = {
-            first_name: values.first_name,
-            last_name: values.last_name, // Salvando last_name
-            birth_date: values.birth_date,
+            first_name: values.first_name || null,
+            last_name: values.last_name || null, 
+            birth_date: values.birth_date || null,
             gender: genderToSave,
             cpf: cleanCPF,
             rg: cleanRG,
             cep: cleanCEP,
-            rua: values.rua,
-            bairro: values.bairro,
-            cidade: values.cidade,
-            estado: values.estado,
-            numero: values.numero,
+            rua: values.rua || null,
+            bairro: values.bairro || null,
+            cidade: values.cidade || null,
+            estado: values.estado || null,
+            numero: values.numero || null,
             complemento: values.complemento || null,
             tipo_usuario_id: 2, // Define como Gestor PRO (Pessoa Física)
         };
@@ -300,7 +299,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="first_name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Nome *</FormLabel>
+                                            <FormLabel className="text-white">Nome</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="Seu primeiro nome" 
@@ -317,7 +316,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="last_name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Sobrenome *</FormLabel>
+                                            <FormLabel className="text-white">Sobrenome</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="Seu sobrenome" 
@@ -337,7 +336,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="cpf"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">CPF *</FormLabel>
+                                            <FormLabel className="text-white">CPF</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="000.000.000-00"
@@ -356,7 +355,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="rg"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">RG *</FormLabel>
+                                            <FormLabel className="text-white">RG</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="00.000.000-0"
@@ -378,7 +377,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="birth_date"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Data de Nascimento *</FormLabel>
+                                            <FormLabel className="text-white">Data de Nascimento</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     type="date" 
@@ -395,10 +394,10 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="gender"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Gênero *</FormLabel>
+                                            <FormLabel className="text-white">Gênero</FormLabel>
                                             <Select 
                                                 onValueChange={field.onChange} 
-                                                value={field.value || ""} // Usar 'value' para componente controlado
+                                                value={field.value || ""} 
                                             >
                                                 <FormControl>
                                                     <SelectTrigger 
@@ -408,7 +407,6 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                                    {/* Removido SelectItem com value="" */}
                                                     {GENDER_OPTIONS.map(option => (
                                                         <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
                                                             {option}
@@ -424,13 +422,13 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
 
                             {/* Seção de Endereço */}
                             <div className="pt-4 border-t border-yellow-500/20">
-                                <h3 className="text-xl font-semibold text-white mb-4">Endereço *</h3>
+                                <h3 className="text-xl font-semibold text-white mb-4">Endereço</h3>
                                 <FormField
                                     control={form.control}
                                     name="cep"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">CEP *</FormLabel>
+                                            <FormLabel className="text-white">CEP</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <Input 
@@ -462,7 +460,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         name="rua"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white">Rua *</FormLabel>
+                                                <FormLabel className="text-white">Rua</FormLabel>
                                                 <FormControl>
                                                     <Input 
                                                         id="rua" 
@@ -482,7 +480,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="numero"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Número *</FormLabel>
+                                            <FormLabel className="text-white">Número</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     id="numero" 
@@ -523,7 +521,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="bairro"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Bairro *</FormLabel>
+                                            <FormLabel className="text-white">Bairro</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="Jardim Paulista" 
@@ -541,7 +539,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="cidade"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Cidade *</FormLabel>
+                                            <FormLabel className="text-white">Cidade</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="São Paulo" 
@@ -559,7 +557,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     name="estado"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Estado *</FormLabel>
+                                            <FormLabel className="text-white">Estado</FormLabel>
                                             <FormControl>
                                                 <Input 
                                                     placeholder="SP" 

@@ -75,19 +75,17 @@ const ManagerLayout: React.FC = () => {
             return;
         }
 
-        // 3. Manager-specific profile completion checks
-        if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
-            // If Manager PRO (type 2) and company profile is missing, redirect directly to company profile
-            if (userType === MANAGER_PRO_USER_TYPE_ID && !company) {
-                showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
-                navigate('/manager/settings/company-profile', { replace: true });
-                return;
-            }
-            // Otherwise, redirect to generic profile page for personal data completion
-            showError("Seu perfil de gestor está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
-            navigate('/profile', { replace: true });
-            return;
-        }
+        // REMOVIDO: Lógica de redirecionamento baseada na completude do perfil
+        // if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
+        //     if (userType === MANAGER_PRO_USER_TYPE_ID && !company) {
+        //         showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
+        //         navigate('/manager/settings/company-profile', { replace: true });
+        //         return;
+        //     }
+        //     showError("Seu perfil de gestor está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
+        //     navigate('/profile', { replace: true });
+        //     return;
+        // }
     }, [isLoadingCombined, userId, isManager, isProfileFullyComplete, isProfileCompletionPage, userType, company, navigate, location.pathname]);
 
 

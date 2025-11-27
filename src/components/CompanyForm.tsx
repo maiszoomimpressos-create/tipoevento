@@ -76,18 +76,18 @@ const formatCEP = (value: string) => {
 
 // Zod Schema para os dados da empresa (compartilhado)
 export const companySchema = z.object({
-    corporate_name: z.string().min(3, { message: "Razão Social é obrigatória." }),
-    cnpj: z.string().refine(validateCNPJ, { message: "CNPJ inválido. Verifique os dígitos." }),
-    trade_name: z.string().min(1, { message: "Nome Fantasia é obrigatório." }),
-    phone: z.string().min(1, { message: "Telefone é obrigatório." }),
-    email: z.string().email({ message: "E-mail inválido." }).min(1, { message: "E-mail da Empresa é obrigatório." }),
+    corporate_name: z.string().optional(),
+    cnpj: z.string().optional().refine((val) => !val || validateCNPJ(val), { message: "CNPJ inválido. Verifique os dígitos." }),
+    trade_name: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().optional().email({ message: "E-mail inválido." }),
     
-    cep: z.string().min(1, { message: "CEP é obrigatório." }).refine((val) => val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
-    street: z.string().min(1, { message: "Rua é obrigatória." }),
-    neighborhood: z.string().min(1, { message: "Bairro é obrigatório." }),
-    city: z.string().min(1, { message: "Cidade é obrigatória." }),
-    state: z.string().min(1, { message: "Estado é obrigatório." }),
-    number: z.string().min(1, { message: "Número é obrigatório." }),
+    cep: z.string().optional().refine((val) => !val || val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
+    street: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    number: z.string().optional(),
     complement: z.string().optional().nullable(),
 });
 
@@ -133,7 +133,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="corporate_name"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">Razão Social *</FormLabel>
+                            <FormLabel className="text-white">Razão Social</FormLabel>
                             <FormControl>
                                 <Input 
                                     placeholder="Nome da Empresa S.A."
@@ -152,7 +152,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="cnpj"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">CNPJ *</FormLabel>
+                            <FormLabel className="text-white">CNPJ</FormLabel>
                             <FormControl>
                                 <Input 
                                     placeholder="00.000.000/0000-00"
@@ -174,7 +174,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="trade_name"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Nome Fantasia *</FormLabel>
+                                <FormLabel className="text-white">Nome Fantasia</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="Nome Comercial"
@@ -192,7 +192,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Telefone *</FormLabel>
+                                <FormLabel className="text-white">Telefone</FormLabel>
                                 <FormControl>
                                     <Input 
                                         placeholder="(00) 00000-0000"
@@ -214,7 +214,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">E-mail da Empresa (Para Notificações) *</FormLabel>
+                            <FormLabel className="text-white">E-mail da Empresa (Para Notificações)</FormLabel>
                             <FormControl>
                                 <Input 
                                     placeholder="contato@empresa.com"
@@ -238,7 +238,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                     name="cep"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-white">CEP *</FormLabel>
+                            <FormLabel className="text-white">CEP</FormLabel>
                             <FormControl>
                                 <div className="relative">
                                     <Input 
@@ -268,7 +268,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                             name="street"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-white">Rua *</FormLabel>
+                                    <FormLabel className="text-white">Rua</FormLabel>
                                     <FormControl>
                                         <Input id="street" placeholder="Ex: Av. Paulista" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                     </FormControl>
@@ -282,7 +282,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="number"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Número *</FormLabel>
+                                <FormLabel className="text-white">Número</FormLabel>
                                 <FormControl>
                                     <Input id="number" placeholder="123" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>
@@ -312,7 +312,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="neighborhood"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Bairro *</FormLabel>
+                                <FormLabel className="text-white">Bairro</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Jardim Paulista" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>
@@ -325,7 +325,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Cidade *</FormLabel>
+                                <FormLabel className="text-white">Cidade</FormLabel>
                                 <FormControl>
                                     <Input placeholder="São Paulo" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>
@@ -338,7 +338,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({ isSaving, isCepLoading, fetch
                         name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-white">Estado *</FormLabel>
+                                <FormLabel className="text-white">Estado</FormLabel>
                                 <FormControl>
                                     <Input placeholder="SP" {...field} disabled={isSaving || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                 </FormControl>

@@ -11,24 +11,6 @@ import { Loader2, Building, ArrowLeft, User, AlertTriangle } from 'lucide-react'
 import CompanyForm, { companySchema, CompanyFormData } from '@/components/CompanyForm'; // Importando o novo componente e schema
 import { useProfile } from '@/hooks/use-profile'; // Importando useProfile
 
-// Campos essenciais do perfil do usuário que devem estar preenchidos
-const ESSENTIAL_PROFILE_FIELDS = [
-    'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
-    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
-];
-
-const isProfileComplete = (profileData: typeof useProfile extends (...args: any[]) => { profile: infer T } ? T : never): boolean => {
-    if (!profileData) return false;
-
-    for (const field of ESSENTIAL_PROFILE_FIELDS) {
-        const value = profileData[field as keyof typeof profileData];
-        if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
-            return false;
-        }
-    }
-    return true;
-};
-
 const ManagerCompanyRegister: React.FC = () => {
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | null>(null);
@@ -113,29 +95,29 @@ const ManagerCompanyRegister: React.FC = () => {
             return;
         }
         
-        // Validação do perfil do sócio antes de prosseguir
-        if (!profile || !isProfileComplete(profile)) {
-            showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais do seu perfil antes de registrar a empresa.");
-            return;
-        }
+        // REMOVIDO: Validação do perfil do sócio antes de prosseguir
+        // if (!profile || !isProfileComplete(profile)) {
+        //     showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais do seu perfil antes de registrar a empresa.");
+        //     return;
+        // }
 
         setIsSaving(true);
         const toastId = showLoading("Registrando empresa...");
 
         const dataToSave = {
             user_id: userId,
-            cnpj: values.cnpj.replace(/\D/g, ''),
-            corporate_name: values.corporate_name,
-            trade_name: values.trade_name,
+            cnpj: values.cnpj ? values.cnpj.replace(/\D/g, '') : null,
+            corporate_name: values.corporate_name || null,
+            trade_name: values.trade_name || null,
             phone: values.phone ? values.phone.replace(/\D/g, '') : null,
-            email: values.email,
+            email: values.email || null,
             
             cep: values.cep ? values.cep.replace(/\D/g, '') : null,
-            street: values.street,
-            number: values.number,
-            neighborhood: values.neighborhood,
-            city: values.city,
-            state: values.state,
+            street: values.street || null,
+            number: values.number || null,
+            neighborhood: values.neighborhood || null,
+            city: values.city || null,
+            state: values.state || null,
             complement: values.complement || null,
         };
 
@@ -227,28 +209,11 @@ const ManagerCompanyRegister: React.FC = () => {
                                     <User className="h-5 w-5 mr-2 text-yellow-500" />
                                     Dados do Sócio (Você)
                                 </h3>
-                                {!isProfileComplete(profile) && (
-                                    <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-start space-x-3 mb-4">
-                                        <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
-                                        <div>
-                                            <h4 className="font-semibold text-white mb-1">Perfil Pessoal Incompleto</h4>
-                                            <p className="text-sm text-gray-300">
-                                                Para registrar sua empresa, seu perfil pessoal deve estar completo. Por favor, preencha todos os campos essenciais do seu perfil.
-                                            </p>
-                                            <Button 
-                                                variant="link" 
-                                                className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
-                                                onClick={() => navigate('/profile')}
-                                            >
-                                                Ir para o Perfil Pessoal
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
+                                {/* REMOVIDO: Alerta de Perfil Pessoal Incompleto */}
                                 {profile ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
                                         <div>
-                                            <p><span className="font-medium text-white">Nome:</span> {profile.first_name} {profile.last_name}</p>
+                                            <p><span className="font-medium text-white">Nome:</span> {profile.first_name || 'N/A'} {profile.last_name || ''}</p>
                                             <p><span className="font-medium text-white">CPF:</span> {profile.cpf ? profile.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : 'N/A'}</p>
                                             <p><span className="font-medium text-white">RG:</span> {profile.rg || 'N/A'}</p>
                                         </div>
@@ -272,7 +237,7 @@ const ManagerCompanyRegister: React.FC = () => {
                             <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                                 <Button
                                     type="submit"
-                                    disabled={isSaving || !isProfileComplete(profile)}
+                                    disabled={isSaving} // REMOVIDO: || !isProfileComplete(profile)
                                     className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
                                 >
                                     {isSaving ? (

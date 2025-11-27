@@ -13,7 +13,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
-import { useProfileStatus, ALL_PROFILE_FIELDS_TO_CHECK, isValueEmpty } from '@/hooks/use-profile-status'; // Importando a lógica compartilhada
+import { useProfileStatus } from '@/hooks/use-profile-status'; // Importando a lógica compartilhada
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import { useQueryClient } from '@tanstack/react-query';
 import TermsAndConditionsDialog from '@/components/TermsAndConditionsDialog';
@@ -46,22 +46,21 @@ const validateCEP = (cep: string) => {
 };
 
 const profileSchema = z.object({
-    first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
-    last_name: z.string().min(1, { message: "Sobrenome é obrigatório." }),
-    birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    gender: z.string().min(1, { message: "Gênero é obrigatório." }).refine(val => val !== "", { message: "Selecione um gênero válido." }), // Tornando gênero obrigatório
+    first_name: z.string().optional(),
+    last_name: z.string().optional(), 
+    birth_date: z.string().optional(),
+    gender: z.string().optional().nullable(), 
     
-    cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
-    rg: z.string().min(1, { message: "RG é obrigatório." }).refine(validateRG, { message: "RG inválido." }),
+    cpf: z.string().optional().refine((val) => !val || validateCPF(val), { message: "CPF inválido." }),
+    rg: z.string().optional().refine((val) => !val || validateRG(val), { message: "RG inválido." }),
 
-    // Campos de Endereço - Tornando todos obrigatórios, exceto complemento
-    cep: z.string().min(1, { message: "CEP é obrigatório." }).refine((val) => validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
-    rua: z.string().min(1, { message: "Rua é obrigatória." }),
-    bairro: z.string().min(1, { message: "Bairro é obrigatório." }),
-    cidade: z.string().min(1, { message: "Cidade é obrigatória." }),
-    estado: z.string().min(1, { message: "Estado é obrigatória." }),
-    numero: z.string().min(1, { message: "Número é obrigatório." }),
-    complemento: z.string().optional().nullable(), // Tornando complemento opcional
+    cep: z.string().optional().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
+    rua: z.string().optional(),
+    bairro: z.string().optional(),
+    cidade: z.string().optional(),
+    estado: z.string().optional(),
+    numero: z.string().optional(),
+    complemento: z.string().optional().nullable(),
 });
 
 const Profile: React.FC = () => {
@@ -88,7 +87,7 @@ const Profile: React.FC = () => {
 
     const userId = session?.user?.id;
     const { profile, isLoading: isLoadingProfile, refetch } = useProfile(userId);
-    const { hasPendingNotifications, loading: statusLoading, isComplete: isProfileFullyComplete } = useProfileStatus(profile, isLoadingProfile);
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile); // isComplete não é mais usado para alertas
 
     const loading = loadingSession || isLoadingProfile;
 
@@ -127,7 +126,7 @@ const Profile: React.FC = () => {
             first_name: '',
             last_name: '', 
             birth_date: '',
-            gender: "", // Default para string vazia
+            gender: "", 
             cpf: '',
             rg: '',
             cep: '',
@@ -142,7 +141,7 @@ const Profile: React.FC = () => {
             first_name: profile?.first_name || '',
             last_name: profile?.last_name || '', 
             birth_date: profile?.birth_date || '',
-            gender: profile?.gender || "", // Se profile.gender for null, será string vazia
+            gender: profile?.gender || "", 
             cpf: profile?.cpf ? formatCPF(profile.cpf) : '',
             rg: profile?.rg ? formatRG(profile.rg) : '',
             cep: profile?.cep ? formatCEP(profile.cep) : '',
@@ -157,12 +156,11 @@ const Profile: React.FC = () => {
 
     useEffect(() => {
         if (profile) {
-            // Resetar o formulário com os dados do perfil sempre que o perfil for carregado/atualizado
             form.reset({
                 first_name: profile.first_name || '',
                 last_name: profile.last_name || '',
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || "", // Se profile.gender for null, será string vazia
+                gender: profile.gender || "", 
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -239,14 +237,12 @@ const Profile: React.FC = () => {
         setFormLoading(true);
 
         // Limpeza e conversão para salvar no DB
-        const cleanCPF = values.cpf.replace(/\D/g, '');
+        const cleanCPF = values.cpf ? values.cpf.replace(/\D/g, '') : null;
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
         
-        // Se o gênero for string vazia, ele será tratado como null pelo Supabase
         const genderToSave = values.gender || null; 
 
-        // Certifique-se de que campos de endereço vazios sejam salvos como null, não como strings vazias
         const ruaToSave = values.rua || null;
         const bairroToSave = values.bairro || null;
         const cidadeToSave = values.cidade || null;
@@ -258,9 +254,9 @@ const Profile: React.FC = () => {
             const { error } = await supabase
                 .from('profiles')
                 .update({ 
-                    first_name: values.first_name,
-                    last_name: values.last_name, 
-                    birth_date: values.birth_date,
+                    first_name: values.first_name || null,
+                    last_name: values.last_name || null, 
+                    birth_date: values.birth_date || null,
                     gender: genderToSave,
                     cpf: cleanCPF, 
                     rg: cleanRG,
@@ -278,12 +274,7 @@ const Profile: React.FC = () => {
                 showError("Erro ao atualizar o perfil.");
                 console.error("Supabase Update Error:", error);
             } else {
-                // Check if the user is a manager (type 1 or 2) and if the profile is now incomplete
-                if ((profile?.tipo_usuario_id === 1 || profile?.tipo_usuario_id === 2) && !isProfileFullyComplete) {
-                    showError("Seu perfil de gestor está incompleto. O acesso ao Dashboard PRO será bloqueado até que todos os campos essenciais sejam preenchidos.");
-                } else {
-                    showSuccess("Perfil atualizado com sucesso!");
-                }
+                showSuccess("Perfil atualizado com sucesso!");
                 
                 // Invalida a query para forçar a re-busca e atualização imediata do status de notificação em todos os componentes
                 queryClient.invalidateQueries({ queryKey: ['profile', userId] });
@@ -327,54 +318,7 @@ const Profile: React.FC = () => {
         // pois o usuário já concordou no registro.
         // O MultiLineEditor dentro do dialog não terá o checkbox visível.
     };
-
-    // Função para obter os campos faltando
-    const getMissingFields = (): string[] => {
-        if (!profile) return []; // Se não há perfil, todos os campos estão 'faltando'
-
-        const missing: string[] = [];
-        // Usa a lista compartilhada de campos para verificar
-        const fieldsToCheck = ALL_PROFILE_FIELDS_TO_CHECK;
-
-        const fieldNamesMap: { [key: string]: string } = {
-            first_name: 'Nome',
-            last_name: 'Sobrenome',
-            cpf: 'CPF',
-            rg: 'RG',
-            birth_date: 'Data de Nascimento',
-            gender: 'Gênero',
-            cep: 'CEP',
-            rua: 'Rua',
-            bairro: 'Bairro',
-            cidade: 'Cidade',
-            estado: 'Estado',
-            numero: 'Número',
-        };
-
-        for (const field of fieldsToCheck) {
-            const value = profile[field as keyof ProfileData];
-            if (isValueEmpty(value)) { // Usa a função auxiliar compartilhada
-                missing.push(fieldNamesMap[field] || field);
-            }
-        }
-        
-        // Adiciona a verificação do perfil da empresa para gestores
-        if (profile?.tipo_usuario_id === 2 && !isProfileFullyComplete && !missing.includes('Perfil da Empresa')) {
-            missing.push('Perfil da Empresa'); 
-        }
-
-        return missing;
-    };
-
-    const missingFields = getMissingFields();
     
-    // Log explícito para depuração
-    useEffect(() => {
-        console.log(`[ProfilePage] isProfileFullyComplete: ${isProfileFullyComplete}, hasPendingNotifications: ${hasPendingNotifications}`);
-        console.log(`[ProfilePage] Missing fields for alert:`, missingFields);
-    }, [isProfileFullyComplete, hasPendingNotifications, missingFields]);
-
-
     if (loading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -442,51 +386,8 @@ const Profile: React.FC = () => {
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
                     
-                    {/* Alerta de Perfil Incompleto para Clientes */}
-                    {hasPendingNotifications && profile?.tipo_usuario_id === 3 && (
-                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
-                            <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
-                            <div>
-                                <h3 className="font-semibold text-white mb-1">Atenção: Perfil Incompleto</h3>
-                                <p className="text-sm">
-                                    Por favor, preencha os seguintes campos essenciais para liberar todas as funcionalidades e garantir a emissão correta de ingressos:
-                                </p>
-                                <ul className="list-disc list-inside text-sm mt-2">
-                                    {missingFields.map((field, index) => (
-                                        <li key={index} className="text-gray-300">{field}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    )}
-                    
-                    {/* Alerta de Perfil Incompleto para Gestores */}
-                    { (profile?.tipo_usuario_id === 1 || profile?.tipo_usuario_id === 2) && !isProfileFullyComplete && (
-                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
-                            <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
-                            <div>
-                                <h3 className="font-semibold text-white mb-1">Atenção: Perfil de Gestor Incompleto</h3>
-                                <p className="text-sm">
-                                    Seu perfil de gestor está incompleto. O acesso ao Dashboard PRO será bloqueado até que todos os campos essenciais sejam preenchidos:
-                                </p>
-                                <ul className="list-disc list-inside text-sm mt-2">
-                                    {missingFields.map((field, index) => (
-                                        <li key={index} className="text-gray-300">{field}</li>
-                                    ))}
-                                </ul>
-                                {/* Adiciona um botão para ir para o perfil da empresa se for um gestor PRO */}
-                                {profile?.tipo_usuario_id === 2 && missingFields.includes('Perfil da Empresa') && (
-                                    <Button 
-                                        variant="link" 
-                                        className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
-                                        onClick={() => navigate('/manager/settings/company-profile')}
-                                    >
-                                        Ir para o Perfil da Empresa
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    {/* REMOVIDO: Alerta de Perfil Incompleto para Clientes */}
+                    {/* REMOVIDO: Alerta de Perfil Incompleto para Gestores */}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div className="md:col-span-2 order-2 md:order-1">
@@ -514,7 +415,7 @@ const Profile: React.FC = () => {
                                                     name="first_name"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Nome *</FormLabel>
+                                                            <FormLabel className="text-white">Nome</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="Seu nome" 
@@ -532,7 +433,7 @@ const Profile: React.FC = () => {
                                                     name="last_name"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Sobrenome *</FormLabel>
+                                                            <FormLabel className="text-white">Sobrenome</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="Seu sobrenome" 
@@ -563,7 +464,7 @@ const Profile: React.FC = () => {
                                                     name="cpf"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">CPF *</FormLabel>
+                                                            <FormLabel className="text-white">CPF</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="000.000.000-00"
@@ -583,7 +484,7 @@ const Profile: React.FC = () => {
                                                     name="rg"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">RG *</FormLabel>
+                                                            <FormLabel className="text-white">RG</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="00.000.000-0"
@@ -606,7 +507,7 @@ const Profile: React.FC = () => {
                                                     name="birth_date"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Data de Nascimento *</FormLabel>
+                                                            <FormLabel className="text-white">Data de Nascimento</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     type="date" 
@@ -624,10 +525,10 @@ const Profile: React.FC = () => {
                                                     name="gender"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Gênero *</FormLabel>
+                                                            <FormLabel className="text-white">Gênero</FormLabel>
                                                             <Select 
                                                                 onValueChange={field.onChange} 
-                                                                value={field.value || ""} // Usar 'value' para componente controlado
+                                                                value={field.value || ""} 
                                                                 disabled={!isEditing}
                                                             >
                                                                 <FormControl>
@@ -638,7 +539,6 @@ const Profile: React.FC = () => {
                                                                     </SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                                                    {/* Removido SelectItem com value="" */}
                                                                     {GENDER_OPTIONS.map(option => (
                                                                         <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
                                                                             {option}
@@ -660,7 +560,7 @@ const Profile: React.FC = () => {
                                                     name="cep"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">CEP *</FormLabel>
+                                                            <FormLabel className="text-white">CEP</FormLabel>
                                                             <FormControl>
                                                                 <div className="relative">
                                                                     <Input 
@@ -691,7 +591,7 @@ const Profile: React.FC = () => {
                                                         name="rua"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-white">Rua *</FormLabel>
+                                                                <FormLabel className="text-white">Rua</FormLabel>
                                                                 <FormControl>
                                                                     <Input 
                                                                         id="rua" 
@@ -711,7 +611,7 @@ const Profile: React.FC = () => {
                                                     name="numero"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Número *</FormLabel>
+                                                            <FormLabel className="text-white">Número</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     id="numero" 
@@ -753,7 +653,7 @@ const Profile: React.FC = () => {
                                                         name="bairro"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-white">Bairro *</FormLabel>
+                                                                <FormLabel className="text-white">Bairro</FormLabel>
                                                                 <FormControl>
                                                                     <Input 
                                                                         placeholder="Jardim Paulista" 
@@ -772,7 +672,7 @@ const Profile: React.FC = () => {
                                                     name="cidade"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Cidade *</FormLabel>
+                                                            <FormLabel className="text-white">Cidade</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="São Paulo" 
@@ -790,7 +690,7 @@ const Profile: React.FC = () => {
                                                     name="estado"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Estado *</FormLabel>
+                                                            <FormLabel className="text-white">Estado</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="SP" 
