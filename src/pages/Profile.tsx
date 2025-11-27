@@ -267,7 +267,7 @@ const Profile: React.FC = () => {
                     cep: cleanCEP,
                     rua: ruaToSave,
                     bairro: bairroToSave,
-                    cidade: cidadeToSave, // Corrigido o typo aqui
+                    cidade: cidadeToSave, 
                     estado: estadoToSave,
                     numero: numeroToSave,
                     complemento: complementoToSave,
@@ -349,7 +349,6 @@ const Profile: React.FC = () => {
             cidade: 'Cidade',
             estado: 'Estado',
             numero: 'Número',
-            company_profile: 'Perfil da Empresa', // Adicionado para exibição
         };
 
         for (const field of fieldsToCheck) {
@@ -361,17 +360,20 @@ const Profile: React.FC = () => {
         
         // Adiciona a verificação do perfil da empresa para gestores
         if (profile?.tipo_usuario_id === 2 && !isProfileFullyComplete && !missing.includes('Perfil da Empresa')) {
-            // Se o perfil pessoal está completo, mas o isProfileFullyComplete é falso,
-            // significa que o problema é o perfil da empresa.
-            // Isso é uma heurística, pois o isProfileFullyComplete já considera isso.
-            // Mas para a lista de exibição, podemos ser mais explícitos.
-            // A mensagem de alerta já é tratada pelo useProfileStatus.
+            missing.push('Perfil da Empresa'); 
         }
 
         return missing;
     };
 
     const missingFields = getMissingFields();
+    
+    // Log explícito para depuração
+    useEffect(() => {
+        console.log(`[ProfilePage] isProfileFullyComplete: ${isProfileFullyComplete}, hasPendingNotifications: ${hasPendingNotifications}`);
+        console.log(`[ProfilePage] Missing fields for alert:`, missingFields);
+    }, [isProfileFullyComplete, hasPendingNotifications, missingFields]);
+
 
     if (loading) {
         return (
