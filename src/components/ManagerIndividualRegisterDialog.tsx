@@ -302,7 +302,11 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         <FormItem>
                                             <FormLabel className="text-white">Nome *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Seu primeiro nome" {...field} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input 
+                                                    placeholder="Seu primeiro nome" 
+                                                    {...field} 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.first_name ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -315,7 +319,11 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         <FormItem>
                                             <FormLabel className="text-white">Sobrenome *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Seu sobrenome" {...field} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input 
+                                                    placeholder="Seu sobrenome" 
+                                                    {...field} 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.last_name ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -335,7 +343,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="000.000.000-00"
                                                     {...field} 
                                                     onChange={handleCpfChange}
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.cpf ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                     maxLength={14}
                                                 />
                                             </FormControl>
@@ -354,7 +362,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="00.000.000-0"
                                                     {...field} 
                                                     onChange={handleRgChange}
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.rg ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                     maxLength={12}
                                                 />
                                             </FormControl>
@@ -375,7 +383,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                 <Input 
                                                     type="date" 
                                                     {...field} 
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.birth_date ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                 />
                                             </FormControl>
                                             <FormMessage />
@@ -393,7 +401,9 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                 value={field.value || "not_specified"} // Usar 'value' para componente controlado
                                             >
                                                 <FormControl>
-                                                    <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
+                                                    <SelectTrigger 
+                                                        className={`w-full bg-black/60 text-white focus:ring-yellow-500 ${form.formState.errors.gender ? 'border-red-500' : 'border-yellow-500/30'}`}
+                                                    >
                                                         <SelectValue placeholder="Selecione seu gênero" />
                                                     </SelectTrigger>
                                                 </FormControl>
@@ -430,7 +440,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                         {...field} 
                                                         onChange={handleCepChange}
                                                         disabled={isCepLoading} 
-                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 pr-10" 
+                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 pr-10 ${form.formState.errors.cep ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                         maxLength={9}
                                                     />
                                                     {isCepLoading && (
@@ -456,7 +466,13 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                             <FormItem>
                                                 <FormLabel className="text-white">Rua *</FormLabel>
                                                 <FormControl>
-                                                    <Input id="rua" placeholder="Ex: Av. Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                    <Input 
+                                                        id="rua" 
+                                                        placeholder="Ex: Av. Paulista" 
+                                                        {...field} 
+                                                        disabled={isCepLoading} 
+                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.rua ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -470,7 +486,13 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         <FormItem>
                                             <FormLabel className="text-white">Número *</FormLabel>
                                             <FormControl>
-                                                <Input id="numero" placeholder="123" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input 
+                                                    id="numero" 
+                                                    placeholder="123" 
+                                                    {...field} 
+                                                    disabled={isCepLoading} 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.numero ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -485,7 +507,12 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                     <FormItem>
                                         <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Apto 101, Bloco B" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                            <Input 
+                                                placeholder="Apto 101, Bloco B" 
+                                                {...field} 
+                                                disabled={isCepLoading} 
+                                                className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.complemento ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -500,7 +527,12 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         <FormItem>
                                             <FormLabel className="text-white">Bairro *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Jardim Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input 
+                                                    placeholder="Jardim Paulista" 
+                                                    {...field} 
+                                                    disabled={isCepLoading} 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.bairro ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -513,7 +545,12 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         <FormItem>
                                             <FormLabel className="text-white">Cidade *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="São Paulo" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input 
+                                                    placeholder="São Paulo" 
+                                                    {...field} 
+                                                    disabled={isCepLoading} 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.cidade ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -526,7 +563,12 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                         <FormItem>
                                             <FormLabel className="text-white">Estado *</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="SP" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input 
+                                                    placeholder="SP" 
+                                                    {...field} 
+                                                    disabled={isCepLoading} 
+                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 ${form.formState.errors.estado ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

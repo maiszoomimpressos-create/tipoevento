@@ -448,7 +448,12 @@ const Profile: React.FC = () => {
                                                         <FormItem>
                                                             <FormLabel className="text-white">Nome *</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Seu nome" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                <Input 
+                                                                    placeholder="Seu nome" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing} 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.first_name ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -461,7 +466,12 @@ const Profile: React.FC = () => {
                                                         <FormItem>
                                                             <FormLabel className="text-white">Sobrenome *</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="Seu sobrenome" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                <Input 
+                                                                    placeholder="Seu sobrenome" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing} 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.last_name ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -492,7 +502,7 @@ const Profile: React.FC = () => {
                                                                     {...field} 
                                                                     onChange={handleCpfChange}
                                                                     disabled={!isEditing} 
-                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.cpf ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                                     maxLength={14}
                                                                 />
                                                             </FormControl>
@@ -512,7 +522,7 @@ const Profile: React.FC = () => {
                                                                     {...field} 
                                                                     onChange={handleRgChange}
                                                                     disabled={!isEditing} 
-                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.rg ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                                     maxLength={12}
                                                                 />
                                                             </FormControl>
@@ -534,7 +544,7 @@ const Profile: React.FC = () => {
                                                                     type="date" 
                                                                     {...field} 
                                                                     disabled={!isEditing} 
-                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.birth_date ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -554,7 +564,7 @@ const Profile: React.FC = () => {
                                                             >
                                                                 <FormControl>
                                                                     <SelectTrigger 
-                                                                        className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                                        className={`w-full bg-black/60 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.gender ? 'border-red-500' : 'border-yellow-500/30'}`}
                                                                     >
                                                                         <SelectValue placeholder="Selecione seu gênero" />
                                                                     </SelectTrigger>
@@ -592,7 +602,7 @@ const Profile: React.FC = () => {
                                                                         {...field} 
                                                                         onChange={handleCepChange}
                                                                         disabled={!isEditing || isCepLoading} 
-                                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed pr-10" 
+                                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed pr-10 ${form.formState.errors.cep ? 'border-red-500' : 'border-yellow-500/30'}`} 
                                                                         maxLength={9}
                                                                     />
                                                                     {isCepLoading && (
@@ -617,7 +627,13 @@ const Profile: React.FC = () => {
                                                             <FormItem>
                                                                 <FormLabel className="text-white">Rua *</FormLabel>
                                                                 <FormControl>
-                                                                    <Input id="rua" placeholder="Ex: Av. Paulista" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                    <Input 
+                                                                        id="rua" 
+                                                                        placeholder="Ex: Av. Paulista" 
+                                                                        {...field} 
+                                                                        disabled={!isEditing || isCepLoading} 
+                                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.rua ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                    />
                                                                 </FormControl>
                                                                 <FormMessage />
                                                             </FormItem>
@@ -631,7 +647,13 @@ const Profile: React.FC = () => {
                                                         <FormItem>
                                                             <FormLabel className="text-white">Número *</FormLabel>
                                                             <FormControl>
-                                                                <Input id="numero" placeholder="123" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                <Input 
+                                                                    id="numero" 
+                                                                    placeholder="123" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing || isCepLoading} 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.numero ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -646,7 +668,12 @@ const Profile: React.FC = () => {
                                                     <FormItem>
                                                         <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Apto 101, Bloco B" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                            <Input 
+                                                                placeholder="Apto 101, Bloco B" 
+                                                                {...field} 
+                                                                disabled={!isEditing || isCepLoading} 
+                                                                className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.complemento ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -662,7 +689,12 @@ const Profile: React.FC = () => {
                                                             <FormItem>
                                                                 <FormLabel className="text-white">Bairro *</FormLabel>
                                                                 <FormControl>
-                                                                    <Input placeholder="Jardim Paulista" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                    <Input 
+                                                                        placeholder="Jardim Paulista" 
+                                                                        {...field} 
+                                                                        disabled={!isEditing || isCepLoading} 
+                                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.bairro ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                    />
                                                                 </FormControl>
                                                                 <FormMessage />
                                                             </FormItem>
@@ -676,7 +708,12 @@ const Profile: React.FC = () => {
                                                         <FormItem>
                                                             <FormLabel className="text-white">Cidade *</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="São Paulo" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                <Input 
+                                                                    placeholder="São Paulo" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing || isCepLoading} 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.cidade ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -689,7 +726,12 @@ const Profile: React.FC = () => {
                                                         <FormItem>
                                                             <FormLabel className="text-white">Estado *</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="SP" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                                <Input 
+                                                                    placeholder="SP" 
+                                                                    {...field} 
+                                                                    disabled={!isEditing || isCepLoading} 
+                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed ${form.formState.errors.estado ? 'border-red-500' : 'border-yellow-500/30'}`} 
+                                                                />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
