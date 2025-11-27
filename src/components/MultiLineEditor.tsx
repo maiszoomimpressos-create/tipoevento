@@ -186,7 +186,7 @@ const MultiLineEditor: React.FC<MultiLineEditorProps> = ({ onAgree, initialAgree
                 <div 
                     ref={contentRef}
                     onScroll={isClient ? handleScroll : undefined} // Apenas clientes precisam rolar até o final
-                    className="max-h-96 overflow-y-auto p-4 bg-black/60 border border-yellow-500/20 rounded-xl text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"
+                    className="max-h-96 overflow-y-auto p-2 bg-black/60 border border-yellow-500/20 rounded-xl text-gray-300 text-sm leading-relaxed whitespace-pre-wrap"
                 >
                     {isEditing ? (
                         <Textarea
