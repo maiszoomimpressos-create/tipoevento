@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useForm } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form'; // CORRIGIDO: Importado de 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
