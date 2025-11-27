@@ -1,53 +1,44 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import AuthStatusMenu from '@/components/AuthStatusMenu';
-import { Input } from '@/components/ui/input';
+import { Loader2, MapPin, Clock, Users, UserCheck, User, Shield, ArrowLeft, Search } from 'lucide-react';
+import { showError, showSuccess } from '@/utils/toast';
 import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
-import { Loader2 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { showError } from '@/utils/toast'; // Importando showError
+import EventBanner from '@/components/EventBanner';
+import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
+import { Input } from '@/components/ui/input';
+import { useAuthRedirect } from '@/hooks/use-auth-redirect'; // Importando o novo hook
 
-// Helper function to get the minimum price from ticket types
-const getMinPriceDisplay = (ticketTypes: TicketType[] | undefined) => {
-    if (!ticketTypes || ticketTypes.length === 0) return 'Grátis';
+// Helper function to get the minimum price display
+const getMinPriceDisplay = (ticketTypes: TicketType[]): string => {
+    if (!ticketTypes || ticketTypes.length === 0) return 'Sem ingressos ativos';
     const minPrice = Math.min(...ticketTypes.map(t => t.price));
-    // Se o preço for 0, exibe "R$ 0,00". Caso contrário, formata o preço.
-    return `R$ ${minPrice.toFixed(2).replace('.', ',')}`;
+    // Formata para R$ X.XX, sem centavos
+    return `A partir de R$ ${minPrice.toFixed(0)}`; 
 };
 
 const EventDetails: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
+    const { id } = useParams<{ id: string }>(); 
     
     const { details, isLoading, isError } = useEventDetails(id);
-    
-    const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
+    const { isLoading: isPurchasing, purchaseTicket } = usePurchaseTicket();
+    const { isAuthenticated, redirectToLogin } = useAuthRedirect();
 
-    const handleTicketChange = (ticketId: string, quantity: number) => {
-        setSelectedTickets(prev => ({
-            ...prev,
-            [ticketId]: Math.max(0, quantity)
-        }));
-    };
+    // Inicializa o estado dos ingressos a partir do estado de navegação (se houver)
+    const initialSelectedTickets = location.state?.selectedTickets || {};
+    const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>(initialSelectedTickets);
 
-    const getTotalPrice = () => {
-        if (!details) return 0;
-        return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
-            const ticket = details.ticketTypes.find((t: TicketType) => t.id === ticketId);
-            return total + (ticket ? ticket.price * quantity : 0);
-        }, 0);
-    };
+    // Limpa o estado de navegação após a montagem para evitar loops de re-renderização
+    useEffect(() => {
+        if (location.state?.selectedTickets) {
+            // Remove o estado de navegação após usá-lo
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.state, location.pathname, navigate]);
 
-    const getTotalTickets = () => {
-        return Object.values(selectedTickets).reduce((total, quantity) => total + quantity, 0);
-    };
-    
-    const handleCheckout = () => {
-        showError("A funcionalidade de compra está temporariamente indisponível.");
-        // Anteriormente, navegava para '/checkout'. Agora, apenas exibe um erro.
-    };
 
     if (isLoading) {
         return (
@@ -57,167 +48,197 @@ const EventDetails: React.FC = () => {
         );
     }
 
-    if (isError || !details) {
+    if (isError || !details?.event) {
         return (
-            <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center pt-20 px-4">
-                <h1 className="text-4xl font-serif text-red-500 mb-4">Erro 404</h1>
-                <p className="text-xl text-gray-400 mb-6">Evento não encontrado ou indisponível.</p>
-                <Button onClick={() => navigate('/')} className="bg-yellow-500 text-black hover:bg-yellow-600">
-                    Voltar para a Home
-                </Button>
+            <div className="min-h-screen bg-black text-white pt-20 px-4">
+                <div className="max-w-4xl mx-auto py-10">
+                    <Card className="bg-black/80 backdrop-blur-sm border border-red-500/30 rounded-2xl p-8 text-center">
+                        <i className="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
+                        <h1 className="text-2xl font-serif text-white mb-2">Evento Não Encontrado</h1>
+                        <p className="text-gray-400 mb-6">O evento que você está procurando não existe, foi removido ou o ID é inválido.</p>
+                        <Button 
+                            onClick={() => navigate('/')}
+                            className="bg-yellow-500 text-black hover:bg-yellow-600"
+                        >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Voltar para a Home
+                        </Button>
+                    </Card>
+                </div>
             </div>
         );
     }
-    
+
     const { event, ticketTypes } = details;
-    const minPriceDisplay = getMinPriceDisplay(ticketTypes);
     
-    // Extraindo dados do organizador
-    const organizerName = event.companies?.corporate_name || 'N/A';
-    const capacityDisplay = event.capacity > 0 ? event.capacity.toLocaleString('pt-BR') : 'N/A';
-    const durationDisplay = event.duration || 'N/A';
+    const handleTicketChange = (ticketId: string, quantity: number) => {
+        setSelectedTickets(prev => ({
+            ...prev,
+            [ticketId]: Math.max(0, quantity)
+        }));
+    };
+
+    const getTotalPrice = () => {
+        return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
+            const ticket = ticketTypes.find(t => t.id === ticketId);
+            return total + (ticket ? ticket.price * quantity : 0);
+        }, 0);
+    };
+
+    const getTotalTickets = () => {
+        return Object.values(selectedTickets).reduce((total, quantity) => total + quantity, 0);
+    };
+    
+    const handleCheckout = async () => {
+        const totalTickets = getTotalTickets();
+        if (totalTickets === 0) {
+            showError("Selecione pelo menos um ingresso para continuar.");
+            return;
+        }
+        
+        // 1. VERIFICAÇÃO DE AUTENTICAÇÃO
+        if (!isAuthenticated) {
+            // Salva o estado atual dos ingressos selecionados antes de redirecionar
+            redirectToLogin({ selectedTickets });
+            return;
+        }
+        
+        // 2. LÓGICA DE COMPRA (Se autenticado)
+        
+        // Para simplificar, vamos processar TODOS os ingressos selecionados.
+        // Criamos uma lista de promessas de compra.
+        const purchasePromises = Object.entries(selectedTickets)
+            .filter(([, quantity]) => quantity > 0)
+            .map(async ([ticketId, quantity]) => {
+                const ticketDetails = ticketTypes.find(t => t.id === ticketId);
+                
+                if (!ticketDetails) {
+                    throw new Error(`Detalhes do ingresso ${ticketId} não encontrados.`);
+                }
+
+                return purchaseTicket({
+                    eventId: event.id,
+                    ticketTypeId: ticketId,
+                    quantity: quantity,
+                    price: ticketDetails.price,
+                });
+            });
+
+        try {
+            const results = await Promise.all(purchasePromises);
+            
+            // Se todas as compras foram bem-sucedidas (o hook purchaseTicket retorna true em caso de sucesso)
+            if (results.every(result => result === true)) {
+                // Após a compra bem-sucedida, limpa a seleção e navega para a página de ingressos
+                setSelectedTickets({});
+                navigate('/tickets');
+            } else {
+                // Se alguma falhou, o purchaseTicket já deve ter exibido um erro.
+                showError("Algumas compras falharam. Verifique a disponibilidade.");
+            }
+        } catch (e: any) {
+            console.error("Erro durante o processamento de múltiplas compras:", e);
+            showError(e.message || "Ocorreu um erro ao processar a compra.");
+        }
+    };
+
+    const minPriceDisplay = getMinPriceDisplay(ticketTypes);
+    const classificationDisplay = event.min_age === 0 ? 'Livre' : `${event.min_age} anos`;
+    const organizerName = event.companies?.corporate_name || 'Organizador Desconhecido';
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
-            <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-4 sm:space-x-8">
-                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
-                            Mazoy
-                        </div>
-                        <nav className="hidden md:flex items-center space-x-8">
-                            <button onClick={() => navigate('/')} className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</button>
-                            <a href="/#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
-                            <a href="/#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
-                            <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
-                        </nav>
-                    </div>
-                    <div className="flex items-center space-x-3 sm:space-x-4">
-                        <div className="relative hidden lg:block">
-                            <Input 
-                                type="search" 
-                                placeholder="Buscar eventos..." 
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-64 pl-4 pr-10 py-2 rounded-xl"
-                            />
-                            <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
-                        </div>
-                        <AuthStatusMenu />
-                        <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer px-3 sm:px-4">
-                            Voltar
-                        </Button>
-                    </div>
-                </div>
-            </header>
-            <section className="pt-20 pb-0">
-                <div className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
-                    <img
-                        src={event.image_url}
-                        alt={event.title}
-                        className="w-full h-full object-cover object-top"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40"></div>
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
-                            <div className="max-w-full lg:max-w-3xl">
-                                <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold mb-2 sm:mb-4">
-                                    {event.category}
-                                </div>
-                                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif text-white mb-3 sm:mb-6 leading-tight">
-                                    {event.title}
-                                </h1>
-                                <p className="text-base sm:text-xl text-gray-200 mb-4 sm:mb-8 leading-relaxed line-clamp-3">
-                                    {event.description}
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                                    <div className="flex items-center">
-                                        <i className="fas fa-calendar-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-gray-400">Data</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{new Date(event.date).toLocaleDateString('pt-BR')}</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <i className="fas fa-clock text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-gray-400">Horário</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.time}</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
-                                        <div>
-                                            <div className="text-xs sm:text-sm text-gray-400">Local</div>
-                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.location}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                                    <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
-                                        A partir de {minPriceDisplay}
-                                    </span>
-                                    <Button 
-                                        onClick={handleCheckout} // Usando a função de checkout
-                                        className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
-                                    >
-                                        Comprar Ingressos
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-            <div className="w-full h-px bg-yellow-500"></div>
+            
+            {/* 1. Cabeçalho do Evento (Banner) */}
+            <EventBanner 
+                event={event} 
+                minPriceDisplay={minPriceDisplay} 
+                showActionButton={false} // O botão principal está na sidebar
+            />
+            
+            {/* Linha divisória */}
+            <div className="w-full h-px bg-yellow-500/20"></div>
+            
             <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+                        
+                        {/* Coluna Principal (Detalhes) */}
                         <div className="lg:col-span-2 space-y-8 sm:space-y-12 order-2 lg:order-1">
+                            
+                            {/* 2. Seção "Sobre o Evento" */}
                             <div>
                                 <h2 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-6">Sobre o Evento</h2>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-6">
                                         {event.description}
                                     </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                                        <div className="space-y-3 sm:space-y-4">
-                                            <div className="flex items-center text-sm sm:text-base">
-                                                <i className="fas fa-users text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Capacidade: {capacityDisplay}</span>
-                                            </div>
-                                            <div className="flex items-center text-sm sm:text-base">
-                                                <i className="fas fa-clock text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Duração: {durationDisplay}</span>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-4 border-t border-yellow-500/10">
+                                        {/* Capacidade */}
+                                        <div className="flex items-center text-sm sm:text-base">
+                                            <Users className="text-yellow-500 mr-3 h-5 w-5" />
+                                            <div>
+                                                <div className="text-xs text-gray-400">Capacidade</div>
+                                                <span className="text-white font-semibold">{event.capacity.toLocaleString()} pessoas</span>
                                             </div>
                                         </div>
-                                        <div className="space-y-3 sm:space-y-4">
-                                            <div className="flex items-center text-sm sm:text-base">
-                                                <i className="fas fa-user-check text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Classificação: {event.min_age === 0 ? 'Livre' : `${event.min_age} anos`}</span>
+                                        {/* Duração */}
+                                        <div className="flex items-center text-sm sm:text-base">
+                                            <Clock className="text-yellow-500 mr-3 h-5 w-5" />
+                                            <div>
+                                                <div className="text-xs text-gray-400">Duração</div>
+                                                <span className="text-white font-semibold">{event.duration}</span>
                                             </div>
-                                            <div className="flex items-center text-sm sm:text-base">
-                                                <i className="fas fa-user-tie text-yellow-500 mr-3"></i>
-                                                <span className="text-white">Organizador: {organizerName}</span>
+                                        </div>
+                                        {/* Classificação */}
+                                        <div className="flex items-center text-sm sm:text-base">
+                                            <UserCheck className="text-yellow-500 mr-3 h-5 w-5" />
+                                            <div>
+                                                <div className="text-xs text-gray-400">Classificação</div>
+                                                <span className="text-white font-semibold">{classificationDisplay}</span>
+                                            </div>
+                                        </div>
+                                        {/* Organizador */}
+                                        <div className="flex items-center text-sm sm:text-base">
+                                            <User className="text-yellow-500 mr-3 h-5 w-5" />
+                                            <div>
+                                                <div className="text-xs text-gray-400">Organizador</div>
+                                                <span className="text-white font-semibold">{organizerName}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* 3. Seção “Destaques do Evento” */}
+                            {/* Usando destaques mockados, pois não temos a coluna 'highlights' no hook */}
                             <div>
                                 <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Destaques do Evento</h3>
-                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
-                                    <div className="text-gray-400">
-                                        {/* Placeholder para destaques, pois não temos este campo no DB */}
-                                        <p>Destaques não disponíveis no momento. Consulte a descrição.</p>
-                                    </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {/* Mock de Destaques */}
+                                    <Card className="bg-black/60 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 transition-all duration-300">
+                                        <i className="fas fa-star text-3xl text-yellow-500 mb-3"></i>
+                                        <p className="text-white font-semibold text-sm">Experiência Premium</p>
+                                    </Card>
+                                    <Card className="bg-black/60 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 transition-all duration-300">
+                                        <i className="fas fa-trophy text-3xl text-yellow-500 mb-3"></i>
+                                        <p className="text-white font-semibold text-sm">Curadoria Exclusiva</p>
+                                    </Card>
+                                    <Card className="bg-black/60 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 transition-all duration-300">
+                                        <i className="fas fa-users text-3xl text-yellow-500 mb-3"></i>
+                                        <p className="text-white font-semibold text-sm">Networking de Elite</p>
+                                    </Card>
                                 </div>
                             </div>
+                            
+                            {/* 4. Seção “Localização” */}
                             <div>
                                 <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Localização</h3>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <div className="flex items-start space-x-4 mb-6">
-                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl mt-1 flex-shrink-0"></i>
+                                        <MapPin className="text-yellow-500 h-6 w-6 mt-1 flex-shrink-0" />
                                         <div>
-                                            <h4 className="text-white font-semibold text-base sm:text-lg mb-2">{event.location}</h4>
+                                            <h4 className="text-white font-semibold text-base sm:text-lg">{event.location}</h4>
                                             <p className="text-gray-300 text-sm sm:text-base">{event.address}</p>
                                         </div>
                                     </div>
@@ -230,48 +251,60 @@ const EventDetails: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="lg:col-span-1 order-1 lg:order-2">
+                        
+                        {/* Coluna de Ingressos (Sidebar) */}
+                        <div id="ingressos" className="lg:col-span-1 order-1 lg:order-2">
                             <div className="lg:sticky lg:top-24">
                                 <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-6">Selecionar Ingressos</h3>
                                     <div className="space-y-6">
                                         {ticketTypes.length > 0 ? (
-                                            ticketTypes.map((ticket: TicketType) => (
-                                                <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6">
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div>
-                                                            <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
-                                                            <p className="text-gray-400 text-xs sm:text-sm mt-1">{ticket.description}</p>
+                                            ticketTypes.map((ticket) => {
+                                                const isAvailable = ticket.available > 0;
+                                                const currentQuantity = selectedTickets[ticket.id] || 0;
+                                                
+                                                return (
+                                                    <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6 opacity-100 transition-opacity duration-300">
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <div>
+                                                                <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
+                                                                <p className="text-gray-400 text-xs sm:text-sm mt-1 line-clamp-2">{ticket.description}</p>
+                                                            </div>
+                                                            <div className="text-right flex-shrink-0 ml-4">
+                                                                <div className="text-xl sm:text-2xl font-bold text-yellow-500">R$ {ticket.price.toFixed(0)}</div>
+                                                                <div className="text-xs sm:text-sm text-gray-400">
+                                                                    {isAvailable ? `${ticket.available} disponíveis` : 'Esgotado'}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="text-right flex-shrink-0 ml-4">
-                                                            <div className="text-xl sm:text-2xl font-bold text-yellow-500">R$ {ticket.price.toFixed(2).replace('.', ',')}</div>
-                                                            <div className="text-xs sm:text-sm text-gray-400">{ticket.available} disponíveis</div>
+                                                        <div className="flex items-center justify-between pt-3 border-t border-yellow-500/10">
+                                                            <span className="text-white text-sm sm:text-base">Quantidade:</span>
+                                                            <div className="flex items-center space-x-3">
+                                                                <button
+                                                                    onClick={() => handleTicketChange(ticket.id, currentQuantity - 1)}
+                                                                    className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer disabled:opacity-30"
+                                                                    disabled={!isAvailable || currentQuantity === 0 || isPurchasing}
+                                                                >
+                                                                    <i className="fas fa-minus text-xs"></i>
+                                                                </button>
+                                                                <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
+                                                                    {currentQuantity}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => handleTicketChange(ticket.id, currentQuantity + 1)}
+                                                                    className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer disabled:opacity-30"
+                                                                    // CORREÇÃO: Se a quantidade atual é igual à disponibilidade, o botão deve ser desabilitado.
+                                                                    // Se o problema é que ele está desabilitando cedo demais, a única causa é que a disponibilidade é 1.
+                                                                    // Mantendo a lógica correta de limite de estoque:
+                                                                    disabled={!isAvailable || currentQuantity >= ticket.available || isPurchasing}
+                                                                >
+                                                                    <i className="fas fa-plus text-xs"></i>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-white text-sm sm:text-base">Quantidade:</span>
-                                                        <div className="flex items-center space-x-3">
-                                                            <button
-                                                                onClick={() => handleTicketChange(ticket.id, (selectedTickets[ticket.id] || 0) - 1)}
-                                                                className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
-                                                                disabled={ticket.available === 0 || (selectedTickets[ticket.id] || 0) === 0}
-                                                            >
-                                                                <i className="fas fa-minus text-xs"></i>
-                                                            </button>
-                                                            <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
-                                                                {selectedTickets[ticket.id] || 0}
-                                                            </span>
-                                                            <button
-                                                                onClick={() => handleTicketChange(ticket.id, (selectedTickets[ticket.id] || 0) + 1)}
-                                                                className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
-                                                                disabled={(selectedTickets[ticket.id] || 0) >= ticket.available}
-                                                            >
-                                                                <i className="fas fa-plus text-xs"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <div className="text-center p-4 bg-black/60 rounded-xl border border-red-500/30">
                                                 <p className="text-red-400 text-sm">Nenhum tipo de ingresso ativo encontrado para este evento.</p>
@@ -291,21 +324,30 @@ const EventDetails: React.FC = () => {
                                                 </div>
                                             </div>
                                             <Button 
-                                                onClick={handleCheckout} // Botão de checkout
-                                                className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
+                                                onClick={handleCheckout}
+                                                disabled={isPurchasing}
+                                                className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                                             >
-                                                Comprar Ingressos
+                                                {isPurchasing ? (
+                                                    <div className="flex items-center justify-center">
+                                                        <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2" />
+                                                        Finalizando...
+                                                    </div>
+                                                ) : (
+                                                    'Comprar Ingressos'
+                                                )}
                                             </Button>
                                         </>
                                     )}
-                                    <div className="mt-6 p-4 bg-black/40 rounded-xl">
-                                        <div className="flex items-center text-yellow-500 mb-2">
-                                            <i className="fas fa-shield-alt mr-2"></i>
-                                            <span className="text-sm font-semibold">Compra Segura</span>
+                                    {/* Aviso de Compra Segura */}
+                                    <div className="mt-6 p-4 bg-black/40 rounded-xl border border-yellow-500/20 flex items-start space-x-3">
+                                        <Shield className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <h4 className="text-white font-semibold text-sm mb-1">Compra Segura</h4>
+                                            <p className="text-gray-400 text-xs">
+                                                Seus dados estão protegidos e a compra é 100% segura.
+                                            </p>
                                         </div>
-                                        <p className="text-gray-400 text-xs">
-                                            Seus dados estão protegidos e a compra é 100% segura.
-                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -356,7 +398,8 @@ const EventDetails: React.FC = () => {
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-linkedin text-xl sm:text-2xl"></i>
-                                </a>
+                                </a
+                            >
                             </div>
                         </div>
                     </div>
