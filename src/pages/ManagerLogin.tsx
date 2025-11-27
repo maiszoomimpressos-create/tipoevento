@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 
 const ManagerLogin: React.FC = () => {
@@ -16,10 +16,10 @@ const ManagerLogin: React.FC = () => {
             </div>
             <div className="relative z-10 w-full max-w-md">
                 <div className="text-center mb-8">
-                    <div className="text-3xl font-serif text-yellow-500 font-bold mb-2 flex items-center justify-center">
+                    <Link to="/" className="text-3xl font-serif text-yellow-500 font-bold mb-2 flex items-center justify-center cursor-pointer">
                         Mazoy
                         <span className="ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-3 py-1 rounded-lg text-sm font-bold">PRO</span>
-                    </div>
+                    </Link>
                     <h1 className="text-2xl font-semibold text-white mb-2">Área do Gestor</h1>
                     <p className="text-gray-400">Acesse seu painel de controle premium</p>
                 </div>

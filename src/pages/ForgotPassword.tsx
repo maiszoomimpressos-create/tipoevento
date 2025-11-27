@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
@@ -42,9 +42,9 @@ const ForgotPassword = () => {
             </div>
             <div className="relative z-10 w-full max-w-sm sm:max-w-md">
                 <div className="text-center mb-6 sm:mb-8">
-                    <div className="text-3xl font-serif text-yellow-500 font-bold mb-2">
+                    <Link to="/" className="text-3xl font-serif text-yellow-500 font-bold mb-2 cursor-pointer">
                         Mazoy
-                    </div>
+                    </Link>
                     <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">Redefinir Senha</h1>
                     <p className="text-gray-400 text-sm sm:text-base">Insira seu e-mail para receber o link de redefinição</p>
                 </div>
