@@ -16,6 +16,7 @@ import AvatarUpload from '@/components/AvatarUpload';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import { useQueryClient } from '@tanstack/react-query';
+import MultiLineEditor from '@/components/MultiLineEditor'; // Importando o novo componente
 
 const GENDER_OPTIONS = [
     "Masculino",
@@ -685,6 +686,10 @@ const Profile: React.FC = () => {
                                     </Button>
                                 </CardContent>
                             </Card>
+                            {/* MultiLineEditor component added here */}
+                            <div className="mt-8">
+                                <MultiLineEditor onAgree={(agreed) => console.log('User agreed to terms:', agreed)} />
+                            </div>
                         </div>
                     </div>
                 </div>
