@@ -74,21 +74,21 @@ const validateCEP = (cep: string) => {
 
 const managerIndividualProfileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
-    last_name: z.string().optional().nullable(), // Adicionando last_name
+    last_name: z.string().min(1, { message: "Sobrenome é obrigatório." }), // Tornando obrigatório
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    gender: z.string().optional().nullable(),
+    gender: z.string().min(1, { message: "Gênero é obrigatório." }).refine((val) => val !== 'not_specified', { message: "Selecione um gênero válido." }), // Tornando obrigatório
     
     cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
-    rg: z.string().optional().nullable().refine((val) => !val || validateRG(val), { message: "RG inválido." }), 
+    rg: z.string().min(1, { message: "RG é obrigatório." }).refine(validateRG, { message: "RG inválido." }), // Tornando obrigatório
 
-    // Campos de Endereço
-    cep: z.string().optional().nullable().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
-    rua: z.string().optional().nullable(),
-    bairro: z.string().optional().nullable(),
-    cidade: z.string().optional().nullable(),
-    estado: z.string().optional().nullable(),
-    numero: z.string().optional().nullable(),
-    complemento: z.string().optional().nullable(),
+    // Campos de Endereço - Tornando todos obrigatórios
+    cep: z.string().min(1, { message: "CEP é obrigatório." }).refine(validateCEP, { message: "CEP inválido (8 dígitos)." }),
+    rua: z.string().min(1, { message: "Rua é obrigatória." }),
+    bairro: z.string().min(1, { message: "Bairro é obrigatório." }),
+    cidade: z.string().min(1, { message: "Cidade é obrigatória." }),
+    estado: z.string().min(1, { message: "Estado é obrigatório." }),
+    numero: z.string().min(1, { message: "Número é obrigatório." }),
+    complemento: z.string().optional().nullable(), // Complemento pode ser opcional
 });
 
 type ManagerIndividualProfileData = z.infer<typeof managerIndividualProfileSchema>;
@@ -127,7 +127,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
         if (profile) {
             form.reset({
                 first_name: profile.first_name || '',
-                last_name: profile.last_name || '', // Preenche last_name
+                last_name: profile.last_name || '',
                 birth_date: profile.birth_date || '',
                 gender: profile.gender || 'not_specified',
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
@@ -290,279 +290,281 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                         Preencha seus dados pessoais para se registrar como gestor individual.
                     </DialogDescription>
                 </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="first_name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Nome *</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Seu primeiro nome" {...field} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="last_name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Sobrenome (Opcional)</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Seu sobrenome" {...field} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="cpf"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">CPF *</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                placeholder="000.000.000-00"
-                                                {...field} 
-                                                onChange={handleCpfChange}
-                                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                maxLength={14}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="rg"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">RG (Opcional)</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                placeholder="00.000.000-0"
-                                                {...field} 
-                                                onChange={handleRgChange}
-                                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                maxLength={12}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="birth_date"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Data de Nascimento *</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                type="date" 
-                                                {...field} 
-                                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="gender"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Gênero (Opcional)</FormLabel>
-                                        <Select 
-                                            onValueChange={(value) => field.onChange(value === "not_specified" ? null : value)} 
-                                            defaultValue={field.value || "not_specified"} 
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
-                                                    <SelectValue placeholder="Selecione seu gênero" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                                <SelectItem value="not_specified" className="text-gray-500">
-                                                    Não especificado
-                                                </SelectItem>
-                                                {GENDER_OPTIONS.map(option => (
-                                                    <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
-                                                        {option}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        {/* Seção de Endereço */}
-                        <div className="pt-4 border-t border-yellow-500/20">
-                            <h3 className="text-xl font-semibold text-white mb-4">Endereço (Opcional)</h3>
-                            <FormField
-                                control={form.control}
-                                name="cep"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">CEP</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <Input 
-                                                    placeholder="00000-000"
-                                                    {...field} 
-                                                    onChange={handleCepChange}
-                                                    disabled={isCepLoading} 
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 pr-10" 
-                                                    maxLength={9}
-                                                />
-                                                {isCepLoading && (
-                                                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                                        <Loader2 className="w-4 h-4 border-2 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin">
-                                                        </Loader2>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="md:col-span-2">
+                <div className="max-h-[60vh] overflow-y-auto pr-4"> {/* Adicionando barra de rolagem aqui */}
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
-                                    name="rua"
+                                    name="first_name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-white">Rua</FormLabel>
+                                            <FormLabel className="text-white">Nome *</FormLabel>
                                             <FormControl>
-                                                <Input id="rua" placeholder="Ex: Av. Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                <Input placeholder="Seu primeiro nome" {...field} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="last_name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Sobrenome *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <Input placeholder="Seu sobrenome" {...field} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
                             </div>
-                            <FormField
-                                control={form.control}
-                                name="numero"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Número</FormLabel>
-                                        <FormControl>
-                                            <Input id="numero" placeholder="123" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
 
-                        <FormField
-                            control={form.control}
-                            name="complemento"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-white">Complemento</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Apto 101, Bloco B" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="cpf"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">CPF *</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    placeholder="000.000.000-00"
+                                                    {...field} 
+                                                    onChange={handleCpfChange}
+                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
+                                                    maxLength={14}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="rg"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">RG *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <Input 
+                                                    placeholder="00.000.000-0"
+                                                    {...field} 
+                                                    onChange={handleRgChange}
+                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
+                                                    maxLength={12}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <FormField
-                                control={form.control}
-                                name="bairro"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Bairro</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Jardim Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="cidade"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Cidade</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="São Paulo" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="estado"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-white">Estado</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="SP" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="birth_date"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Data de Nascimento *</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    type="date" 
+                                                    {...field} 
+                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="gender"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Gênero *</FormLabel> {/* Tornando obrigatório */}
+                                            <Select 
+                                                onValueChange={(value) => field.onChange(value === "not_specified" ? null : value)} 
+                                                defaultValue={field.value || "not_specified"} 
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
+                                                        <SelectValue placeholder="Selecione seu gênero" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                                    <SelectItem value="not_specified" className="text-gray-500">
+                                                        Não especificado
+                                                    </SelectItem>
+                                                    {GENDER_OPTIONS.map(option => (
+                                                        <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
+                                                            {option}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
 
-                        <DialogFooter className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                            <Button
-                                type="submit"
-                                disabled={isSaving}
-                                className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
-                            >
-                                {isSaving ? (
-                                    <div className="flex items-center justify-center">
-                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                        Salvando...
-                                    </div>
-                                ) : (
-                                    <>
-                                        <User className="w-5 h-5 mr-2" />
-                                        Registrar como Gestor PF
-                                    </>
+                            {/* Seção de Endereço */}
+                            <div className="pt-4 border-t border-yellow-500/20">
+                                <h3 className="text-xl font-semibold text-white mb-4">Endereço *</h3> {/* Título de seção obrigatório */}
+                                <FormField
+                                    control={form.control}
+                                    name="cep"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">CEP *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input 
+                                                        placeholder="00000-000"
+                                                        {...field} 
+                                                        onChange={handleCepChange}
+                                                        disabled={isCepLoading} 
+                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 pr-10" 
+                                                        maxLength={9}
+                                                    />
+                                                    {isCepLoading && (
+                                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                            <Loader2 className="w-4 h-4 border-2 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin">
+                                                            </Loader2>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="md:col-span-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="rua"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-white">Rua *</FormLabel> {/* Tornando obrigatório */}
+                                                <FormControl>
+                                                    <Input id="rua" placeholder="Ex: Av. Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="numero"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Número *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <Input id="numero" placeholder="123" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <FormField
+                                control={form.control}
+                                name="complemento"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Apto 101, Bloco B" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
                                 )}
-                            </Button>
-                            <Button
-                                type="button"
-                                onClick={onClose}
-                                variant="outline"
-                                className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
-                                disabled={isSaving}
-                            >
-                                <ArrowLeft className="mr-2 h-5 w-5" />
-                                Voltar
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                            />
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="bairro"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Bairro *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <Input placeholder="Jardim Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="cidade"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Cidade *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <Input placeholder="São Paulo" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="estado"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-white">Estado *</FormLabel> {/* Tornando obrigatório */}
+                                            <FormControl>
+                                                <Input placeholder="SP" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <DialogFooter className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                                <Button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
+                                >
+                                    {isSaving ? (
+                                        <div className="flex items-center justify-center">
+                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                            Salvando...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <User className="w-5 h-5 mr-2" />
+                                            Registrar como Gestor PF
+                                        </>
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={onClose}
+                                    variant="outline"
+                                    className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
+                                    disabled={isSaving}
+                                >
+                                    <ArrowLeft className="mr-2 h-5 w-5" />
+                                    Voltar
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </div>
             </DialogContent>
         </Dialog>
     );
