@@ -76,19 +76,19 @@ const managerIndividualProfileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     last_name: z.string().min(1, { message: "Sobrenome é obrigatório." }),
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    gender: z.string().nullable().optional(), // Permitir null ou string vazia
+    gender: z.string().min(1, { message: "Gênero é obrigatório." }).refine(val => val !== "", { message: "Selecione um gênero válido." }), // Tornando gênero obrigatório
     
     cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
     rg: z.string().min(1, { message: "RG é obrigatório." }).refine(validateRG, { message: "RG inválido." }),
 
-    // Campos de Endereço - Tornando todos obrigatórios, exceto complemento
+    // Campos de Endereço - Tornando todos obrigatórios
     cep: z.string().min(1, { message: "CEP é obrigatório." }).refine(validateCEP, { message: "CEP inválido (8 dígitos)." }),
     rua: z.string().min(1, { message: "Rua é obrigatória." }),
     bairro: z.string().min(1, { message: "Bairro é obrigatória." }),
     cidade: z.string().min(1, { message: "Cidade é obrigatória." }),
     estado: z.string().min(1, { message: "Estado é obrigatória." }),
     numero: z.string().min(1, { message: "Número é obrigatório." }),
-    complemento: z.string().optional().nullable(), // Complemento pode ser opcional
+    complemento: z.string().min(1, { message: "Complemento é obrigatório." }), // Tornando complemento obrigatório
 });
 
 type ManagerIndividualProfileData = z.infer<typeof managerIndividualProfileSchema>;
@@ -110,7 +110,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             first_name: '',
             last_name: '',
             birth_date: '',
-            gender: "not_specified", // Default para "not_specified"
+            gender: "", // Default para string vazia
             cpf: '',
             rg: '',
             cep: '',
@@ -129,7 +129,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                 first_name: profile.first_name || '',
                 last_name: profile.last_name || '', // Usando last_name do perfil
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || "not_specified", // Se for null/vazio, o Zod vai pegar
+                gender: profile.gender || "", // Se for null/vazio, o Zod vai pegar
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -234,8 +234,8 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
         const cleanCPF = values.cpf.replace(/\D/g, '');
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
-        // Se o gênero for "not_specified", ele será tratado como null pelo Supabase
-        const genderToSave = values.gender === "not_specified" ? null : values.gender; 
+        // Se o gênero for string vazia, ele será tratado como null pelo Supabase
+        const genderToSave = values.gender || null; 
 
         const dataToSave = {
             first_name: values.first_name,
@@ -398,7 +398,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                             <FormLabel className="text-white">Gênero *</FormLabel>
                                             <Select 
                                                 onValueChange={field.onChange} 
-                                                value={field.value || "not_specified"} // Usar 'value' para componente controlado
+                                                value={field.value || ""} // Usar 'value' para componente controlado
                                             >
                                                 <FormControl>
                                                     <SelectTrigger 
@@ -408,7 +408,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                                    <SelectItem value="not_specified" className="text-gray-500">
+                                                    <SelectItem value="" className="text-gray-500">
                                                         Não especificado
                                                     </SelectItem>
                                                     {GENDER_OPTIONS.map(option => (
@@ -505,7 +505,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                 name="complemento"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
+                                        <FormLabel className="text-white">Complemento *</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 placeholder="Apto 101, Bloco B" 
