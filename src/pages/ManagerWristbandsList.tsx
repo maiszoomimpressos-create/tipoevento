@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Search, Loader2, QrCode, Tag, AlertTriangle, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useManagerWristbands, WristbandData } from '@/hooks/use-manager-wristbands';
+import { useProfile } from '@/hooks/use-profile'; // Importando useProfile
 
 const ManagerWristbandsList: React.FC = () => {
     const navigate = useNavigate();
@@ -19,7 +20,11 @@ const ManagerWristbandsList: React.FC = () => {
         });
     }, []);
 
-    const { wristbands, isLoading, isError, invalidateWristbands } = useManagerWristbands(userId);
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId); // Obtém o perfil do usuário
+    const userTypeId = profile?.tipo_usuario_id;
+
+    // Passa userTypeId para o hook useManagerWristbands
+    const { wristbands, isLoading, isError, invalidateWristbands } = useManagerWristbands(userId, userTypeId);
 
     const filteredWristbands = wristbands.filter(wristband =>
         wristband.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,16 +55,16 @@ const ManagerWristbandsList: React.FC = () => {
         }
     };
 
-    const handleManageClick = (eventId: string) => {
-        navigate(`/manager/wristbands/manage/${eventId}`);
+    const handleManageClick = (wristbandId: string) => {
+        navigate(`/manager/wristbands/manage/${wristbandId}`);
     };
 
-    // Estado de carregamento inicial (antes de saber se o usuário está logado)
-    if (userId === undefined) {
+    // Estado de carregamento inicial (antes de saber se o usuário está logado ou o perfil carregado)
+    if (userId === undefined || isLoadingProfile) {
         return (
             <div className="max-w-7xl mx-auto text-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
-                <p className="text-gray-400">Verificando autenticação...</p>
+                <p className="text-gray-400">Verificando autenticação e perfil...</p>
             </div>
         );
     }
@@ -142,7 +147,7 @@ const ManagerWristbandsList: React.FC = () => {
                                             className="border-b border-yellow-500/10 hover:bg-black/40 transition-colors text-sm"
                                         >
                                             <TableCell className="py-4">
-                                                <div className="text-white font-medium">{wristband.code}</div>
+                                                <div className="text-white font-medium truncate max-w-[200px]">{wristband.code}</div>
                                             </TableCell>
                                             <TableCell className="py-4">
                                                 <div className="text-gray-300 truncate max-w-[200px]">{wristband.events?.title || 'Evento Removido'}</div>

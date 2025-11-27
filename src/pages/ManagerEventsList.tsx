@@ -8,6 +8,7 @@ import { Plus, Search, Loader2 } from 'lucide-react';
 import { useManagerEvents, ManagerEvent } from '@/hooks/use-manager-events';
 import { supabase } from '@/integrations/supabase/client';
 import DeleteEventDialog from '@/components/DeleteEventDialog'; 
+import { useProfile } from '@/hooks/use-profile'; // Importando useProfile
 
 const ManagerEventsList: React.FC = () => {
     const navigate = useNavigate();
@@ -20,19 +21,22 @@ const ManagerEventsList: React.FC = () => {
         });
     }, []);
 
-    // O hook agora retorna apenas id e title
-    const { events, isLoading, isError, invalidateEvents } = useManagerEvents(userId);
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId); // Obtém o perfil do usuário
+    const userTypeId = profile?.tipo_usuario_id;
+
+    // Passa userTypeId para o hook useManagerEvents
+    const { events, isLoading, isError, invalidateEvents } = useManagerEvents(userId, userTypeId);
 
     const filteredEvents = events.filter(event =>
         event.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Estado de carregamento inicial (antes de saber se o usuário está logado)
-    if (userId === undefined) {
+    // Estado de carregamento inicial (antes de saber se o usuário está logado ou o perfil carregado)
+    if (userId === undefined || isLoadingProfile) {
         return (
             <div className="max-w-7xl mx-auto text-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-yellow-500 mx-auto mb-4" />
-                <p className="text-gray-400">Verificando autenticação...</p>
+                <p className="text-gray-400">Verificando autenticação e perfil...</p>
             </div>
         );
     }

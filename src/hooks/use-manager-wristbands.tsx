@@ -16,15 +16,13 @@ export interface WristbandData {
     } | null;
 }
 
-const fetchManagerWristbands = async (userId: string): Promise<WristbandData[]> => {
+const fetchManagerWristbands = async (userId: string, userTypeId: number): Promise<WristbandData[]> => {
     if (!userId) {
         console.warn("Attempted to fetch wristbands without a userId.");
         return [];
     }
 
-    // A RLS garante que apenas as pulseiras da empresa do gestor logado serão retornadas.
-    // Fazemos um join com a tabela 'events' para obter o título do evento.
-    const { data, error } = await supabase
+    let query = supabase
         .from('wristbands')
         .select(`
             id,
@@ -34,8 +32,14 @@ const fetchManagerWristbands = async (userId: string): Promise<WristbandData[]> 
             created_at,
             event_id,
             events (title)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+    // Se não for Admin Master (tipo 1), a RLS já filtra por empresa/gestor.
+    // Se for Admin Master, a RLS permite ver tudo, então não adicionamos filtro aqui.
+    // Apenas ordenamos.
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
         console.error("Error fetching manager wristbands from Supabase:", error);
@@ -45,13 +49,13 @@ const fetchManagerWristbands = async (userId: string): Promise<WristbandData[]> 
     return data as WristbandData[];
 };
 
-export const useManagerWristbands = (userId: string | undefined) => {
+export const useManagerWristbands = (userId: string | undefined, userTypeId: number | undefined) => {
     const queryClient = useQueryClient();
 
     const query = useQuery({
-        queryKey: ['managerWristbands', userId],
-        queryFn: () => fetchManagerWristbands(userId!),
-        enabled: !!userId,
+        queryKey: ['managerWristbands', userId, userTypeId], // Inclui userTypeId na chave de cache
+        queryFn: () => fetchManagerWristbands(userId!, userTypeId!),
+        enabled: !!userId && !!userTypeId, // Habilita a query apenas se ambos estiverem disponíveis
         staleTime: 1000 * 30, // 30 seconds
         onError: (error) => {
             console.error("Query Error:", error);
@@ -62,6 +66,6 @@ export const useManagerWristbands = (userId: string | undefined) => {
     return {
         ...query,
         wristbands: query.data || [],
-        invalidateWristbands: () => queryClient.invalidateQueries({ queryKey: ['managerWristbands', userId] }),
+        invalidateWristbands: () => queryClient.invalidateQueries({ queryKey: ['managerWristbands', userId, userTypeId] }),
     };
 };
