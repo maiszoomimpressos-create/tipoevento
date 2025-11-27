@@ -76,8 +76,7 @@ const managerIndividualProfileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     last_name: z.string().min(1, { message: "Sobrenome é obrigatório." }),
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    // Gênero agora é opcional no Zod, mas a lógica de isProfileFullyComplete ainda o considera essencial para gestores
-    gender: z.string().nullable().optional(), 
+    gender: z.string().nullable().optional(), // Permitir null ou string vazia
     
     cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
     rg: z.string().min(1, { message: "RG é obrigatório." }).refine(validateRG, { message: "RG inválido." }),
@@ -87,7 +86,7 @@ const managerIndividualProfileSchema = z.object({
     rua: z.string().min(1, { message: "Rua é obrigatória." }),
     bairro: z.string().min(1, { message: "Bairro é obrigatória." }),
     cidade: z.string().min(1, { message: "Cidade é obrigatória." }),
-    estado: z.string().min(1, { message: "Estado é obrigatório." }),
+    estado: z.string().min(1, { message: "Estado é obrigatória." }),
     numero: z.string().min(1, { message: "Número é obrigatório." }),
     complemento: z.string().optional().nullable(), // Complemento pode ser opcional
 });
@@ -111,7 +110,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             first_name: '',
             last_name: '',
             birth_date: '',
-            gender: '', // Default para string vazia para mapear para "Não especificado"
+            gender: "not_specified", // Default para "not_specified"
             cpf: '',
             rg: '',
             cep: '',
@@ -130,7 +129,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                 first_name: profile.first_name || '',
                 last_name: profile.last_name || '', // Usando last_name do perfil
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || '', // Se for null/vazio, o Zod vai pegar
+                gender: profile.gender || "not_specified", // Se for null/vazio, o Zod vai pegar
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -235,8 +234,8 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
         const cleanCPF = values.cpf.replace(/\D/g, '');
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
-        // Se o gênero for string vazia, ele será tratado como null pelo Supabase
-        const genderToSave = values.gender || null; 
+        // Se o gênero for "not_specified", ele será tratado como null pelo Supabase
+        const genderToSave = values.gender === "not_specified" ? null : values.gender; 
 
         const dataToSave = {
             first_name: values.first_name,
@@ -391,7 +390,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                             <FormLabel className="text-white">Gênero *</FormLabel>
                                             <Select 
                                                 onValueChange={field.onChange} 
-                                                defaultValue={field.value || ""} // Mapeia null/undefined para string vazia para a opção "Não especificado"
+                                                defaultValue={field.value || "not_specified"} // Mapeia null/undefined para "not_specified"
                                             >
                                                 <FormControl>
                                                     <SelectTrigger className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500">
@@ -399,7 +398,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                                    <SelectItem value="" className="text-gray-500">
+                                                    <SelectItem value="not_specified" className="text-gray-500">
                                                         Não especificado
                                                     </SelectItem>
                                                     {GENDER_OPTIONS.map(option => (

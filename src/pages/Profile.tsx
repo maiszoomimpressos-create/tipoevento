@@ -48,8 +48,7 @@ const profileSchema = z.object({
     first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     last_name: z.string().min(1, { message: "Sobrenome é obrigatório." }), // Tornando last_name obrigatório
     birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
-    // Gênero agora é opcional no Zod, mas a lógica de isProfileFullyComplete ainda o considera essencial para gestores
-    gender: z.string().nullable().optional(), 
+    gender: z.string().nullable().optional(), // Permitir null ou string vazia
     
     cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
     rg: z.string().min(1, { message: "RG é obrigatório." }).refine(validateRG, { message: "RG inválido." }), // Tornando RG obrigatório
@@ -127,7 +126,7 @@ const Profile: React.FC = () => {
             first_name: '',
             last_name: '', 
             birth_date: '',
-            gender: '', // Default para string vazia para mapear para "Não especificado"
+            gender: "not_specified", // Default para "not_specified"
             cpf: '',
             rg: '',
             cep: '',
@@ -142,7 +141,7 @@ const Profile: React.FC = () => {
             first_name: profile?.first_name || '',
             last_name: profile?.last_name || '', 
             birth_date: profile?.birth_date || '',
-            gender: profile?.gender || '', // Se profile.gender for null, será ''
+            gender: profile?.gender || "not_specified", // Se profile.gender for null, será "not_specified"
             cpf: profile?.cpf ? formatCPF(profile.cpf) : '',
             rg: profile?.rg ? formatRG(profile.rg) : '',
             cep: profile?.cep ? formatCEP(profile.cep) : '',
@@ -162,7 +161,7 @@ const Profile: React.FC = () => {
                 first_name: profile.first_name || '',
                 last_name: profile.last_name || '',
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || '', // Se profile.gender for null, será ''
+                gender: profile.gender || "not_specified", // Se profile.gender for null, será "not_specified"
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -243,8 +242,8 @@ const Profile: React.FC = () => {
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
         
-        // Se o gênero for string vazia, ele será tratado como null pelo Supabase
-        const genderToSave = values.gender || null; 
+        // Se o gênero for "not_specified", ele será tratado como null pelo Supabase
+        const genderToSave = values.gender === "not_specified" ? null : values.gender; 
 
         // Certifique-se de que campos de endereço vazios sejam salvos como null, não como strings vazias
         const ruaToSave = values.rua || null;
@@ -550,7 +549,7 @@ const Profile: React.FC = () => {
                                                             <FormLabel className="text-white">Gênero *</FormLabel>
                                                             <Select 
                                                                 onValueChange={field.onChange} 
-                                                                defaultValue={field.value || ""} // Mapeia null/undefined para string vazia para a opção "Não especificado"
+                                                                defaultValue={field.value || "not_specified"} // Mapeia null/undefined para "not_specified"
                                                                 disabled={!isEditing}
                                                             >
                                                                 <FormControl>
@@ -561,7 +560,7 @@ const Profile: React.FC = () => {
                                                                     </SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
-                                                                    <SelectItem value="" className="text-gray-500">
+                                                                    <SelectItem value="not_specified" className="text-gray-500">
                                                                         Não especificado
                                                                     </SelectItem>
                                                                     {GENDER_OPTIONS.map(option => (
