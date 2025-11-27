@@ -9,6 +9,7 @@ import { useProfile } from '@/hooks/use-profile';
 import { useUserType } from '@/hooks/use-user-type';
 import { showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status'; // Import useProfileStatus
+import { useManagerCompany } from '@/hooks/use-manager-company'; // Import useManagerCompany
 
 const ADMIN_USER_TYPE_ID = 1;
 const MANAGER_PRO_USER_TYPE_ID = 2;
@@ -28,7 +29,8 @@ const ManagerLayout: React.FC = () => {
 
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
     const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
-    const { isComplete: isProfileFullyComplete, loading: isLoadingProfileStatus } = useProfileStatus(profile, isLoadingProfile); // Use useProfileStatus
+    const { isComplete: isProfileFullyComplete, loading: isLoadingProfileStatus } = useProfileStatus(profile, isLoadingProfile);
+    const { company, isLoading: isLoadingCompany } = useManagerCompany(userId); // Fetch company data
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -39,42 +41,62 @@ const ManagerLayout: React.FC = () => {
         }
     };
 
-    // Redirect unauthenticated users to login
-    if (loadingSession || isLoadingProfile || isLoadingUserType || isLoadingProfileStatus) { // Include isLoadingProfileStatus
-        if (!userId && !loadingSession) {
-            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-                navigate('/manager/login');
-            }
-        }
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-            </div>
-        );
-    }
-    
-    // Check if user is authorized (Admin or Manager)
+    // Combined loading state
+    const isLoadingCombined = loadingSession || isLoadingProfile || isLoadingUserType || isLoadingProfileStatus || isLoadingCompany;
+
+    // Determine user type and manager status
     const userType = profile?.tipo_usuario_id;
     const isManager = userType === ADMIN_USER_TYPE_ID || userType === MANAGER_PRO_USER_TYPE_ID;
     const isAdminMaster = userType === ADMIN_USER_TYPE_ID;
 
-    if (!isManager) {
-        if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-            navigate('/');
-            return null;
-        }
-    }
-
-    // NEW LOGIC: Allow access to profile completion pages even if the profile is incomplete
+    // Pages where profile completion is allowed/expected
     const isProfileCompletionPage = location.pathname === '/profile' || 
                                    location.pathname === '/manager/settings/company-profile' ||
                                    location.pathname === '/manager/register' || 
                                    location.pathname === '/manager/register/company'; 
 
-    if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
-        showError("Seu perfil de gestor está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
-        navigate('/profile', { replace: true }); // Redirect to generic profile page for completion
-        return null; 
+    // Effect for redirection logic
+    useEffect(() => {
+        if (isLoadingCombined) return; // Wait for all data to load
+
+        // 1. Redirect unauthenticated users to login
+        if (!userId) {
+            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+                navigate('/manager/login', { replace: true });
+            }
+            return;
+        }
+
+        // 2. Redirect non-managers away from manager/admin routes
+        if (!isManager) {
+            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+                navigate('/', { replace: true });
+            }
+            return;
+        }
+
+        // 3. Manager-specific profile completion checks
+        if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
+            // If Manager PRO (type 2) and company profile is missing, redirect directly to company profile
+            if (userType === MANAGER_PRO_USER_TYPE_ID && !company) {
+                showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
+                navigate('/manager/settings/company-profile', { replace: true });
+                return;
+            }
+            // Otherwise, redirect to generic profile page for personal data completion
+            showError("Seu perfil de gestor está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
+            navigate('/profile', { replace: true });
+            return;
+        }
+    }, [isLoadingCombined, userId, isManager, isProfileFullyComplete, isProfileCompletionPage, userType, company, navigate, location.pathname]);
+
+
+    if (isLoadingCombined) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
+            </div>
+        );
     }
     
     const navItems = [
