@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Campos essenciais do perfil do usuário que devem estar preenchidos
 const ESSENTIAL_PROFILE_FIELDS = [
     'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
-    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
+    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero', 'complemento' // 'complemento' agora é obrigatório para gestores
 ];
 
 const isProfileComplete = (profileData: typeof useProfile extends (...args: any[]) => { profile: infer T } ? T : never): boolean => {

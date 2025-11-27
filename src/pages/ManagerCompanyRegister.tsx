@@ -8,13 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Form } from '@/components/ui/form';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { Loader2, Building, ArrowLeft, User, AlertTriangle } from 'lucide-react';
-import { useProfile } from '@/hooks/use-profile';
 import CompanyForm, { companySchema, CompanyFormData } from '@/components/CompanyForm'; // Importando o novo componente e schema
 
 // Campos essenciais do perfil do usuário que devem estar preenchidos
 const ESSENTIAL_PROFILE_FIELDS = [
     'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
-    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
+    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero', 'complemento' // 'complemento' agora é obrigatório para gestores
 ];
 
 const isProfileComplete = (profileData: typeof useProfile extends (...args: any[]) => { profile: infer T } ? T : never): boolean => {
@@ -258,7 +257,7 @@ const ManagerCompanyRegister: React.FC = () => {
                                             <p><span className="font-medium text-white">E-mail:</span> {userEmail || 'N/A'}</p>
                                         </div>
                                         <div className="md:col-span-2 text-xs text-gray-500 pt-2 border-t border-yellow-500/10">
-                                            <p>Estes dados são do seu perfil de usuário e serão associados à empresa como sócio principal.</p>
+                                            <p>Estes dados são do seu perfil de usuário e estão associados à empresa como sócio principal.</p>
                                         </div>
                                     </div>
                                 ) : (
