@@ -55,21 +55,11 @@ export const usePurchaseTicket = () => {
             
             if (responseData.error) {
                 // Se a Edge Function retornou um erro 4xx ou 5xx com um corpo de erro
-                // Capturamos a mensagem de erro específica para exibir ao usuário
-                const errorMessage = responseData.error;
-                
-                if (errorMessage.includes('Payment gateway access token is not configured')) {
+                if (responseData.error.includes('Payment gateway access token is not configured')) {
                     showError("Erro de Configuração: O gestor do evento precisa configurar o Token Secreto do Mercado Pago nas Configurações PRO.");
                     return false;
                 }
-                
-                // Se for um erro de estoque
-                if (errorMessage.includes('Not enough tickets available')) {
-                    showError("Estoque Insuficiente: A quantidade solicitada não está mais disponível.");
-                    return false;
-                }
-                
-                throw new Error(errorMessage);
+                throw new Error(responseData.error);
             }
             
             // 2. Sucesso: Retorna o URL de checkout e o ID da transação
