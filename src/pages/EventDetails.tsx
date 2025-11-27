@@ -360,7 +360,7 @@ const EventDetails: React.FC = () => {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Links Úteis</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
