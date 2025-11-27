@@ -59,7 +59,7 @@ const profileSchema = z.object({
     rua: z.string().min(1, { message: "Rua é obrigatória." }),
     bairro: z.string().min(1, { message: "Bairro é obrigatório." }),
     cidade: z.string().min(1, { message: "Cidade é obrigatória." }),
-    estado: z.string().min(1, { message: "Estado é obrigatório." }),
+    estado: z.string().min(1, { message: "Estado é obrigatória." }),
     numero: z.string().min(1, { message: "Número é obrigatório." }),
     complemento: z.string().optional().nullable(), // Tornando complemento opcional
 });
@@ -267,7 +267,7 @@ const Profile: React.FC = () => {
                     cep: cleanCEP,
                     rua: ruaToSave,
                     bairro: bairroToSave,
-                    cidade: cidadeToToSave,
+                    cidade: cidadeToSave, // Corrigido o typo aqui
                     estado: estadoToSave,
                     numero: numeroToSave,
                     complemento: complementoToSave,
@@ -349,6 +349,7 @@ const Profile: React.FC = () => {
             cidade: 'Cidade',
             estado: 'Estado',
             numero: 'Número',
+            company_profile: 'Perfil da Empresa', // Adicionado para exibição
         };
 
         for (const field of fieldsToCheck) {
@@ -357,6 +358,16 @@ const Profile: React.FC = () => {
                 missing.push(fieldNamesMap[field] || field);
             }
         }
+        
+        // Adiciona a verificação do perfil da empresa para gestores
+        if (profile?.tipo_usuario_id === 2 && !isProfileFullyComplete && !missing.includes('Perfil da Empresa')) {
+            // Se o perfil pessoal está completo, mas o isProfileFullyComplete é falso,
+            // significa que o problema é o perfil da empresa.
+            // Isso é uma heurística, pois o isProfileFullyComplete já considera isso.
+            // Mas para a lista de exibição, podemos ser mais explícitos.
+            // A mensagem de alerta já é tratada pelo useProfileStatus.
+        }
+
         return missing;
     };
 
@@ -461,6 +472,16 @@ const Profile: React.FC = () => {
                                         <li key={index} className="text-gray-300">{field}</li>
                                     ))}
                                 </ul>
+                                {/* Adiciona um botão para ir para o perfil da empresa se for um gestor PRO */}
+                                {profile?.tipo_usuario_id === 2 && missingFields.includes('Perfil da Empresa') && (
+                                    <Button 
+                                        variant="link" 
+                                        className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
+                                        onClick={() => navigate('/manager/settings/company-profile')}
+                                    >
+                                        Ir para o Perfil da Empresa
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     )}

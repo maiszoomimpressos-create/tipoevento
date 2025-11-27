@@ -21,7 +21,7 @@ export const isValueEmpty = (value: any): boolean => {
 };
 
 // Todos os campos que, se vazios, tornam o perfil 'incompleto' para qualquer tipo de usuário
-export const ALL_PROFILE_FIELDS_TO_CHECK = [ // Also export this for Profile.tsx
+export const ALL_PROFILE_FIELDS_TO_CHECK = [ 
     'first_name',
     'last_name', 
     'cpf',
@@ -85,13 +85,31 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
             let isComplete = true; // Assume complete initially
             const currentMissingFields: string[] = []; // Para logar os campos faltando
 
-            // Check for missing fields for ALL user types (Admin, Manager, Client)
-            // This determines if the profile is "complete" for full functionality/access
+            // 1. Verificar campos pessoais essenciais para TODOS os tipos de usuário
             for (const field of ALL_PROFILE_FIELDS_TO_CHECK) {
                 const value = profile[field as keyof ProfileData];
                 if (isValueEmpty(value)) {
                     isComplete = false;
                     currentMissingFields.push(field); // Adiciona o campo à lista de faltantes
+                }
+            }
+
+            // 2. Lógica adicional para Gestores (tipo_usuario_id = 2)
+            // Se o usuário é um Gestor PRO (tipo 2), ele também precisa ter um perfil de empresa cadastrado.
+            if (profile.tipo_usuario_id === 2) {
+                const { data: companyData, error: companyError } = await supabase
+                    .from('companies')
+                    .select('id')
+                    .eq('user_id', profile.id)
+                    .single();
+                
+                if (companyError && companyError.code !== 'PGRST116') { // PGRST116 = No rows found
+                    console.error("Error checking company profile for manager:", companyError);
+                    isComplete = false; // Erro ao buscar empresa também torna o perfil incompleto
+                    currentMissingFields.push('company_profile_error');
+                } else if (!companyData) {
+                    isComplete = false; // Nenhuma empresa encontrada para o gestor
+                    currentMissingFields.push('company_profile');
                 }
             }
 
