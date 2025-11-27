@@ -87,7 +87,7 @@ const Profile: React.FC = () => {
 
     const userId = session?.user?.id;
     const { profile, isLoading: isLoadingProfile, refetch } = useProfile(userId);
-    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
+    const { hasPendingNotifications, loading: statusLoading, isComplete: isProfileFullyComplete } = useProfileStatus(profile, isLoadingProfile);
 
     const loading = loadingSession || isLoadingProfile;
 
@@ -124,7 +124,7 @@ const Profile: React.FC = () => {
         resolver: zodResolver(profileSchema),
         defaultValues: {
             first_name: '',
-            last_name: '', // Adicionado last_name
+            last_name: '', 
             birth_date: '',
             gender: '',
             cpf: '',
@@ -139,7 +139,7 @@ const Profile: React.FC = () => {
         },
         values: {
             first_name: profile?.first_name || '',
-            last_name: profile?.last_name || '', // Usando last_name do perfil
+            last_name: profile?.last_name || '', 
             birth_date: profile?.birth_date || '',
             gender: profile?.gender || '',
             cpf: profile?.cpf ? formatCPF(profile.cpf) : '',
@@ -257,12 +257,11 @@ const Profile: React.FC = () => {
                 .from('profiles')
                 .update({ 
                     first_name: values.first_name,
-                    last_name: values.last_name, // Salvando last_name
+                    last_name: values.last_name, 
                     birth_date: values.birth_date,
                     gender: genderToSave,
                     cpf: cleanCPF, 
                     rg: cleanRG,
-                    // Salvando endereço
                     cep: cleanCEP,
                     rua: ruaToSave,
                     bairro: bairroToSave,
@@ -277,7 +276,13 @@ const Profile: React.FC = () => {
                 showError("Erro ao atualizar o perfil.");
                 console.error("Supabase Update Error:", error);
             } else {
-                showSuccess("Perfil atualizado com sucesso!");
+                // Check if the user is a manager (type 1 or 2) and if the profile is now incomplete
+                if ((profile?.tipo_usuario_id === 1 || profile?.tipo_usuario_id === 2) && !isProfileFullyComplete) {
+                    showError("Seu perfil de gestor está incompleto. O acesso ao Dashboard PRO será bloqueado até que todos os campos essenciais sejam preenchidos.");
+                } else {
+                    showSuccess("Perfil atualizado com sucesso!");
+                }
+                
                 // Invalida a query para forçar a re-busca e atualização imediata do status de notificação em todos os componentes
                 queryClient.invalidateQueries({ queryKey: ['profile', userId] });
                 setIsEditing(false);
@@ -388,7 +393,7 @@ const Profile: React.FC = () => {
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
                     
-                    {/* Alerta de Perfil Incompleto */}
+                    {/* Alerta de Perfil Incompleto para Clientes */}
                     {hasPendingNotifications && profile?.tipo_usuario_id === 3 && (
                         <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
                             <i className="fas fa-exclamation-triangle text-xl mt-1"></i>
@@ -396,6 +401,19 @@ const Profile: React.FC = () => {
                                 <h3 className="font-semibold text-white mb-1">Atenção: Perfil Incompleto</h3>
                                 <p className="text-sm">
                                     Por favor, preencha todos os campos do seu perfil (incluindo RG, Gênero e Endereço completo) para liberar todas as funcionalidades e garantir a emissão correta de ingressos.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Alerta de Perfil Incompleto para Gestores */}
+                    { (profile?.tipo_usuario_id === 1 || profile?.tipo_usuario_id === 2) && !isProfileFullyComplete && (
+                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
+                            <i className="fas fa-exclamation-triangle text-xl mt-1"></i>
+                            <div>
+                                <h3 className="font-semibold text-white mb-1">Atenção: Perfil de Gestor Incompleto</h3>
+                                <p className="text-sm">
+                                    Seu perfil de gestor está incompleto. O acesso ao Dashboard PRO será bloqueado até que todos os campos essenciais sejam preenchidos.
                                 </p>
                             </div>
                         </div>
@@ -530,7 +548,7 @@ const Profile: React.FC = () => {
                                                             <FormLabel className="text-white">Gênero *</FormLabel>
                                                             <Select 
                                                                 onValueChange={field.onChange} 
-                                                                defaultValue={field.value || ""} // Default para string vazia para Zod
+                                                                defaultValue={field.value || ""}
                                                                 disabled={!isEditing}
                                                             >
                                                                 <FormControl>
@@ -717,9 +735,7 @@ const Profile: React.FC = () => {
                                     </Button>
                                 </CardContent>
                             </Card>
-                            {/* MultiLineEditor component added here */}
                             <div className="mt-8">
-                                {/* Renderiza o novo componente TermsAndConditionsDialog */}
                                 <TermsAndConditionsDialog onAgree={handleTermsAgree} showAgreementCheckbox={false} termsType="general" />
                             </div>
                         </div>
