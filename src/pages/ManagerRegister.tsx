@@ -15,27 +15,7 @@ const ManagerRegister: React.FC = () => {
                     backgroundSize: '400px 400px'
                 }}></div>
             </div>
-            <div className="relative z-10 w-full max-w-sm sm:max-w-md">
-                {/* Removido: Título "Mazoy PRO" e "Cadastro de Gestor" */}
-                <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-yellow-500/10 text-center">
-                    <p className="text-gray-300 mb-6">
-                        Clique abaixo para iniciar seu cadastro como gestor e começar a criar eventos incríveis.
-                    </p>
-                    <Button
-                        onClick={() => alert('Funcionalidade de novo cadastro de gestor em desenvolvimento!')}
-                        className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105"
-                    >
-                        Novo Cadastro
-                    </Button>
-                    <Button
-                        onClick={() => navigate('/')}
-                        variant="outline"
-                        className="w-full mt-4 bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer"
-                    >
-                        Voltar para a Home
-                    </Button>
-                </div>
-            </div>
+            {/* Conteúdo removido conforme solicitado */}
         </div>
     );
 };
