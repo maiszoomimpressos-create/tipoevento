@@ -158,22 +158,32 @@ const ManagerLayout: React.FC = () => {
                                             <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard PRO
                                         </DropdownMenuItem>
                                     )}
-                                    <DropdownMenuItem onClick={() => navigate('/manager/events')} className="cursor-pointer hover:bg-yellow-500/10">
-                                        <CalendarCheck className="mr-2 h-4 w-4" /> Meus Eventos
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => navigate('/manager/events/create')} className="cursor-pointer hover:bg-yellow-500/10">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Novo Evento
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => navigate('/manager/wristbands')} className="cursor-pointer hover:bg-yellow-500/10">
-                                        <QrCode className="mr-2 h-4 w-4" /> Gestão de Pulseiras
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => navigate('/manager/wristbands/create')} className="cursor-pointer hover:bg-yellow-500/10">
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Nova Pulseira
-                                    </DropdownMenuItem>
+                                    {location.pathname !== '/manager/events' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/events')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <CalendarCheck className="mr-2 h-4 w-4" /> Meus Eventos
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/events/create' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/events/create')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Novo Evento
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/wristbands' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/wristbands')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <QrCode className="mr-2 h-4 w-4" /> Gestão de Pulseiras
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/wristbands/create' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/wristbands/create')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Nova Pulseira
+                                        </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuSeparator className="bg-yellow-500/20" />
-                                    <DropdownMenuItem onClick={() => navigate('/manager/settings')} className="cursor-pointer hover:bg-yellow-500/10">
-                                        <Settings className="mr-2 h-4 w-4" /> Configurações
-                                    </DropdownMenuItem>
+                                    {location.pathname !== '/manager/settings' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/settings')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <Settings className="mr-2 h-4 w-4" /> Configurações
+                                        </DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         )}
