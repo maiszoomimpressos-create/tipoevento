@@ -474,8 +474,7 @@ const Index: React.FC = () => {
                                 </a>
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-linkedin text-xl sm:text-2xl"></i>
-                                </a
-                            >
+                                </a>
                             </div>
                         </div>
                     </div>
