@@ -13,7 +13,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
-import { useProfileStatus } from '@/hooks/use-profile-status';
+import { useProfileStatus, ALL_PROFILE_FIELDS_TO_CHECK, isValueEmpty } from '@/hooks/use-profile-status'; // Importando a lógica compartilhada
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import { useQueryClient } from '@tanstack/react-query';
 import TermsAndConditionsDialog from '@/components/TermsAndConditionsDialog';
@@ -267,7 +267,7 @@ const Profile: React.FC = () => {
                     cep: cleanCEP,
                     rua: ruaToSave,
                     bairro: bairroToSave,
-                    cidade: cidadeToSave,
+                    cidade: cidadeToToSave,
                     estado: estadoToSave,
                     numero: numeroToSave,
                     complemento: complementoToSave,
@@ -333,13 +333,8 @@ const Profile: React.FC = () => {
         if (!profile) return []; // Se não há perfil, todos os campos estão 'faltando'
 
         const missing: string[] = [];
-        const fieldsToCheck = profile?.tipo_usuario_id === 3 ? [ // Cliente
-            'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
-            'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
-        ] : [ // Gestor (Admin ou PRO)
-            'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
-            'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
-        ];
+        // Usa a lista compartilhada de campos para verificar
+        const fieldsToCheck = ALL_PROFILE_FIELDS_TO_CHECK;
 
         const fieldNamesMap: { [key: string]: string } = {
             first_name: 'Nome',
@@ -354,12 +349,11 @@ const Profile: React.FC = () => {
             cidade: 'Cidade',
             estado: 'Estado',
             numero: 'Número',
-            // complemento: 'Complemento', // Complemento é opcional agora
         };
 
         for (const field of fieldsToCheck) {
             const value = profile[field as keyof ProfileData];
-            if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+            if (isValueEmpty(value)) { // Usa a função auxiliar compartilhada
                 missing.push(fieldNamesMap[field] || field);
             }
         }

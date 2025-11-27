@@ -8,8 +8,20 @@ interface ProfileStatus {
     loading: boolean;
 }
 
+// Export this function so Profile.tsx can use it for consistency
+export const isValueEmpty = (value: any): boolean => {
+    if (value === null || value === undefined) return true;
+    if (typeof value === 'string') {
+        const trimmedValue = value.trim();
+        if (trimmedValue === '') return true;
+        // Verifica placeholders comuns de data/documentos que podem ter sido salvos
+        if (trimmedValue === '0000-00-00' || trimmedValue === '00.000.000-0' || trimmedValue === '00000-000') return true;
+    }
+    return false;
+};
+
 // Todos os campos que, se vazios, tornam o perfil 'incompleto' para qualquer tipo de usuário
-const ALL_PROFILE_FIELDS_TO_CHECK = [ 
+export const ALL_PROFILE_FIELDS_TO_CHECK = [ // Also export this for Profile.tsx
     'first_name',
     'last_name', 
     'cpf',
@@ -22,20 +34,7 @@ const ALL_PROFILE_FIELDS_TO_CHECK = [
     'cidade',
     'estado',
     'numero',
-    // 'complemento', // REMOVIDO: Complemento não é mais um campo essencial para a completude do perfil
 ];
-
-// Função auxiliar para verificar se um valor é considerado vazio
-const isValueEmpty = (value: any): boolean => {
-    if (value === null || value === undefined) return true;
-    if (typeof value === 'string') {
-        const trimmedValue = value.trim();
-        if (trimmedValue === '') return true;
-        // Verifica placeholders comuns de data/documentos que podem ter sido salvos
-        if (trimmedValue === '0000-00-00' || trimmedValue === '00.000.000-0' || trimmedValue === '00000-000') return true;
-    }
-    return false;
-};
 
 // Simulação de verificação de notificações de sistema para Gestores
 const checkManagerSystemNotifications = async (userId: string, settings: any): Promise<boolean> => {
@@ -84,6 +83,7 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
         const checkStatus = async () => {
             let hasPendingNotifications = false;
             let isComplete = true; // Assume complete initially
+            const currentMissingFields: string[] = []; // Para logar os campos faltando
 
             // Check for missing fields for ALL user types (Admin, Manager, Client)
             // This determines if the profile is "complete" for full functionality/access
@@ -91,8 +91,12 @@ export function useProfileStatus(profile: ProfileData | null | undefined, isLoad
                 const value = profile[field as keyof ProfileData];
                 if (isValueEmpty(value)) {
                     isComplete = false;
-                    break;
+                    currentMissingFields.push(field); // Adiciona o campo à lista de faltantes
                 }
+            }
+
+            if (!isComplete) {
+                console.warn(`[ProfileStatus] Profile is INCOMPLETE. Missing fields: ${currentMissingFields.join(', ')}`);
             }
 
             // --- Lógica de Notificações Pendentes ---
