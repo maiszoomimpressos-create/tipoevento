@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Loader2, Crown, LayoutDashboard, CalendarCheck, PlusCircle, QrCode, Settings } from 'lucide-react'; // Importando novos ícones
+import { Menu, X, Loader2, Crown, LayoutDashboard, CalendarCheck, PlusCircle, QrCode, Settings, LogOut } from 'lucide-react'; // Importando LogOut
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"; // Importando DropdownMenu
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/use-profile';
 import { useUserType } from '@/hooks/use-user-type';
@@ -49,12 +49,6 @@ const ManagerLayout: React.FC = () => {
                     <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
                 </div>
             );
-        }
-        // If loading, show spinner
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-            </div>
         );
     }
     
@@ -136,19 +130,27 @@ const ManagerLayout: React.FC = () => {
                             <span className="ml-2 sm:ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-2 sm:px-3 py-0.5 rounded-lg text-xs sm:text-sm font-bold">{dashboardTitle}</span>
                         </div>
                         
-                        {/* DropdownMenu com o ícone de coroa como gatilho para ações rápidas */}
+                        {/* O DropdownMenu de 'Ações Rápidas' foi removido daqui */}
+                    </div>
+                    <div className="flex items-center space-x-3 sm:space-x-4">
+                        <button className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer hidden sm:block">
+                            <i className="fas fa-bell text-lg"></i>
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">3</span>
+                        </button>
+                        
+                        {/* NOVO: Botão 'Gestor PRO' agora é um DropdownMenu */}
                         {isManager && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <div 
-                                        className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-sm cursor-pointer hover:scale-105 transition-transform duration-200"
-                                        title="Ações de Gestão PRO"
+                                    <Button
+                                        className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 px-4 py-2 text-sm font-semibold transition-all duration-300 cursor-pointer flex items-center h-8 hidden sm:flex"
                                     >
-                                        <Crown className="h-5 w-5" />
-                                    </div>
+                                        <Crown className="h-4 w-4 mr-2" />
+                                        Gestor PRO
+                                    </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
-                                    <DropdownMenuLabel className="text-yellow-500">Ações Rápidas</DropdownMenuLabel>
+                                    <DropdownMenuLabel className="text-yellow-500">Ações de Gestão PRO</DropdownMenuLabel>
                                     <DropdownMenuSeparator className="bg-yellow-500/20" />
                                     <DropdownMenuItem onClick={() => navigate('/manager/dashboard')} className="cursor-pointer hover:bg-yellow-500/10">
                                         <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard PRO
@@ -172,21 +174,6 @@ const ManagerLayout: React.FC = () => {
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         )}
-                    </div>
-                    <div className="flex items-center space-x-3 sm:space-x-4">
-                        <button className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer hidden sm:block">
-                            <i className="fas fa-bell text-lg"></i>
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">3</span>
-                        </button>
-                        
-                        {/* NOVO: Botão 'Gestor PRO' que navega para o dashboard */}
-                        <Button
-                            onClick={() => navigate('/manager/dashboard')}
-                            className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 px-4 py-2 text-sm font-semibold transition-all duration-300 cursor-pointer flex items-center h-8 hidden sm:flex"
-                        >
-                            <Crown className="h-4 w-4 mr-2" />
-                            Gestor PRO
-                        </Button>
 
                         {/* Informações do Usuário (Nome e Cargo) */}
                         <div className="text-right hidden lg:block">
@@ -194,6 +181,7 @@ const ManagerLayout: React.FC = () => {
                             <div className="text-gray-400 text-xs">{userRole}</div>
                         </div>
 
+                        {/* Logout Button */}
                         <Button
                             onClick={handleLogout}
                             className="bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer px-3 py-1 h-8 text-sm hidden sm:block"
@@ -228,7 +216,7 @@ const ManagerLayout: React.FC = () => {
                                             onClick={handleLogout}
                                             className="w-full justify-start bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer"
                                         >
-                                            <i className="fas fa-sign-out-alt mr-2"></i>
+                                            <LogOut className="mr-2 h-5 w-5" />
                                             Sair
                                         </Button>
                                     </div>
