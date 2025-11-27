@@ -39,48 +39,19 @@ serve(async (req) => {
   }
 
   try {
-    // 2. Buscar o Access Token do Gestor (Necessário para buscar detalhes do pagamento)
-    // Como o webhook não contém o token do gestor, precisamos buscar o Access Token
-    // usando o ID da preferência (que está no receivables.payment_gateway_id)
-    
-    // NOTA: Em um sistema real, o MP envia o ID do pagamento. Precisamos buscar o payment_id
-    // e, a partir dele, o external_reference (transactionId) para encontrar o gestor.
-    
-    // SIMPLIFICAÇÃO: Vamos assumir que o ID do recurso (payment_id) é suficiente para buscar
-    // o pagamento e, a partir dele, o external_reference (transactionId).
-    
-    // Para fins de simulação, vamos usar um Access Token genérico (ou o do Admin Master)
-    // para buscar o pagamento, o que é inseguro em produção.
-    // Em produção, o Access Token correto deve ser recuperado do DB usando o external_reference.
-    
-    // Para esta implementação, vamos assumir que o external_reference (transactionId)
-    // está disponível no corpo da requisição ou que podemos buscá-lo.
-    
-    // Devido às limitações de segurança e complexidade de buscar o token correto
-    // para cada gestor via webhook, vamos SIMPLIFICAR a lógica de busca do token
-    // e focar na atualização do status.
-    
-    // Vamos buscar a transação pendente que corresponde ao payment_id (resourceId)
-    // e usar o manager_user_id para buscar o token.
-    
-    // 3. Buscar a transação pendente usando o payment_gateway_id (MP preference ID)
-    // NOTA: O MP envia o ID do pagamento, não o ID da preferência.
-    // Para simplificar, vamos assumir que o ID do pagamento é o mesmo que o ID da preferência
-    // ou que o external_reference (transactionId) está disponível.
-    
-    // Vamos buscar a transação pelo external_reference (que é o ID da transação Mazoy)
-    // O MP envia o ID do pagamento (payment_id) no webhook. Precisamos buscar o pagamento
-    // para obter o external_reference.
-    
-    // Para fins de demonstração, vamos usar o Service Role Key para buscar a transação
-    // e assumir que o ID do pagamento (resourceId) está no campo payment_gateway_id.
-    
-    const { data: receivable, error: fetchReceivableError } = await supabaseService
+    // 2. Buscar a transação pendente usando o payment_gateway_id (MP preference ID)
+    // Usando .limit(1) em vez de .single()
+    const { data: receivableArray, error: fetchReceivableError } = await supabaseService
         .from('receivables')
         .select('id, client_user_id, wristband_analytics_ids, manager_user_id')
         .eq('payment_gateway_id', resourceId) // Assumindo que o ID do recurso é o ID da preferência/pagamento
         .eq('status', 'pending')
-        .single();
+        .limit(1); // Changed from .single() to .limit(1)
+
+    let receivable = null;
+    if (receivableArray && receivableArray.length > 0) {
+        receivable = receivableArray[0];
+    }
 
     if (fetchReceivableError || !receivable) {
         console.warn(`[MP Webhook] Pending receivable not found for resource ID: ${resourceId}`);
@@ -91,12 +62,12 @@ serve(async (req) => {
     const clientUserId = receivable.client_user_id;
     const analyticsIds = receivable.wristband_analytics_ids;
     
-    // 4. SIMULAÇÃO DE VERIFICAÇÃO DE PAGAMENTO (Substituir pela chamada real ao MP)
+    // 3. SIMULAÇÃO DE VERIFICAÇÃO DE PAGAMENTO (Substituir pela chamada real ao MP)
     // Status do MP: approved, pending, rejected, refunded, cancelled
     const paymentStatus = 'approved'; // Simulação de sucesso
     
     if (paymentStatus === 'approved') {
-        // 5. Atualizar status da transação para 'paid'
+        // 4. Atualizar status da transação para 'paid'
         const { error: updateReceivableError } = await supabaseService
             .from('receivables')
             .update({ status: 'paid' })
@@ -104,7 +75,7 @@ serve(async (req) => {
 
         if (updateReceivableError) throw updateReceivableError;
 
-        // 6. Atualizar wristband analytics: associar cliente e marcar como 'used'/'purchase'
+        // 5. Atualizar wristband analytics: associar cliente e marcar como 'used'/'purchase'
         const { data: analyticsToUpdate, error: fetchUpdateError } = await supabaseService
             .from('wristband_analytics')
             .select('id, wristband_id')
@@ -143,7 +114,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ message: 'Payment approved and tickets assigned.' }), { status: 200, headers: corsHeaders });
 
     } else if (paymentStatus === 'rejected' || paymentStatus === 'cancelled') {
-        // 5. Atualizar status da transação para 'failed'
+        // 4. Atualizar status da transação para 'failed'
         const { error: updateReceivableError } = await supabaseService
             .from('receivables')
             .update({ status: 'failed' })

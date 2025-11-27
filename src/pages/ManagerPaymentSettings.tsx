@@ -38,18 +38,18 @@ const ManagerPaymentSettings: React.FC = () => {
             }
             setUserId(user.id);
 
-            const { data: settingsData, error: settingsError } = await supabase
+            // Fetch Payment Settings - Using .limit(1) instead of .single()
+            const { data: settingsArray, error: settingsError } = await supabase
                 .from('payment_settings')
                 .select('*')
                 .eq('user_id', user.id)
-                .single();
+                .limit(1); // Changed from .single() to .limit(1)
 
-            if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = No rows found
+            if (settingsError && settingsError.code !== 'PGRST116' && settingsError.code !== '406') { // PGRST116 = No rows found, 406 = Not Acceptable
                 console.error("Error fetching payment settings:", settingsError);
                 showError("Erro ao carregar configurações de pagamento.");
-            }
-
-            if (settingsData) {
+            } else if (settingsArray && settingsArray.length > 0) {
+                const settingsData = settingsArray[0]; // Get the first (and only) item from the array
                 // Ao carregar, mostramos apenas os últimos 4 dígitos para segurança
                 const maskedApiKey = settingsData.api_key ? '••••••••••••' + settingsData.api_key.slice(-4) : '';
                 const maskedApiToken = settingsData.api_token ? '••••••••••••' + settingsData.api_token.slice(-4) : '';
