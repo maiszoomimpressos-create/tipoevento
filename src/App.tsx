@@ -31,6 +31,7 @@ import ManagerLayout from "./components/layouts/ManagerLayout";
 import ClientLayout from "./components/layouts/ClientLayout";
 import ForgotPassword from "./pages/ForgotPassword";
 import FinalizarCompra from "./pages/FinalizarCompra";
+import ScrollToTop from "./components/ScrollToTop"; // Importação do novo componente
 import ManagerRegister from "./pages/ManagerRegister";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop /> {/* Adicionado aqui */}
         <Routes>
           {/* Public/Client Routes wrapped in ClientLayout */}
           <Route element={<ClientLayout />}>
@@ -55,6 +57,8 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/tickets" element={<MyTickets />} />
           <Route path="/finalizar-compra" element={<FinalizarCompra />} />
           <Route path="/manager/login" element={<ManagerLogin />} />
           

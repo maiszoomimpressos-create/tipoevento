@@ -1,19 +1,29 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError } from '@/utils/toast';
 
-interface PurchaseDetails {
-    eventId: string;
+interface PurchaseItem {
     ticketTypeId: string; // ID da pulseira base (wristband ID)
     quantity: number;
-    price: number;
+    price: number; // Valor unitário
+    name: string; // Nome do item para o Mercado Pago
+}
+
+interface PurchaseDetails {
+    eventId: string; // UUID do evento
+    purchaseItems: PurchaseItem[];
+}
+
+interface PurchaseResponse {
+    checkoutUrl: string;
+    transactionId: string;
 }
 
 export const usePurchaseTicket = () => {
     const [isLoading, setIsLoading] = useState(false);
 
-    const purchaseTicket = async (details: PurchaseDetails) => {
-        const { ticketTypeId, quantity, price } = details;
+    const purchaseTicket = async (details: PurchaseDetails): Promise<PurchaseResponse | false> => {
+        const { eventId, purchaseItems } = details;
         
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -21,7 +31,8 @@ export const usePurchaseTicket = () => {
             return false;
         }
         
-        if (quantity <= 0) {
+        const totalTickets = purchaseItems.reduce((sum, item) => sum + item.quantity, 0);
+        if (totalTickets <= 0) {
             showError("A quantidade de ingressos deve ser maior que zero.");
             return false;
         }
@@ -29,60 +40,37 @@ export const usePurchaseTicket = () => {
         setIsLoading(true);
 
         try {
-            // 1. Tentar encontrar uma pulseira ATIVA disponível para este tipo (wristband_id)
-            // Como o ticketTypeId é o ID da pulseira base, procuramos por registros de analytics
-            // que ainda não foram associados a um cliente (client_user_id is null) e que estão 'active'.
-            
-            // Nota: Estamos assumindo que cada 'tipo de ingresso' na tela de detalhes corresponde a uma pulseira base (wristband)
-            // e que a quantidade comprada corresponde a N registros de analytics não utilizados.
-            
-            // Para simplificar a transação e garantir atomicidade, vamos usar uma função RPC ou Edge Function
-            // em um ambiente de produção. Aqui, faremos uma simulação de transação segura:
-            
-            // 2. Buscar N registros de analytics ativos e não associados, vinculados à pulseira base (ticketTypeId)
-            const { data: availableAnalytics, error: fetchError } = await supabase
-                .from('wristband_analytics')
-                .select('id, code_wristbands')
-                .eq('wristband_id', ticketTypeId)
-                .eq('status', 'active')
-                .is('client_user_id', null)
-                .limit(quantity);
+            // 1. Chamar a Edge Function para criar a preferência de pagamento
+            const { data: responseData, error: edgeError } = await supabase.functions.invoke('create-payment-preference', {
+                body: {
+                    eventId: eventId,
+                    purchaseItems: purchaseItems,
+                },
+            });
 
-            if (fetchError) throw fetchError;
-
-            if (!availableAnalytics || availableAnalytics.length < quantity) {
-                throw new Error("Não há ingressos disponíveis suficientes para esta compra.");
+            if (edgeError) {
+                // Se o erro for um erro de rede ou timeout
+                throw new Error(edgeError.message);
             }
             
-            const analyticsIdsToUpdate = availableAnalytics.map(a => a.id);
+            if (responseData.error) {
+                // Se a Edge Function retornou um erro 4xx ou 5xx com um corpo de erro
+                if (responseData.error.includes('Payment gateway access token is not configured')) {
+                    showError("Erro de Configuração: O gestor do evento precisa configurar o Token Secreto do Mercado Pago nas Configurações PRO.");
+                    return false;
+                }
+                throw new Error(responseData.error);
+            }
             
-            // 3. Atualizar os registros de analytics para associar ao cliente e mudar o status para 'used' (simulando a venda)
-            const { error: updateError } = await supabase
-                .from('wristband_analytics')
-                .update({ 
-                    client_user_id: user.id,
-                    status: 'used', // Marcamos como 'used' para indicar que foi vendido/associado
-                    event_type: 'purchase',
-                    event_data: {
-                        purchase_date: new Date().toISOString(),
-                        total_paid: price * quantity,
-                        unit_price: price,
-                        client_id: user.id,
-                    }
-                })
-                .in('id', analyticsIdsToUpdate);
-
-            if (updateError) throw updateError;
-
-            // 4. Se a compra for bem-sucedida, invalidamos o cache de ingressos do cliente
-            // (Embora não tenhamos um hook para isso, é a melhor prática)
-            
-            showSuccess(`Compra de ${quantity} ingressos concluída com sucesso!`);
-            return true;
+            // 2. Sucesso: Retorna o URL de checkout e o ID da transação
+            return {
+                checkoutUrl: responseData.checkoutUrl,
+                transactionId: responseData.transactionId,
+            };
 
         } catch (error: any) {
             console.error("Transaction Error:", error);
-            showError(error.message || "Falha na transação de compra. Tente novamente.");
+            showError(error.message || "Falha ao iniciar a transação de compra. Tente novamente.");
             return false;
         } finally {
             setIsLoading(false);

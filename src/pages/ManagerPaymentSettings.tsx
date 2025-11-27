@@ -81,6 +81,7 @@ const ManagerPaymentSettings: React.FC = () => {
             gateway_name: settings.gatewayName,
         };
 
+        // Se o valor não começar com '••••', significa que o usuário digitou um novo valor
         if (!settings.apiKey.startsWith('••••')) {
             dataToSave.api_key = settings.apiKey;
         }
@@ -89,7 +90,7 @@ const ManagerPaymentSettings: React.FC = () => {
         }
 
         try {
-            // Tenta atualizar (UPSERT)
+            // Tenta atualizar (UPSERT) usando user_id como chave de conflito
             const { error } = await supabase
                 .from('payment_settings')
                 .upsert(dataToSave, { onConflict: 'user_id' });
@@ -165,7 +166,7 @@ const ManagerPaymentSettings: React.FC = () => {
                             type="text"
                             value={settings.gatewayName} 
                             onChange={(e) => handleInputChange('gatewayName', e.target.value)} 
-                            placeholder="Ex: Stripe, PagSeguro, etc."
+                            placeholder="Ex: Mercado Pago"
                             className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
                             disabled={isSaving}
                         />
