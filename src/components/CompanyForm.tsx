@@ -80,7 +80,7 @@ export const companySchema = z.object({
     cnpj: z.string().optional().refine((val) => !val || validateCNPJ(val), { message: "CNPJ inválido. Verifique os dígitos." }),
     trade_name: z.string().optional(),
     phone: z.string().optional(),
-    email: z.string().optional().email({ message: "E-mail inválido." }),
+    email: z.string().email({ message: "E-mail inválido." }).optional(), // CORRIGIDO: .email() antes de .optional()
     
     cep: z.string().optional().refine((val) => !val || val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
     street: z.string().optional(),
