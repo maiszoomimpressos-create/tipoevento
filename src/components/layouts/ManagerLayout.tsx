@@ -65,11 +65,16 @@ const ManagerLayout: React.FC = () => {
         }
     }
 
-    // NEW LOGIC: Block manager access if profile is incomplete and not on the profile page
-    if (isManager && !isProfileFullyComplete && location.pathname !== '/profile') {
+    // NEW LOGIC: Allow access to profile completion pages even if the profile is incomplete
+    const isProfileCompletionPage = location.pathname === '/profile' || 
+                                   location.pathname === '/manager/settings/company-profile' ||
+                                   location.pathname === '/manager/register' || 
+                                   location.pathname === '/manager/register/company'; 
+
+    if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
         showError("Seu perfil de gestor está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
-        navigate('/profile', { replace: true });
-        return null; // Prevent rendering the manager layout content
+        navigate('/profile', { replace: true }); // Redirect to generic profile page for completion
+        return null; 
     }
     
     const navItems = [
