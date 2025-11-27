@@ -45,7 +45,10 @@ serve(async (req) => {
   console.log(`[DEBUG] Client authenticated. User ID: ${clientUserId}`);
 
   try {
-    const { eventId, purchaseItems } = await req.json(); // purchaseItems: [{ ticketTypeId, quantity, price, name }]
+    const body = await req.json();
+    const { eventId, purchaseItems } = body; // purchaseItems: [{ ticketTypeId, quantity, price, name }]
+    
+    console.log(`[DEBUG] Received request for Event ID: ${eventId}`);
 
     if (!eventId || !purchaseItems || purchaseItems.length === 0) {
       return new Response(JSON.stringify({ error: 'Missing event details or purchase items' }), { 
@@ -87,7 +90,20 @@ serve(async (req) => {
 
     // Se houver erro na busca (incluindo PGRST116 - No rows found) ou se o token estiver ausente
     if (settingsError || !paymentSettingsData?.api_token) {
-        console.error(`[DEBUG] Payment settings fetch failed for manager ${managerUserId}. Error: ${settingsError?.message || 'Token missing'}`);
+        console.error(`[DEBUG ERROR] Payment settings fetch failed for manager ${managerUserId}. Error: ${settingsError?.message || 'Token missing'}`);
+        
+        // Se o erro for PGRST116 (No rows found), significa que o gestor não configurou nada.
+        if (settingsError?.code === 'PGRST116') {
+             return new Response(JSON.stringify({ error: 'Payment gateway access token is not configured by the event manager. Please ask the manager to configure it in PRO Settings.' }), { 
+                status: 403, 
+                headers: corsHeaders 
+            });
+        }
+        
+        // Outros erros de busca
+        if (settingsError) throw settingsError;
+        
+        // Se o token estiver ausente (null/undefined)
         return new Response(JSON.stringify({ error: 'Payment gateway access token is not configured by the event manager. Please ask the manager to configure it in PRO Settings.' }), { 
             status: 403, 
             headers: corsHeaders 
