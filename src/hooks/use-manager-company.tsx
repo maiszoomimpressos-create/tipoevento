@@ -8,27 +8,27 @@ interface CompanyData {
     corporate_name: string;
 }
 
-const fetchCompanyId = async (userId: string): Promise<CompanyData | null> => {
-    if (!userId) return null;
+// Modificado para buscar um array de empresas
+const fetchCompanies = async (userId: string): Promise<CompanyData[]> => {
+    if (!userId) return [];
 
     const { data, error } = await supabase
         .from('companies')
         .select('id, cnpj, corporate_name')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId); // Removido .single() para permitir múltiplos resultados
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-        console.error("Error fetching company ID:", error);
+    if (error) {
+        console.error("Error fetching companies:", error);
         throw new Error(error.message);
     }
-    
-    return data as CompanyData;
+
+    return data as CompanyData[];
 };
 
 export const useManagerCompany = (userId: string | undefined) => {
     const query = useQuery({
         queryKey: ['managerCompany', userId],
-        queryFn: () => fetchCompanyId(userId!),
+        queryFn: () => fetchCompanies(userId!),
         enabled: !!userId,
         staleTime: 1000 * 60 * 5, // 5 minutes
         onError: (error) => {
@@ -39,7 +39,10 @@ export const useManagerCompany = (userId: string | undefined) => {
 
     return {
         ...query,
-        company: query.data,
+        // Retorna a primeira empresa encontrada, ou null se nenhuma for encontrada
+        company: query.data && query.data.length > 0 ? query.data[0] : null,
+        // Também expõe todas as empresas, caso seja necessário no futuro
+        allCompanies: query.data || [],
     };
 };
 

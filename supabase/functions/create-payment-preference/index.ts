@@ -78,14 +78,19 @@ serve(async (req) => {
     const managerUserId = eventData.user_id;
     console.log(`[DEBUG] Event found. Manager ID: ${managerUserId}`);
     
-    // 3. Fetch Manager Payment Settings directly using managerUserId
+    // 3. Fetch Manager Payment Settings directly using managerUserId - Using .limit(1) instead of .single()
     console.log(`[DEBUG BREAKPOINT] Attempting to fetch payment settings for manager: ${managerUserId}`);
     
-    const { data: paymentSettingsData, error: settingsError } = await supabaseService
+    const { data: paymentSettingsArray, error: settingsError } = await supabaseService
         .from('payment_settings')
         .select('api_token')
         .eq('user_id', managerUserId)
-        .single();
+        .limit(1); // Changed from .single() to .limit(1)
+
+    let paymentSettingsData = null;
+    if (paymentSettingsArray && paymentSettingsArray.length > 0) {
+        paymentSettingsData = paymentSettingsArray[0];
+    }
 
     // Se houver erro na busca (incluindo PGRST116 - No rows found) ou se o token estiver ausente
     if (settingsError || !paymentSettingsData?.api_token) {

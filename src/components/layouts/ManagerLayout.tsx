@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Loader2, Crown } from 'lucide-react';
+import { Menu, X, Loader2, Crown, LayoutDashboard, CalendarCheck, PlusCircle, QrCode, Settings, LogOut } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/use-profile';
 import { useUserType } from '@/hooks/use-user-type';
 import { showError } from '@/utils/toast';
+import { useProfileStatus } from '@/hooks/use-profile-status'; // Import useProfileStatus
+import { useManagerCompany } from '@/hooks/use-manager-company'; // Import useManagerCompany
 
 const ADMIN_USER_TYPE_ID = 1;
-const MANAGER_USER_TYPE_ID = 2;
+const MANAGER_PRO_USER_TYPE_ID = 2;
 
 const ManagerLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -26,6 +29,8 @@ const ManagerLayout: React.FC = () => {
 
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
     const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
+    const { isComplete: isProfileFullyComplete, loading: isLoadingProfileStatus, needsCompanyProfile, needsPersonalProfileCompletion } = useProfileStatus(profile, isLoadingProfile);
+    const { company, isLoading: isLoadingCompany } = useManagerCompany(userId); // Fetch company data
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -36,38 +41,67 @@ const ManagerLayout: React.FC = () => {
         }
     };
 
-    // Redirect unauthenticated users to login
-    if (loadingSession || isLoadingProfile || isLoadingUserType) {
-        if (!userId && !loadingSession) {
-            // Only redirect if trying to access a manager/admin route
+    // Combined loading state
+    const isLoadingCombined = loadingSession || isLoadingProfile || isLoadingUserType || isLoadingProfileStatus || isLoadingCompany;
+
+    // Determine user type and manager status
+    const userType = profile?.tipo_usuario_id;
+    const isManager = userType === ADMIN_USER_TYPE_ID || userType === MANAGER_PRO_USER_TYPE_ID;
+    const isAdminMaster = userType === ADMIN_USER_TYPE_ID;
+
+    // Pages where profile completion is allowed/expected
+    const isProfileCompletionPage = location.pathname === '/profile' || 
+                                   location.pathname === '/manager/settings/company-profile' ||
+                                   location.pathname === '/manager/register' || 
+                                   location.pathname === '/manager/register/company' ||
+                                   location.pathname === '/admin/register-manager'; 
+
+    // Effect for redirection logic
+    useEffect(() => {
+        if (isLoadingCombined) return; // Wait for all data to load
+
+        // 1. Redirect unauthenticated users to login
+        if (!userId) {
             if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-                navigate('/manager/login');
+                navigate('/manager/login', { replace: true });
             }
-            return (
-                <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                    <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-                </div>
-            );
+            return;
         }
-        // If loading, show spinner
+
+        // 2. Redirect non-managers away from manager/admin routes
+        if (!isManager) {
+            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+                navigate('/', { replace: true });
+            }
+            return;
+        }
+
+        // 3. Redirect managers with incomplete profiles
+        if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
+            if (needsCompanyProfile) {
+                showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
+                navigate('/manager/settings/company-profile', { replace: true });
+                return;
+            }
+            if (needsPersonalProfileCompletion) {
+                showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
+                navigate('/profile', { replace: true });
+                return;
+            }
+            // Fallback for any other incomplete state not explicitly handled
+            showError("Seu perfil de gestor está incompleto. Por favor, complete seu cadastro.");
+            navigate('/profile', { replace: true }); // Default to personal profile completion
+            return;
+        }
+    }, [isLoadingCombined, userId, isManager, isProfileFullyComplete, isProfileCompletionPage, userType, company, navigate, location.pathname, needsCompanyProfile, needsPersonalProfileCompletion]);
+
+
+    if (isLoadingCombined) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
             </div>
         );
-    }
-    
-    // Check if user is authorized (Admin or Manager)
-    const userType = profile?.tipo_usuario_id;
-    const isManager = userType === ADMIN_USER_TYPE_ID || userType === MANAGER_USER_TYPE_ID;
-    const isAdminMaster = userType === ADMIN_USER_TYPE_ID;
-
-    if (!isManager) {
-        // If the user is logged in but not a manager/admin (e.g., client type 3), redirect them
-        if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-            navigate('/');
-            return null;
-        }
     }
     
     const navItems = [
@@ -79,36 +113,30 @@ const ManagerLayout: React.FC = () => {
         { path: '/manager/settings', label: 'Configurações' },
     ];
     
-    // Add Admin Dashboard link if the user is an Admin Master
     if (isAdminMaster) {
         navItems.splice(1, 0, { path: '/admin/dashboard', label: 'Dashboard Admin' });
     }
     
     const dashboardTitle = isAdminMaster && location.pathname.startsWith('/admin') ? 'ADMIN' : 'PRO';
     
-    // Removendo a declaração duplicada de userRole
     const userName = profile?.first_name || 'Gestor';
-    const userRole = userTypeName; // Usando o valor do hook useUserType
+    const userRole = userTypeName;
 
     const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
         <nav className="flex flex-col md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0">
             {navItems.map(item => {
-                // Determine if the link is active based on the current path
-                let isActive = false;
-                
-                if (item.path === '/') {
-                    // Home is active only if the path is exactly '/'
-                    isActive = location.pathname === '/';
-                } else if (item.path !== '#') {
-                    // Other paths are active if the current path starts with them
-                    isActive = location.pathname.startsWith(item.path);
+                const isLinkActive = location.pathname.startsWith(item.path) && (item.path !== '/' || location.pathname === '/');
+
+                if (isLinkActive) {
+                    return (
+                        <span 
+                            key={item.path}
+                            className="text-yellow-500 md:border-b-2 border-yellow-500 font-semibold py-2 md:py-0 md:pb-1 text-left"
+                        >
+                            {item.label}
+                        </span>
+                    );
                 }
-                
-                // Special handling for Dashboard links to ensure only one is highlighted
-                const isManagerDashboardActive = location.pathname === '/manager/dashboard' && item.path === '/manager/dashboard';
-                const isAdminDashboardActive = location.pathname === '/admin/dashboard' && item.path === '/admin/dashboard';
-                
-                const isLinkActive = isActive || isManagerDashboardActive || isAdminDashboardActive;
 
                 return (
                     <button 
@@ -117,11 +145,7 @@ const ManagerLayout: React.FC = () => {
                             if (item.path !== '#') navigate(item.path);
                             if (onClick) onClick();
                         }} 
-                        className={`transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left ${
-                            isLinkActive
-                            ? 'text-yellow-500 md:border-b-2 border-yellow-500 font-semibold' 
-                            : 'text-white hover:text-yellow-500'
-                        }`}
+                        className="transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left text-white hover:text-yellow-500"
                     >
                         {item.label}
                     </button>
@@ -135,28 +159,70 @@ const ManagerLayout: React.FC = () => {
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/90 backdrop-blur-md border-b border-yellow-500/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-4 sm:space-x-6">
-                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold flex items-center">
+                        <Link to="/" className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold flex items-center cursor-pointer">
                             Mazoy
                             <span className="ml-2 sm:ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-2 sm:px-3 py-0.5 rounded-lg text-xs sm:text-sm font-bold">{dashboardTitle}</span>
-                        </div>
-                        <div className="hidden md:block">
-                            <NavLinks />
-                        </div>
+                        </Link>
                     </div>
                     <div className="flex items-center space-x-3 sm:space-x-4">
                         <button className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer hidden sm:block">
                             <i className="fas fa-bell text-lg"></i>
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">3</span>
                         </button>
-                        <div className="flex items-center space-x-3 hidden sm:flex">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center text-black font-bold text-sm">
-                                <Crown className="h-5 w-5" />
-                            </div>
-                            <div className="text-right hidden lg:block">
-                                <div className="text-white font-semibold text-sm">{userName}</div>
-                                <div className="text-gray-400 text-xs">{userRole}</div>
-                            </div>
+                        
+                        {isManager && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 px-4 py-2 text-sm font-semibold transition-all duration-300 cursor-pointer flex items-center h-8 hidden sm:flex"
+                                    >
+                                        <Crown className="h-4 w-4 mr-2" />
+                                        Gestor PRO
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
+                                    <DropdownMenuLabel className="text-yellow-500">Ações de Gestão PRO</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                    {location.pathname !== '/manager/dashboard' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/dashboard')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard PRO
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/events' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/events')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <CalendarCheck className="mr-2 h-4 w-4" /> Meus Eventos
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/events/create' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/events/create')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Novo Evento
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/wristbands' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/wristbands')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <QrCode className="mr-2 h-4 w-4" /> Gestão de Pulseiras
+                                        </DropdownMenuItem>
+                                    )}
+                                    {location.pathname !== '/manager/wristbands/create' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/wristbands/create')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Nova Pulseira
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                    {location.pathname !== '/manager/settings' && (
+                                        <DropdownMenuItem onClick={() => navigate('/manager/settings')} className="cursor-pointer hover:bg-yellow-500/10">
+                                            <Settings className="mr-2 h-4 w-4" /> Configurações
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+
+                        <div className="text-right hidden lg:block">
+                            <div className="text-white font-semibold text-sm">{userName}</div>
+                            <div className="text-gray-400 text-xs">{userRole}</div>
                         </div>
+
                         <Button
                             onClick={handleLogout}
                             className="bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer px-3 py-1 h-8 text-sm hidden sm:block"
@@ -164,7 +230,6 @@ const ManagerLayout: React.FC = () => {
                             Sair
                         </Button>
 
-                        {/* Mobile Menu Trigger */}
                         <Sheet>
                             <SheetTrigger asChild>
                                 <Button variant="ghost" size="icon" className="md:hidden text-yellow-500 hover:bg-yellow-500/10">
@@ -191,7 +256,7 @@ const ManagerLayout: React.FC = () => {
                                             onClick={handleLogout}
                                             className="w-full justify-start bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer"
                                         >
-                                            <i className="fas fa-sign-out-alt mr-2"></i>
+                                            <LogOut className="mr-2 h-5 w-5" />
                                             Sair
                                         </Button>
                                     </div>

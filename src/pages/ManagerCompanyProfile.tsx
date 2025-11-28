@@ -1,122 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
-import { Loader2, Building, ArrowLeft } from 'lucide-react';
+import { Loader2, Building, ArrowLeft, User, AlertTriangle } from 'lucide-react';
+import CompanyForm, { createCompanySchema, CompanyFormData } from '@/components/CompanyForm'; // Importando o novo componente e schema
+import { useProfile } from '@/hooks/use-profile';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useProfileStatus, isValueEmpty } from '@/hooks/use-profile-status'; // Importando useProfileStatus e isValueEmpty
 
-// --- Utility Functions ---
+// Campos essenciais do perfil do usuário que devem estar preenchidos para ser sócio
+const ESSENTIAL_PROFILE_FIELDS_FOR_PARTNER = [
+    'first_name', 'last_name', 'cpf', 'rg', 'birth_date', 'gender',
+    'cep', 'rua', 'bairro', 'cidade', 'estado', 'numero'
+];
 
-const validateCNPJ = (cnpj: string) => {
-    const cleanCNPJ = cnpj.replace(/\D/g, '');
+const isProfileCompleteForPartner = (profileData: typeof useProfile extends (...args: any[]) => { profile: infer T } ? T : never): boolean => {
+    if (!profileData) return false;
 
-    if (cleanCNPJ.length !== 14) return false;
-
-    // Evita CNPJs com todos os dígitos iguais
-    if (/^(\d)\1{13}$/.test(cleanCNPJ)) return false;
-
-    let size = cleanCNPJ.length - 2;
-    let numbers = cleanCNPJ.substring(0, size);
-    const digits = cleanCNPJ.substring(size);
-    let sum = 0;
-    let pos = size - 7;
-
-    // Validação do primeiro dígito
-    for (let i = size; i >= 1; i--) {
-        sum += parseInt(numbers.charAt(size - i)) * pos--;
-        if (pos < 2) pos = 9;
+    for (const field of ESSENTIAL_PROFILE_FIELDS_FOR_PARTNER) {
+        const value = profileData[field as keyof typeof profileData];
+        if (isValueEmpty(value)) {
+            return false;
+        }
     }
-    let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-    if (result !== parseInt(digits.charAt(0))) return false;
-
-    // Validação do segundo dígito
-    size = size + 1;
-    numbers = cleanCNPJ.substring(0, size);
-    sum = 0;
-    pos = size - 7;
-    for (let i = size; i >= 1; i--) {
-        sum += parseInt(numbers.charAt(size - i)) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-    if (result !== parseInt(digits.charAt(1))) return false;
-
     return true;
 };
-
-const formatCNPJ = (value: string) => {
-    if (!value) return '';
-    const cleanValue = value.replace(/\D/g, '');
-    return cleanValue
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d)/, '$1-$2')
-        .replace(/(-\d{2})\d+?$/, '$1');
-};
-
-const formatPhone = (value: string) => {
-    if (!value) return '';
-    const cleanValue = value.replace(/\D/g, '');
-    if (cleanValue.length <= 10) {
-        return cleanValue.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-    }
-    return cleanValue.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-};
-
-const formatCEP = (value: string) => {
-    if (!value) return '';
-    const cleanValue = value.replace(/\D/g, '');
-    return cleanValue
-        .replace(/(\d{5})(\d)/, '$1-$2')
-        .replace(/(-\d{3})\d+?$/, '$1');
-};
-
-// --- Zod Schema ---
-
-const companyProfileSchema = z.object({
-    cnpj: z.string().refine(validateCNPJ, { message: "CNPJ inválido. Verifique os dígitos." }),
-    corporate_name: z.string().min(3, { message: "Razão Social é obrigatória." }),
-    trade_name: z.string().optional().nullable(),
-    phone: z.string().optional().nullable(),
-    email: z.string().email({ message: "E-mail inválido." }).optional().nullable(), // Novo campo de e-mail
-    
-    // Address Fields
-    cep: z.string().optional().nullable().refine((val) => !val || val.replace(/\D/g, '').length === 8, { message: "CEP inválido (8 dígitos)." }),
-    street: z.string().optional().nullable(),
-    neighborhood: z.string().optional().nullable(),
-    city: z.string().optional().nullable(),
-    state: z.string().optional().nullable(),
-    number: z.string().optional().nullable(),
-    complement: z.string().optional().nullable(),
-});
-
-type CompanyProfileData = z.infer<typeof companyProfileSchema> & { id?: string };
-
-// --- Component ---
 
 const ManagerCompanyProfile: React.FC = () => {
     const navigate = useNavigate();
     const [userId, setUserId] = useState<string | null>(null);
+    const [userEmail, setUserEmail] = useState<string | null>(null); // Para exibir o e-mail do usuário
     const [isFetching, setIsFetching] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [companyId, setCompanyId] = useState<string | null>(null);
     const [isCepLoading, setIsCepLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState("company-info"); // Estado para controlar a aba ativa
 
-    const form = useForm<CompanyProfileData>({
-        resolver: zodResolver(companyProfileSchema),
+    // Fetch current user ID and Email
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                showError("Sessão expirada. Faça login novamente.");
+                navigate('/manager/login');
+                return;
+            }
+            setUserId(user.id);
+            setUserEmail(user.email); // Define o e-mail do usuário
+            setIsFetching(false);
+        };
+        fetchUser();
+    }, [navigate]);
+
+    // Fetch user profile for 'Sócios' tab
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId || undefined);
+    const isManager = profile && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
+    const currentCompanySchema = createCompanySchema(isManager); // Usa o schema dinâmico
+
+    const form = useForm<CompanyFormData>({
+        resolver: zodResolver(currentCompanySchema), // Usa o schema dinâmico
         defaultValues: {
             cnpj: '',
             corporate_name: '',
             trade_name: '',
             phone: '',
-            email: '', // Default value
+            email: '',
             cep: '',
             street: '',
             neighborhood: '',
@@ -127,49 +81,46 @@ const ManagerCompanyProfile: React.FC = () => {
         },
     });
 
-    // Fetch Data
+    // Fetch Company Data
     useEffect(() => {
-        const fetchProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                showError("Sessão expirada. Faça login novamente.");
-                navigate('/manager/login');
-                return;
-            }
-            setUserId(user.id);
+        const fetchCompanyData = async () => {
+            if (!userId) return;
 
-            const { data, error } = await supabase
+            const { data: companiesData, error } = await supabase
                 .from('companies')
                 .select('*')
-                .eq('user_id', user.id)
-                .single();
+                .eq('user_id', userId)
+                .limit(1);
 
-            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+            if (error) {
                 console.error("Error fetching company profile:", error);
                 showError("Erro ao carregar perfil da empresa.");
             }
 
+            const data = companiesData?.[0];
             if (data) {
                 setCompanyId(data.id);
                 form.reset({
-                    cnpj: formatCNPJ(data.cnpj || ''),
+                    cnpj: data.cnpj ? data.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '',
                     corporate_name: data.corporate_name || '',
                     trade_name: data.trade_name || '',
-                    phone: formatPhone(data.phone || ''),
-                    email: data.email || '', // Load email
-                    cep: formatCEP(data.cep || ''),
+                    phone: data.phone ? data.phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3') : '',
+                    email: data.email || '',
+                    cep: data.cep ? data.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2') : '',
                     street: data.street || '',
                     neighborhood: data.neighborhood || '',
-                    city: data.city || '',
-                    state: data.state || '',
+                    city: data.cidade || '', // Corrigido para 'cidade' do DB
+                    state: data.estado || '', // Corrigido para 'estado' do DB
                     number: data.number || '',
                     complement: data.complement || '',
                 });
             }
             setIsFetching(false);
         };
-        fetchProfile();
-    }, [navigate, form]);
+        if (userId) {
+            fetchCompanyData();
+        }
+    }, [userId, form]);
 
     // Function to fetch address via ViaCEP
     const fetchAddressByCep = async (cep: string) => {
@@ -204,40 +155,18 @@ const ManagerCompanyProfile: React.FC = () => {
         }
     };
 
-    // --- Handlers ---
-
-    const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const formattedCnpj = formatCNPJ(e.target.value);
-        form.setValue('cnpj', formattedCnpj, { shouldValidate: true });
-    };
-
-    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const formattedPhone = formatPhone(e.target.value);
-        form.setValue('phone', formattedPhone, { shouldValidate: true });
-    };
-
-    const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        const formattedCep = formatCEP(rawValue);
-        form.setValue('cep', formattedCep, { shouldValidate: true });
-
-        if (formattedCep.replace(/\D/g, '').length === 8) {
-            fetchAddressByCep(formattedCep);
-        }
-    };
-
-    const onSubmit = async (values: CompanyProfileData) => {
+    const onSubmit = async (values: CompanyFormData) => {
         if (!userId) return;
         setIsSaving(true);
         const toastId = showLoading(companyId ? "Atualizando perfil..." : "Cadastrando perfil...");
 
         const dataToSave = {
             user_id: userId,
-            cnpj: values.cnpj.replace(/\D/g, ''),
-            corporate_name: values.corporate_name,
+            cnpj: values.cnpj ? values.cnpj.replace(/\D/g, '') : null,
+            corporate_name: values.corporate_name || null,
             trade_name: values.trade_name || null,
             phone: values.phone ? values.phone.replace(/\D/g, '') : null,
-            email: values.email || null, // Save email
+            email: values.email || null,
             
             cep: values.cep ? values.cep.replace(/\D/g, '') : null,
             street: values.street || null,
@@ -271,7 +200,6 @@ const ManagerCompanyProfile: React.FC = () => {
             }
 
             if (error) {
-                // Check for unique constraint violation (CNPJ already exists)
                 if (error.code === '23505' && error.message.includes('cnpj')) {
                     throw new Error("Este CNPJ já está cadastrado em outra conta.");
                 }
@@ -291,7 +219,7 @@ const ManagerCompanyProfile: React.FC = () => {
         }
     };
 
-    if (isFetching) {
+    if (isFetching || isLoadingProfile) {
         return (
             <div className="max-w-4xl mx-auto px-4 sm:px-0 text-center py-20">
                 <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
@@ -299,6 +227,8 @@ const ManagerCompanyProfile: React.FC = () => {
             </div>
         );
     }
+
+    const isPersonalProfileComplete = isProfileCompleteForPartner(profile);
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-0">
@@ -327,261 +257,112 @@ const ManagerCompanyProfile: React.FC = () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            
-                            {/* Seção de Dados Corporativos */}
-                            <div className="space-y-6 pt-4">
-                                <h3 className="text-lg font-semibold text-white border-b border-yellow-500/10 pb-2">Informações Básicas</h3>
-                                
-                                <FormField
-                                    control={form.control}
-                                    name="cnpj"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">CNPJ *</FormLabel>
-                                            <FormControl>
-                                                <Input 
-                                                    placeholder="00.000.000/0000-00"
-                                                    {...field} 
-                                                    onChange={handleCnpjChange}
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                    maxLength={18}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="corporate_name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">Razão Social *</FormLabel>
-                                            <FormControl>
-                                                <Input 
-                                                    placeholder="Nome da Empresa S.A."
-                                                    {...field} 
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="trade_name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Nome Fantasia (Opcional)</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        placeholder="Nome Comercial"
-                                                        {...field} 
-                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
+                    <Tabs defaultValue="company-info" className="w-full" onValueChange={setActiveTab}>
+                        <TabsList className="grid w-full grid-cols-2 bg-black/60 border border-yellow-500/30 text-white">
+                            <TabsTrigger 
+                                value="company-info" 
+                                className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black data-[state=inactive]:text-white hover:bg-yellow-500/10"
+                            >
+                                <Building className="h-4 w-4 mr-2" /> Informações da Empresa
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="partners" 
+                                className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black data-[state=inactive]:text-white hover:bg-yellow-500/10"
+                            >
+                                <User className="h-4 w-4 mr-2" /> Sócios
+                            </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="company-info" className="mt-6">
+                            <FormProvider {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                                    <CompanyForm 
+                                        isSaving={isSaving} 
+                                        isCepLoading={isCepLoading} 
+                                        fetchAddressByCep={fetchAddressByCep} 
+                                        isManagerContext={isManager} // Passa a prop
                                     />
-                                    <FormField
-                                        control={form.control}
-                                        name="phone"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Telefone (Opcional)</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        placeholder="(00) 00000-0000"
-                                                        {...field} 
-                                                        onChange={handlePhoneChange}
-                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                        maxLength={15}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                
-                                {/* Novo campo de E-mail da Empresa */}
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">E-mail da Empresa (Para Notificações)</FormLabel>
-                                            <FormControl>
-                                                <Input 
-                                                    placeholder="contato@empresa.com"
-                                                    {...field} 
-                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" 
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
 
-                            {/* Seção de Endereço */}
-                            <div className="space-y-6 pt-4 border-t border-yellow-500/10">
-                                <h3 className="text-lg font-semibold text-white border-b border-yellow-500/10 pb-2">Endereço</h3>
-                                
-                                <FormField
-                                    control={form.control}
-                                    name="cep"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">CEP (Opcional)</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Input 
-                                                        placeholder="00000-000"
-                                                        {...field} 
-                                                        onChange={handleCepChange}
-                                                        disabled={isCepLoading} 
-                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 pr-10" 
-                                                        maxLength={9}
-                                                    />
-                                                    {isCepLoading && (
-                                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                                            <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />
-                                                        </div>
-                                                    )}
+                                    <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                                        <Button
+                                            type="submit"
+                                            disabled={isSaving}
+                                            className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
+                                        >
+                                            {isSaving ? (
+                                                <div className="flex items-center justify-center">
+                                                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                                    Salvando...
                                                 </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="md:col-span-2">
-                                        <FormField
-                                            control={form.control}
-                                            name="street"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-white">Rua (Opcional)</FormLabel>
-                                                    <FormControl>
-                                                        <Input id="street" placeholder="Ex: Av. Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
+                                            ) : (
+                                                <>
+                                                    <i className="fas fa-save mr-2"></i>
+                                                    Salvar Perfil da Empresa
+                                                </>
                                             )}
-                                        />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            onClick={() => navigate('/manager/settings')}
+                                            variant="outline"
+                                            className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
+                                            disabled={isSaving}
+                                        >
+                                            <ArrowLeft className="mr-2 h-5 w-5" />
+                                            Voltar para Configurações
+                                        </Button>
                                     </div>
-                                    <FormField
-                                        control={form.control}
-                                        name="number"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Número (Opcional)</FormLabel>
-                                                <FormControl>
-                                                    <Input id="number" placeholder="123" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-
-                                <FormField
-                                    control={form.control}
-                                    name="complement"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Apto 101, Bloco B" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="neighborhood"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Bairro (Opcional)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Jardim Paulista" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="city"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Cidade (Opcional)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="São Paulo" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="state"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-white">Estado (Opcional)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="SP" {...field} disabled={isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                                <Button
-                                    type="submit"
-                                    disabled={isSaving}
-                                    className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50"
-                                >
-                                    {isSaving ? (
-                                        <div className="flex items-center justify-center">
-                                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                                            Salvando...
+                                </form>
+                            </FormProvider>
+                        </TabsContent>
+                        <TabsContent value="partners" className="mt-6">
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-semibold text-white border-b border-yellow-500/10 pb-2 flex items-center">
+                                    <User className="h-5 w-5 mr-2 text-yellow-500" />
+                                    Dados do Sócio Principal (Você)
+                                </h3>
+                                {!isPersonalProfileComplete && (
+                                    <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-start space-x-3 mb-4">
+                                        <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
+                                        <div>
+                                            <h4 className="font-semibold text-white mb-1">Perfil Pessoal Incompleto</h4>
+                                            <p className="text-sm text-gray-300">
+                                                Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais do seu perfil para garantir a correta associação como sócio.
+                                            </p>
+                                            <Button 
+                                                variant="link" 
+                                                className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
+                                                onClick={() => navigate('/profile')}
+                                            >
+                                                Ir para o Perfil Pessoal
+                                            </Button>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <i className="fas fa-save mr-2"></i>
-                                            Salvar Perfil da Empresa
-                                        </>
-                                    )}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    onClick={() => navigate('/manager/settings')}
-                                    variant="outline"
-                                    className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
-                                    disabled={isSaving}
-                                >
-                                    <ArrowLeft className="mr-2 h-5 w-5" />
-                                    Voltar para Configurações
-                                </Button>
+                                    </div>
+                                )}
+                                {profile ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                                        <div>
+                                            <p><span className="font-medium text-white">Nome:</span> {profile.first_name} {profile.last_name}</p>
+                                            <p><span className="font-medium text-white">CPF:</span> {profile.cpf ? profile.cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : 'N/A'}</p>
+                                            <p><span className="font-medium text-white">RG:</span> {profile.rg || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p><span className="font-medium text-white">Nascimento:</span> {profile.birth_date ? new Date(profile.birth_date).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                                            <p><span className="font-medium text-white">Gênero:</span> {profile.gender || 'N/A'}</p>
+                                            <p><span className="font-medium text-white">E-mail:</span> {userEmail || 'N/A'}</p>
+                                        </div>
+                                        <div className="md:col-span-2 text-xs text-gray-500 pt-2 border-t border-yellow-500/10">
+                                            <p>Estes dados são do seu perfil de usuário e estão associados à empresa como sócio principal.</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 text-gray-400">
+                                        <Loader2 className="h-6 w-6 animate-spin text-yellow-500 mx-auto mb-2" />
+                                        Carregando dados do seu perfil...
+                                    </div>
+                                )}
                             </div>
-                        </form>
-                    </Form>
+                        </TabsContent>
+                    </Tabs>
                 </CardContent>
             </Card>
         </div>
