@@ -8,8 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/use-profile';
-import ManagerTypeSelectionDialog from '@/components/ManagerTypeSelectionDialog'; // Importando o modal de seleção
-import ManagerIndividualRegisterDialog from '@/components/ManagerIndividualRegisterDialog'; // Importando o novo modal de cadastro PF
+import ManagerTypeSelectionDialog from '@/components/ManagerTypeSelectionDialog'; // Importando o novo modal
 
 const ADMIN_MASTER_USER_TYPE_ID = 1;
 
@@ -18,8 +17,7 @@ const ManagerRegister: React.FC = () => {
     const location = useLocation();
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false);
-    const [showIndividualRegisterModal, setShowIndividualRegisterModal] = useState(false); // Novo estado para o modal PF
+    const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false); // Novo estado para o modal
 
     const [userId, setUserId] = useState<string | undefined>(undefined);
     React.useEffect(() => {
@@ -39,24 +37,23 @@ const ManagerRegister: React.FC = () => {
     };
 
     const handleContinue = () => {
+        // Em vez de navegar, abre o modal de seleção de tipo
         setShowTypeSelectionModal(true);
     };
 
     const handleSelectManagerType = (type: 'individual' | 'company') => {
-        setShowTypeSelectionModal(false); // Fecha o modal de seleção
+        setShowTypeSelectionModal(false); // Fecha o modal
         setIsSubmitting(true); // Indica que está processando a navegação
+        showSuccess(`Você selecionou o cadastro como ${type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}.`);
         
-        if (type === 'individual') {
-            // Abre o modal de cadastro de Pessoa Física
-            setShowIndividualRegisterModal(true);
-            setIsSubmitting(false); // Não precisa de loading extra aqui, o modal terá seu próprio
-        } else {
-            showSuccess(`Você selecionou o cadastro como Pessoa Jurídica.`);
-            setTimeout(() => {
-                setIsSubmitting(false);
-                navigate('/manager/register/company'); // Redireciona para a nova página de registro de empresa
-            }, 1500);
-        }
+        setTimeout(() => {
+            setIsSubmitting(false);
+            if (type === 'individual') {
+                navigate('/manager/register/individual');
+            } else {
+                navigate('/manager/register/company');
+            }
+        }, 1500);
     };
 
     return (
@@ -111,20 +108,12 @@ const ManagerRegister: React.FC = () => {
                 )}
             </div>
 
-            {/* Modal de Seleção de Tipo de Gestor */}
+            {/* Novo Modal de Seleção de Tipo de Gestor */}
             <ManagerTypeSelectionDialog
                 isOpen={showTypeSelectionModal}
                 onClose={() => setShowTypeSelectionModal(false)}
                 onSelectType={handleSelectManagerType}
                 isSubmitting={isSubmitting}
-            />
-
-            {/* Novo Modal de Cadastro de Gestor PF */}
-            <ManagerIndividualRegisterDialog
-                isOpen={showIndividualRegisterModal}
-                onClose={() => setShowIndividualRegisterModal(false)}
-                profile={profile}
-                userId={userId}
             />
         </div>
     );

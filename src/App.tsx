@@ -33,11 +33,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import FinalizarCompra from "./pages/FinalizarCompra";
 import ScrollToTop from "./components/ScrollToTop";
 import ManagerRegister from "./pages/ManagerRegister";
-// ManagerIndividualRegister e ManagerCompanyRegister agora são tratados como parte do fluxo de ManagerRegister
-// e não são mais rotas de página separadas no App.tsx
-// import ManagerIndividualRegister from "./pages/ManagerIndividualRegister"; 
-// import ManagerCompanyRegister from "./pages/ManagerCompanyRegister"; 
-import ManagerCompanyRegister from "./pages/ManagerCompanyRegister"; // A página de registro de empresa agora é uma rota direta
+import ManagerIndividualRegister from "./pages/ManagerIndividualRegister"; // Nova importação
+import ManagerCompanyRegister from "./pages/ManagerCompanyRegister"; // Nova importação
 
 const queryClient = new QueryClient();
 
@@ -56,9 +53,11 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/tickets" element={<MyTickets />} />
             <Route path="/manager/register" element={<ManagerRegister />} /> {/* Rota para clientes se tornarem gestores */}
-            {/* A rota para o registro de empresa agora é uma página completa */}
-            <Route path="/manager/register/company" element={<ManagerCompanyRegister />} /> 
-            {/* ManagerIndividualRegister não é mais uma rota de página, é um modal */}
+            <Route path="/manager/register/individual" element={<ManagerIndividualRegister />} /> {/* Nova rota */}
+            <Route path="/manager/register/company" element={<ManagerCompanyRegister />} /> {/* Nova rota */}
+            {/* Rota /events/:id removida */}
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/tickets" element={<MyTickets />} />
           </Route>
           
           {/* Auth Routes (No layout/Full screen) */}

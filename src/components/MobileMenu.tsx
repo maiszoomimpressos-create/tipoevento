@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Menu, X, Bell, User, LogOut, Crown, PlusCircle } from 'lucide-react'; // Importando PlusCircle
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -11,7 +11,6 @@ import { showSuccess, showError } from '@/utils/toast';
 
 const MobileMenu: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation(); // Adicionado useLocation
     const [isOpen, setIsOpen] = useState(false);
     const [session, setSession] = useState<any>(null);
     const [loadingSession, setLoadingSession] = useState(true);
@@ -99,28 +98,24 @@ const MobileMenu: React.FC = () => {
                                 </div>
                             </div>
 
-                            {location.pathname !== '/profile' && (
-                                <Button 
-                                    onClick={() => handleNavigation('/profile')}
-                                    variant="ghost"
-                                    className="w-full justify-start text-lg py-6 text-white hover:bg-yellow-500/10"
-                                >
-                                    <User className="mr-3 h-5 w-5" />
-                                    Editar Perfil
-                                    {hasPendingNotifications && <Bell className="ml-auto h-5 w-5 text-red-500 animate-pulse" />}
-                                </Button>
-                            )}
-                            {location.pathname !== '/tickets' && (
-                                <Button 
-                                    onClick={() => handleNavigation('/tickets')}
-                                    variant="ghost"
-                                    className="w-full justify-start text-lg py-6 text-white hover:bg-yellow-500/10"
-                                >
-                                    <i className="fas fa-ticket-alt mr-3 w-5"></i>
-                                    Meus Ingressos
-                                </Button>
-                            )}
-                            {isManager && location.pathname !== '/manager/dashboard' && (
+                            <Button 
+                                onClick={() => handleNavigation('/profile')}
+                                variant="ghost"
+                                className="w-full justify-start text-lg py-6 text-white hover:bg-yellow-500/10"
+                            >
+                                <User className="mr-3 h-5 w-5" />
+                                Editar Perfil
+                                {hasPendingNotifications && <Bell className="ml-auto h-5 w-5 text-red-500 animate-pulse" />}
+                            </Button>
+                            <Button 
+                                onClick={() => handleNavigation('/tickets')}
+                                variant="ghost"
+                                className="w-full justify-start text-lg py-6 text-white hover:bg-yellow-500/10"
+                            >
+                                <i className="fas fa-ticket-alt mr-3 w-5"></i>
+                                Meus Ingressos
+                            </Button>
+                            {isManager && (
                                 <Button 
                                     onClick={() => handleNavigation('/manager/dashboard')}
                                     variant="ghost"
@@ -130,7 +125,7 @@ const MobileMenu: React.FC = () => {
                                     Dashboard PRO
                                 </Button>
                             )}
-                            {isClient && location.pathname !== '/manager/register' && ( // Botão "Criar Evento" visível apenas para clientes
+                            {isClient && ( // Botão "Criar Evento" visível apenas para clientes
                                 <Button 
                                     onClick={() => handleNavigation('/manager/register')}
                                     variant="ghost"
@@ -169,35 +164,17 @@ const MobileMenu: React.FC = () => {
                     )}
 
                     <div className="border-t border-yellow-500/20 pt-6 space-y-2">
-                        {navItems.map(item => {
-                            // Verifica se o caminho atual começa com o caminho do item para considerar ativo
-                            const isLinkActive = location.pathname.startsWith(item.path) && (item.path !== '/' || location.pathname === '/');
-
-                            // Se o link for para a página atual, não renderiza o link
-                            if (isLinkActive) {
-                                return (
-                                    <span 
-                                        key={item.path}
-                                        className="flex items-center p-3 rounded-xl text-yellow-500 transition-colors duration-200"
-                                    >
-                                        <i className={`${item.icon} mr-4 text-yellow-500 w-5`}></i>
-                                        <span className="text-lg">{item.label}</span>
-                                    </span>
-                                );
-                            }
-
-                            return (
-                                <a 
-                                    key={item.path}
-                                    href={item.path}
-                                    onClick={() => setIsOpen(false)}
-                                    className="flex items-center p-3 rounded-xl text-white hover:bg-yellow-500/10 transition-colors duration-200"
-                                >
-                                    <i className={`${item.icon} mr-4 text-yellow-500 w-5`}></i>
-                                    <span className="text-lg">{item.label}</span>
-                                </a>
-                            );
-                        })}
+                        {navItems.map(item => (
+                            <a 
+                                key={item.path}
+                                href={item.path}
+                                onClick={() => setIsOpen(false)}
+                                className="flex items-center p-3 rounded-xl text-white hover:bg-yellow-500/10 transition-colors duration-200"
+                            >
+                                <i className={`${item.icon} mr-4 text-yellow-500 w-5`}></i>
+                                <span className="text-lg">{item.label}</span>
+                            </a>
+                        ))}
                     </div>
                 </div>
             </SheetContent>

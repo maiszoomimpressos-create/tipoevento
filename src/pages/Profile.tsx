@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form'; // CORRIGIDO: Importado de 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,10 @@ import { showSuccess, showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import AvatarUpload from '@/components/AvatarUpload';
-import { useProfileStatus, isValueEmpty } from '@/hooks/use-profile-status'; // Importando a lógica compartilhada e isValueEmpty
+import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import { useQueryClient } from '@tanstack/react-query';
-import TermsAndConditionsDialog from '@/components/TermsAndConditionsDialog';
-import { AlertTriangle } from 'lucide-react'; // Importando AlertTriangle
+import TermsAndConditionsDialog from '@/components/TermsAndConditionsDialog'; // Importando o novo componente
 
 const GENDER_OPTIONS = [
     "Masculino",
@@ -30,29 +29,7 @@ const GENDER_OPTIONS = [
 // Função de validação de CPF (simplificada para o frontend)
 const validateCPF = (cpf: string) => {
     const cleanCPF = cpf.replace(/\D/g, '');
-    if (cleanCPF.length !== 11) return false;
-    if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-        sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
-    }
-    let checkDigit = 11 - (sum % 11);
-    if (checkDigit === 10 || checkDigit === 11) checkDigit = 0;
-    if (checkDigit !== parseInt(cleanCPF.charAt(9))) return false;
-    sum = 0;
-    for (let i = 0; i < 10; i++) {
-        sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
-    }
-    checkDigit = 11 - (sum % 11);
-    if (checkDigit === 10 || checkDigit === 11) checkDigit = 0;
-    if (checkDigit !== parseInt(cleanCPF.charAt(10))) return false;
-    return true;
-};
-
-// Função de validação de RG (apenas formato)
-const validateRG = (rg: string) => {
-    const cleanRG = rg.replace(/\D/g, '');
-    return cleanRG.length >= 7 && cleanRG.length <= 9; // RG geralmente tem 7 a 9 dígitos
+    return cleanCPF.length === 11;
 };
 
 // Função de validação de CEP (apenas formato)
@@ -61,45 +38,23 @@ const validateCEP = (cep: string) => {
     return cleanCEP.length === 8;
 };
 
-// Schema dinâmico baseado no tipo de usuário
-const createProfileSchema = (isManager: boolean) => {
-    const baseSchema = z.object({
-        first_name: z.string().optional(),
-        last_name: z.string().optional(), 
-        birth_date: z.string().optional(),
-        gender: z.string().optional().nullable(), 
-        
-        cpf: z.string().optional().refine((val) => !val || validateCPF(val), { message: "CPF inválido." }),
-        rg: z.string().optional().refine((val) => !val || validateRG(val), { message: "RG inválido." }),
+const profileSchema = z.object({
+    first_name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
+    birth_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Data de nascimento é obrigatória." }),
+    gender: z.string().optional().nullable(),
+    
+    cpf: z.string().refine(validateCPF, { message: "CPF inválido." }),
+    rg: z.string().optional().nullable(), 
 
-        cep: z.string().optional().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
-        rua: z.string().optional(),
-        bairro: z.string().optional(),
-        cidade: z.string().optional(),
-        estado: z.string().optional(),
-        numero: z.string().optional(),
-        complemento: z.string().optional().nullable(),
-    });
-
-    if (isManager) {
-        return baseSchema.extend({
-            first_name: z.string().min(1, "Nome é obrigatório para gestores."),
-            last_name: z.string().min(1, "Sobrenome é obrigatório para gestores."),
-            birth_date: z.string().min(1, "Data de nascimento é obrigatória para gestores."),
-            gender: z.string().min(1, "Gênero é obrigatório para gestores.").nullable(), 
-            cpf: z.string().min(1, "CPF é obrigatório para gestores.").refine(validateCPF, { message: "CPF inválido." }),
-            rg: z.string().min(1, "RG é obrigatório para gestores.").refine(validateRG, { message: "RG inválido." }),
-            cep: z.string().min(1, "CEP é obrigatório para gestores.").refine(validateCEP, { message: "CEP inválido (8 dígitos)." }),
-            rua: z.string().min(1, "Rua é obrigatória para gestores."),
-            bairro: z.string().min(1, "Bairro é obrigatório para gestores."),
-            cidade: z.string().min(1, "Cidade é obrigatória para gestores."),
-            estado: z.string().min(1, "Estado é obrigatório para gestores."),
-            numero: z.string().min(1, "Número é obrigatório para gestores."),
-        });
-    }
-    return baseSchema;
-};
-
+    // Campos de Endereço
+    cep: z.string().optional().nullable().refine((val) => !val || validateCEP(val), { message: "CEP inválido (8 dígitos)." }),
+    rua: z.string().optional().nullable(),
+    bairro: z.string().optional().nullable(),
+    cidade: z.string().optional().nullable(),
+    estado: z.string().optional().nullable(),
+    numero: z.string().optional().nullable(),
+    complemento: z.string().optional().nullable(),
+});
 
 const Profile: React.FC = () => {
     const navigate = useNavigate();
@@ -125,21 +80,9 @@ const Profile: React.FC = () => {
 
     const userId = session?.user?.id;
     const { profile, isLoading: isLoadingProfile, refetch } = useProfile(userId);
-    const { hasPendingNotifications, loading: statusLoading, needsPersonalProfileCompletion } = useProfileStatus(profile, isLoadingProfile); // isComplete não é mais usado para alertas
+    const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
 
     const loading = loadingSession || isLoadingProfile;
-    
-    const isManager = profile && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
-    const currentProfileSchema = createProfileSchema(isManager);
-
-    // Efeito para ativar o modo de edição se o perfil do gestor estiver incompleto
-    useEffect(() => {
-        if (!loading && isManager && needsPersonalProfileCompletion) {
-            setIsEditing(true);
-            showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais para liberar o Dashboard PRO.");
-        }
-    }, [loading, isManager, needsPersonalProfileCompletion]);
-
 
     const formatCPF = (value: string) => {
         if (!value) return '';
@@ -170,13 +113,12 @@ const Profile: React.FC = () => {
             .replace(/(-\d{3})\d+?$/, '$1');
     };
 
-    const form = useForm<z.infer<typeof currentProfileSchema>>({
-        resolver: zodResolver(currentProfileSchema),
+    const form = useForm<z.infer<typeof profileSchema>>({
+        resolver: zodResolver(profileSchema),
         defaultValues: {
             first_name: '',
-            last_name: '', 
             birth_date: '',
-            gender: "", 
+            gender: '',
             cpf: '',
             rg: '',
             cep: '',
@@ -189,9 +131,8 @@ const Profile: React.FC = () => {
         },
         values: {
             first_name: profile?.first_name || '',
-            last_name: profile?.last_name || '', 
             birth_date: profile?.birth_date || '',
-            gender: profile?.gender || "", 
+            gender: profile?.gender || '',
             cpf: profile?.cpf ? formatCPF(profile.cpf) : '',
             rg: profile?.rg ? formatRG(profile.rg) : '',
             cep: profile?.cep ? formatCEP(profile.cep) : '',
@@ -206,11 +147,11 @@ const Profile: React.FC = () => {
 
     useEffect(() => {
         if (profile) {
+            // Resetar o formulário com os dados do perfil sempre que o perfil for carregado/atualizado
             form.reset({
                 first_name: profile.first_name || '',
-                last_name: profile.last_name || '',
                 birth_date: profile.birth_date || '',
-                gender: profile.gender || "",
+                gender: profile.gender || '',
                 cpf: profile.cpf ? formatCPF(profile.cpf) : '',
                 rg: profile.rg ? formatRG(profile.rg) : '',
                 cep: profile.cep ? formatCEP(profile.cep) : '',
@@ -282,17 +223,18 @@ const Profile: React.FC = () => {
         }
     };
 
-    const onSubmit = async (values: z.infer<typeof currentProfileSchema>) => {
+    const onSubmit = async (values: z.infer<typeof profileSchema>) => {
         if (!session) return;
         setFormLoading(true);
 
         // Limpeza e conversão para salvar no DB
-        const cleanCPF = values.cpf ? values.cpf.replace(/\D/g, '') : null;
+        const cleanCPF = values.cpf.replace(/\D/g, '');
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
         
-        const genderToSave = values.gender || null; 
+        const genderToSave = (values.gender === "not_specified" || !values.gender) ? null : values.gender;
 
+        // Certifique-se de que campos de endereço vazios sejam salvos como null, não como strings vazias
         const ruaToSave = values.rua || null;
         const bairroToSave = values.bairro || null;
         const cidadeToSave = values.cidade || null;
@@ -304,16 +246,16 @@ const Profile: React.FC = () => {
             const { error } = await supabase
                 .from('profiles')
                 .update({ 
-                    first_name: values.first_name || null,
-                    last_name: values.last_name || null, 
-                    birth_date: values.birth_date || null,
+                    first_name: values.first_name,
+                    birth_date: values.birth_date,
                     gender: genderToSave,
                     cpf: cleanCPF, 
                     rg: cleanRG,
+                    // Salvando endereço
                     cep: cleanCEP,
                     rua: ruaToSave,
                     bairro: bairroToSave,
-                    cidade: cidadeToSave, 
+                    cidade: cidadeToSave,
                     estado: estadoToSave,
                     numero: numeroToSave,
                     complemento: complementoToSave,
@@ -325,15 +267,9 @@ const Profile: React.FC = () => {
                 console.error("Supabase Update Error:", error);
             } else {
                 showSuccess("Perfil atualizado com sucesso!");
-                
                 // Invalida a query para forçar a re-busca e atualização imediata do status de notificação em todos os componentes
                 queryClient.invalidateQueries({ queryKey: ['profile', userId] });
                 setIsEditing(false);
-                
-                // Se o perfil estava incompleto e agora foi salvo, tenta navegar para o dashboard
-                if (needsPersonalProfileCompletion) {
-                    navigate('/manager/dashboard', { replace: true });
-                }
             }
         } catch (e) {
             // Captura erros inesperados (como falhas de rede/timeout)
@@ -373,7 +309,7 @@ const Profile: React.FC = () => {
         // pois o usuário já concordou no registro.
         // O MultiLineEditor dentro do dialog não terá o checkbox visível.
     };
-    
+
     if (loading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -414,9 +350,9 @@ const Profile: React.FC = () => {
              <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-8">
-                        <Link to="/" className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer">
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
                             Mazoy
-                        </Link>
+                        </div>
                         <nav className="hidden md:flex items-center space-x-8">
                             <a href="/#home" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</a>
                             <a href="/#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
@@ -441,23 +377,15 @@ const Profile: React.FC = () => {
                 <div className="max-w-4xl mx-auto">
                     <h1 className="text-3xl sm:text-4xl font-serif text-yellow-500 mb-8">Meu Perfil</h1>
                     
-                    {needsPersonalProfileCompletion && isManager && (
-                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-start space-x-3 mb-6 animate-fadeInUp">
-                            <AlertTriangle className="h-5 w-5 mt-1 flex-shrink-0" />
+                    {/* Alerta de Perfil Incompleto */}
+                    {hasPendingNotifications && profile?.tipo_usuario_id === 3 && (
+                        <div className="bg-red-500/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 flex items-start space-x-3 animate-fadeInUp">
+                            <i className="fas fa-exclamation-triangle text-xl mt-1"></i>
                             <div>
-                                <h4 className="font-semibold text-white mb-1">Perfil Incompleto</h4>
-                                <p className="text-sm text-gray-300">
-                                    Seu perfil pessoal está incompleto. Por favor, preencha todos os campos essenciais para liberar o Dashboard PRO.
+                                <h3 className="font-semibold text-white mb-1">Atenção: Perfil Incompleto</h3>
+                                <p className="text-sm">
+                                    Por favor, preencha todos os campos do seu perfil (incluindo RG, Gênero e Endereço completo) para liberar todas as funcionalidades e garantir a emissão correta de ingressos.
                                 </p>
-                                {!isEditing && (
-                                    <Button 
-                                        variant="link" 
-                                        className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
-                                        onClick={() => setIsEditing(true)}
-                                    >
-                                        Completar Perfil Agora
-                                    </Button>
-                                )}
                             </div>
                         </div>
                     )}
@@ -482,46 +410,19 @@ const Profile: React.FC = () => {
                                     )}
                                     <Form {...form}>
                                         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="first_name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-white">Nome</FormLabel>
-                                                            <FormControl>
-                                                                <Input 
-                                                                    placeholder="Seu nome" 
-                                                                    {...field} 
-                                                                    disabled={!isEditing} 
-                                                                    isInvalid={!!form.formState.errors.first_name} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="last_name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-white">Sobrenome</FormLabel>
-                                                            <FormControl>
-                                                                <Input 
-                                                                    placeholder="Seu sobrenome" 
-                                                                    {...field} 
-                                                                    disabled={!isEditing} 
-                                                                    isInvalid={!!form.formState.errors.last_name} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>
+                                            <FormField
+                                                control={form.control}
+                                                name="first_name"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-white">Nome</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Seu nome" {...field} disabled={!isEditing} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
                                             <FormItem>
                                                 <FormLabel className="text-white">E-mail</FormLabel>
                                                 <FormControl>
@@ -546,8 +447,7 @@ const Profile: React.FC = () => {
                                                                     {...field} 
                                                                     onChange={handleCpfChange}
                                                                     disabled={!isEditing} 
-                                                                    isInvalid={!!form.formState.errors.cpf} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
                                                                     maxLength={14}
                                                                 />
                                                             </FormControl>
@@ -560,15 +460,14 @@ const Profile: React.FC = () => {
                                                     name="rg"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">RG</FormLabel>
+                                                            <FormLabel className="text-white">RG (Opcional)</FormLabel>
                                                             <FormControl>
                                                                 <Input 
                                                                     placeholder="00.000.000-0"
                                                                     {...field} 
                                                                     onChange={handleRgChange}
                                                                     disabled={!isEditing} 
-                                                                    isInvalid={!!form.formState.errors.rg} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
                                                                     maxLength={12}
                                                                 />
                                                             </FormControl>
@@ -590,8 +489,7 @@ const Profile: React.FC = () => {
                                                                     type="date" 
                                                                     {...field} 
                                                                     disabled={!isEditing} 
-                                                                    isInvalid={!!form.formState.errors.birth_date} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
+                                                                    className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" 
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -603,21 +501,23 @@ const Profile: React.FC = () => {
                                                     name="gender"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Gênero</FormLabel>
+                                                            <FormLabel className="text-white">Gênero (Opcional)</FormLabel>
                                                             <Select 
-                                                                onValueChange={field.onChange} 
-                                                                value={field.value || ""} 
+                                                                onValueChange={(value) => field.onChange(value === "not_specified" ? null : value)} 
+                                                                defaultValue={field.value || "not_specified"} 
                                                                 disabled={!isEditing}
                                                             >
                                                                 <FormControl>
                                                                     <SelectTrigger 
-                                                                        isInvalid={!!form.formState.errors.gender} // Adicionado isInvalid
-                                                                        className={`w-full bg-black/60 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                                                                        className="w-full bg-black/60 border-yellow-500/30 text-white focus:ring-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed"
                                                                     >
                                                                         <SelectValue placeholder="Selecione seu gênero" />
                                                                     </SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
+                                                                    <SelectItem value="not_specified" className="text-gray-500">
+                                                                        Não especificado
+                                                                    </SelectItem>
                                                                     {GENDER_OPTIONS.map(option => (
                                                                         <SelectItem key={option} value={option} className="hover:bg-yellow-500/10 cursor-pointer">
                                                                             {option}
@@ -639,7 +539,7 @@ const Profile: React.FC = () => {
                                                     name="cep"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">CEP</FormLabel>
+                                                            <FormLabel className="text-white">CEP (Opcional)</FormLabel>
                                                             <FormControl>
                                                                 <div className="relative">
                                                                     <Input 
@@ -647,8 +547,7 @@ const Profile: React.FC = () => {
                                                                         {...field} 
                                                                         onChange={handleCepChange}
                                                                         disabled={!isEditing || isCepLoading} 
-                                                                        isInvalid={!!form.formState.errors.cep} // Adicionado isInvalid
-                                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed pr-10`} 
+                                                                        className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed pr-10" 
                                                                         maxLength={9}
                                                                     />
                                                                     {isCepLoading && (
@@ -671,16 +570,9 @@ const Profile: React.FC = () => {
                                                         name="rua"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-white">Rua</FormLabel>
+                                                                <FormLabel className="text-white">Rua (Opcional)</FormLabel>
                                                                 <FormControl>
-                                                                    <Input 
-                                                                        id="rua" 
-                                                                        placeholder="Ex: Av. Paulista" 
-                                                                        {...field} 
-                                                                        disabled={!isEditing || isCepLoading} 
-                                                                        isInvalid={!!form.formState.errors.rua} // Adicionado isInvalid
-                                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                    />
+                                                                    <Input id="rua" placeholder="Ex: Av. Paulista" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                                 </FormControl>
                                                                 <FormMessage />
                                                             </FormItem>
@@ -692,16 +584,9 @@ const Profile: React.FC = () => {
                                                     name="numero"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Número</FormLabel>
+                                                            <FormLabel className="text-white">Número (Opcional)</FormLabel>
                                                             <FormControl>
-                                                                <Input 
-                                                                    id="numero" 
-                                                                    placeholder="123" 
-                                                                    {...field} 
-                                                                    disabled={!isEditing || isCepLoading} 
-                                                                    isInvalid={!!form.formState.errors.numero} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                />
+                                                                <Input id="numero" placeholder="123" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -716,13 +601,7 @@ const Profile: React.FC = () => {
                                                     <FormItem>
                                                         <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
                                                         <FormControl>
-                                                            <Input 
-                                                                placeholder="Apto 101, Bloco B" 
-                                                                {...field} 
-                                                                disabled={!isEditing || isCepLoading} 
-                                                                isInvalid={!!form.formState.errors.complemento} // Adicionado isInvalid
-                                                                className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                            />
+                                                            <Input placeholder="Apto 101, Bloco B" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -736,15 +615,9 @@ const Profile: React.FC = () => {
                                                         name="bairro"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-white">Bairro</FormLabel>
+                                                                <FormLabel className="text-white">Bairro (Opcional)</FormLabel>
                                                                 <FormControl>
-                                                                    <Input 
-                                                                        placeholder="Jardim Paulista" 
-                                                                        {...field} 
-                                                                        disabled={!isEditing || isCepLoading} 
-                                                                        isInvalid={!!form.formState.errors.bairro} // Adicionado isInvalid
-                                                                        className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                    />
+                                                                    <Input placeholder="Jardim Paulista" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                                 </FormControl>
                                                                 <FormMessage />
                                                             </FormItem>
@@ -756,15 +629,9 @@ const Profile: React.FC = () => {
                                                     name="cidade"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Cidade</FormLabel>
+                                                            <FormLabel className="text-white">Cidade (Opcional)</FormLabel>
                                                             <FormControl>
-                                                                <Input 
-                                                                    placeholder="São Paulo" 
-                                                                    {...field} 
-                                                                    disabled={!isEditing || isCepLoading} 
-                                                                    isInvalid={!!form.formState.errors.cidade} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                />
+                                                                <Input placeholder="São Paulo" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -775,15 +642,9 @@ const Profile: React.FC = () => {
                                                     name="estado"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-white">Estado</FormLabel>
+                                                            <FormLabel className="text-white">Estado (Opcional)</FormLabel>
                                                             <FormControl>
-                                                                <Input 
-                                                                    placeholder="SP" 
-                                                                    {...field} 
-                                                                    disabled={!isEditing || isCepLoading} 
-                                                                    isInvalid={!!form.formState.errors.estado} // Adicionado isInvalid
-                                                                    className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed`} 
-                                                                />
+                                                                <Input placeholder="SP" {...field} disabled={!isEditing || isCepLoading} className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -833,7 +694,9 @@ const Profile: React.FC = () => {
                                     </Button>
                                 </CardContent>
                             </Card>
+                            {/* MultiLineEditor component added here */}
                             <div className="mt-8">
+                                {/* Renderiza o novo componente TermsAndConditionsDialog */}
                                 <TermsAndConditionsDialog onAgree={handleTermsAgree} showAgreementCheckbox={false} termsType="general" />
                             </div>
                         </div>
