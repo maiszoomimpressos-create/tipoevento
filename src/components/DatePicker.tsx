@@ -15,7 +15,6 @@ interface DatePickerProps {
     setDate: (date: Date | undefined) => void;
     placeholder?: string;
     disabled?: boolean;
-    isInvalid?: boolean; // Adicionando a prop isInvalid
 }
 
 // Função para formatar a data para DD/MM/YYYY enquanto o usuário digita
@@ -32,7 +31,7 @@ const formatInputDate = (value: string): string => {
     return formatted.substring(0, 10);
 };
 
-export function DatePicker({ date, setDate, placeholder = "Selecione a data", disabled = false, isInvalid = false }: DatePickerProps) {
+export function DatePicker({ date, setDate, placeholder = "Selecione a data", disabled = false }: DatePickerProps) {
     const [inputValue, setInputValue] = React.useState(date ? format(date, "dd/MM/yyyy") : '');
 
     // Sincroniza o estado interno do input com a prop 'date'
@@ -82,7 +81,6 @@ export function DatePicker({ date, setDate, placeholder = "Selecione a data", di
                         onChange={handleInputChange}
                         disabled={disabled}
                         maxLength={10}
-                        isInvalid={isInvalid} // Passa a prop isInvalid para o Input
                         className={cn(
                             "w-full justify-start text-left font-normal bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 hover:bg-black/70 pr-10",
                             !date && inputValue.length === 10 && "border-red-500", // Destaca se a data digitada for inválida

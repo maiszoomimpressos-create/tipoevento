@@ -28,13 +28,19 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminRouteGuard from "./components/AdminRouteGuard";
 import AdminMasterRouteGuard from "./components/AdminMasterRouteGuard";
 import ManagerLayout from "./components/layouts/ManagerLayout";
-import ClientLayout from "./components/layouts/ClientLayout";
+import ClientLayout from "./components/layouts/ClientLayout"; // Import ClientLayout
 import ForgotPassword from "./pages/ForgotPassword";
-import FinalizarCompra from "./pages/FinalizarCompra";
-import ScrollToTop from "./components/ScrollToTop";
-import ManagerRegister from "./pages/ManagerRegister";
-import ManagerIndividualRegister from "./pages/ManagerIndividualRegister"; // Nova importação
-import ManagerCompanyRegister from "./pages/ManagerCompanyRegister"; // Nova importação
+import ManagerRegister from "./pages/ManagerRegister"; 
+import ManagerIndividualProfile from "./pages/ManagerIndividualProfile";
+import ManagerCompanyRegister from "./pages/ManagerCompanyRegister"; 
+import AdminCarouselSettings from "./pages/AdminCarouselSettings"; 
+import AdminCreatePromotionalBanner from "./pages/AdminCreatePromotionalBanner"; 
+import AdminPromotionalBannersList from "./pages/AdminPromotionalBannersList"; 
+import AdminEditPromotionalBanner from "./pages/AdminEditPromotionalBanner"; 
+import ManagerCreateEventBanner from "./pages/ManagerCreateEventBanner"; 
+import ManagerSettingsHistory from "./pages/ManagerSettingsHistory"; 
+import AdminCommissionTiers from "./pages/AdminCommissionTiers"; 
+import AdminEventContracts from "./pages/AdminEventContracts"; // NOVO
 
 const queryClient = new QueryClient();
 
@@ -44,30 +50,25 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ScrollToTop />
         <Routes>
-          {/* Public/Client Routes wrapped in ClientLayout */}
-          <Route element={<ClientLayout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/events/:id" element={<EventDetails />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/tickets" element={<MyTickets />} />
-            <Route path="/manager/register" element={<ManagerRegister />} /> {/* Rota para clientes se tornarem gestores */}
-            <Route path="/manager/register/individual" element={<ManagerIndividualRegister />} /> {/* Nova rota */}
-            <Route path="/manager/register/company" element={<ManagerCompanyRegister />} /> {/* Nova rota */}
-            {/* Rota /events/:id removida */}
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/tickets" element={<MyTickets />} />
+          {/* Public/Client Routes */}
+          <Route path="/" element={<ClientLayout />}> {/* Wrap client routes with ClientLayout */}
+            <Route index element={<Index />} />
+            <Route path="events/:id" element={<EventDetails />} />
+            <Route path="register" element={<Register />} />
+            <Route path="login" element={<Login />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="tickets" element={<MyTickets />} />
           </Route>
           
-          {/* Auth Routes (No layout/Full screen) */}
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/tickets" element={<MyTickets />} />
-          <Route path="/finalizar-compra" element={<FinalizarCompra />} />
+          {/* Manager Login (outside layout for specific styling) */}
           <Route path="/manager/login" element={<ManagerLogin />} />
+          
+          {/* Manager Registration Routes (Accessible by logged-in clients) */}
+          <Route path="/manager/register" element={<ManagerRegister />} />
+          {/* Rota de registro individual removida, pois agora é um modal */}
+          <Route path="/manager/register/company" element={<ManagerCompanyRegister />} />
           
           {/* Manager Routes (Protected by ManagerLayout, which handles auth/redirect) */}
           <Route element={<ManagerLayout />}>
@@ -75,22 +76,29 @@ const App = () => (
             <Route path="/manager/events" element={<ManagerEventsList />} />
             <Route path="/manager/events/create" element={<ManagerCreateEvent />} />
             <Route path="/manager/events/edit/:id" element={<ManagerEditEvent />} />
+            <Route path="/manager/events/banners/create" element={<ManagerCreateEventBanner />} /> 
             <Route path="/manager/wristbands" element={<ManagerWristbandsList />} />
             <Route path="/manager/wristbands/create" element={<ManagerCreateWristband />} /> 
             <Route path="/manager/wristbands/manage/:id" element={<ManagerManageWristband />} />
             <Route path="/manager/reports" element={<ManagerReports />} />
             <Route path="/manager/settings" element={<ManagerSettings />} />
             <Route path="/manager/settings/company-profile" element={<ManagerCompanyProfile />} />
+            <Route path="/manager/settings/individual-profile" element={<ManagerIndividualProfile />} />
             <Route path="/manager/settings/notifications" element={<ManagerNotifications />} />
             <Route path="/manager/settings/payment" element={<ManagerPaymentSettings />} />
+            <Route path="/manager/settings/history" element={<ManagerSettingsHistory />} />
           </Route>
           
           {/* Admin Master Routes (tipo_usuario_id = 1) */}
           <Route element={<AdminMasterRouteGuard />}>
             <Route element={<ManagerLayout />}>
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                {/* Nova rota para Admin Master acessar o cadastro de gestor */}
-                <Route path="/admin/register-manager" element={<ManagerRegister />} />
+                <Route path="/admin/settings/carousel" element={<AdminCarouselSettings />} />
+                <Route path="/admin/settings/commission-tiers" element={<AdminCommissionTiers />} /> 
+                <Route path="/admin/settings/contracts" element={<AdminEventContracts />} /> {/* NOVO */}
+                <Route path="/admin/banners" element={<AdminPromotionalBannersList />} /> 
+                <Route path="/admin/banners/create" element={<AdminCreatePromotionalBanner />} />
+                <Route path="/admin/banners/edit/:id" element={<AdminEditPromotionalBanner />} /> 
                 <Route path="/manager/settings/advanced" element={<ManagerAdvancedSettings />} />
             </Route>
           </Route>

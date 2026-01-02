@@ -14,7 +14,7 @@ const EventBanner: React.FC<EventBannerProps> = ({ event, minPriceDisplay, showA
     const navigate = useNavigate();
     
     return (
-        <section className="relative h-[450px] md:h-[600px] lg:h-[700px] overflow-hidden -mt-20">
+        <section className="relative h-[450px] md:h-[600px] lg:h-[700px] overflow-hidden pt-20"> {/* Ajustado o padding-top */}
             <img
                 src={event.image_url}
                 alt={event.title}

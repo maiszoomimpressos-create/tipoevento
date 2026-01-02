@@ -8,41 +8,49 @@ interface CompanyData {
     corporate_name: string;
 }
 
-// Modificado para buscar um array de empresas
-const fetchCompanies = async (userId: string): Promise<CompanyData[]> => {
-    if (!userId) return [];
+const fetchCompanyId = async (userId: string): Promise<CompanyData | null> => {
+    if (!userId) return null;
 
+    // Busca a empresa associada ao usuário logado através da tabela user_companies
+    // Assumimos que o gestor PRO (tipo 2) está associado a uma empresa principal (is_primary = true)
     const { data, error } = await supabase
-        .from('companies')
-        .select('id, cnpj, corporate_name')
-        .eq('user_id', userId); // Removido .single() para permitir múltiplos resultados
+        .from('user_companies')
+        .select(`
+            company_id,
+            companies (id, cnpj, corporate_name)
+        `)
+        .eq('user_id', userId)
+        .eq('is_primary', true) // Foca na empresa principal do gestor
+        .limit(1)
+        .single();
 
-    if (error) {
-        console.error("Error fetching companies:", error);
+    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+        console.error("Error fetching company ID via user_companies:", error);
         throw new Error(error.message);
     }
-
-    return data as CompanyData[];
+    
+    if (data && data.companies) {
+        return data.companies as CompanyData;
+    }
+    
+    return null;
 };
 
 export const useManagerCompany = (userId: string | undefined) => {
     const query = useQuery({
         queryKey: ['managerCompany', userId],
-        queryFn: () => fetchCompanies(userId!),
+        queryFn: () => fetchCompanyId(userId!),
         enabled: !!userId,
         staleTime: 1000 * 60 * 5, // 5 minutes
         onError: (error) => {
             console.error("Query Error: Failed to load company data.", error);
-            showError("Erro ao carregar dados da empresa. Verifique se o Perfil da Empresa está cadastrado.");
+            // Removido o toast de erro aqui, pois a ausência de empresa é um estado esperado para PF
         }
     });
 
     return {
         ...query,
-        // Retorna a primeira empresa encontrada, ou null se nenhuma for encontrada
-        company: query.data && query.data.length > 0 ? query.data[0] : null,
-        // Também expõe todas as empresas, caso seja necessário no futuro
-        allCompanies: query.data || [],
+        company: query.data,
     };
 };
 

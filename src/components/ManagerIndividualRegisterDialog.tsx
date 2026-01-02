@@ -19,7 +19,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
-import { Loader2, User, Building, ArrowLeft } from 'lucide-react';
+import { Loader2, User, ArrowLeft } from 'lucide-react';
 import { ProfileData } from '@/hooks/use-profile';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -38,7 +38,8 @@ const GENDER_OPTIONS = [
     "Prefiro não dizer"
 ];
 
-// Função de validação de CPF
+// --- Utility Functions ---
+
 const validateCPF = (cpf: string) => {
     const cleanCPF = cpf.replace(/\D/g, '');
     if (cleanCPF.length !== 11) return false;
@@ -60,16 +61,37 @@ const validateCPF = (cpf: string) => {
     return true;
 };
 
-// Função de validação de RG (apenas formato)
 const validateRG = (rg: string) => {
     const cleanRG = rg.replace(/\D/g, '');
-    return cleanRG.length >= 7 && cleanRG.length <= 9; // RG geralmente tem 7 a 9 dígitos
+    return cleanRG.length >= 7 && cleanRG.length <= 9;
 };
 
-// Função de validação de CEP (apenas formato)
-const validateCEP = (cep: string) => {
-    const cleanCEP = cep.replace(/\D/g, '');
-    return cleanCEP.length === 8;
+const formatCPF = (value: string) => {
+    if (!value) return '';
+    const cleanValue = value.replace(/\D/g, '');
+    return cleanValue
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+        .replace(/(-\d{2})\d+?$/, '$1');
+};
+
+const formatRG = (value: string) => {
+    if (!value) return '';
+    const cleanValue = value.replace(/\D/g, '');
+    return cleanValue
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1})/, '$1-$2')
+        .replace(/(-\d{1})\d+?$/, '$1');
+};
+
+const formatCEP = (value: string) => {
+    if (!value) return '';
+    const cleanValue = value.replace(/\D/g, '');
+    return cleanValue
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{3})\d+?$/, '$1');
 };
 
 // Schema para o registro de gestor individual (todos os campos são obrigatórios)
@@ -88,7 +110,7 @@ const managerIndividualProfileSchema = z.object({
     cidade: z.string().min(1, "Cidade é obrigatória."),
     estado: z.string().min(1, "Estado é obrigatório."),
     numero: z.string().min(1, "Número é obrigatório."),
-    complemento: z.string().optional().nullable(), 
+    complemento: z.string().min(1, "Complemento é obrigatório.").nullable(),
 });
 
 type ManagerIndividualProfileData = z.infer<typeof managerIndividualProfileSchema>;
@@ -123,6 +145,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
         },
     });
 
+    // Preenche o formulário com os dados do perfil ao abrir o modal
     useEffect(() => {
         if (profile) {
             form.reset({
@@ -142,34 +165,6 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             });
         }
     }, [profile, form]);
-
-    const formatCPF = (value: string) => {
-        if (!value) return '';
-        const cleanValue = value.replace(/\D/g, '');
-        return cleanValue
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-            .replace(/(-\d{2})\d+?$/, '$1');
-    };
-
-    const formatRG = (value: string) => {
-        if (!value) return '';
-        const cleanValue = value.replace(/\D/g, '');
-        return cleanValue
-            .replace(/(\d{2})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d{1})/, '$1-$2')
-            .replace(/(-\d{1})\d+?$/, '$1');
-    };
-
-    const formatCEP = (value: string) => {
-        if (!value) return '';
-        const cleanValue = value.replace(/\D/g, '');
-        return cleanValue
-            .replace(/(\d{5})(\d)/, '$1-$2')
-            .replace(/(-\d{3})\d+?$/, '$1');
-    };
 
     const fetchAddressByCep = async (cep: string) => {
         const cleanCep = cep.replace(/\D/g, '');
@@ -222,22 +217,16 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             fetchAddressByCep(formattedCep);
         }
     };
-
-    const onSubmit = async (values: ManagerIndividualProfileData) => {
-        if (!userId) {
-            showError("Usuário não autenticado.");
-            return;
-        }
-        setIsSaving(true);
-        const toastId = showLoading("Registrando como Gestor PF...");
-
+    
+    // Função auxiliar para preparar os dados para salvar no DB
+    const prepareDataToSave = (values: ManagerIndividualProfileData, promoteToManager: boolean) => {
         const cleanCPF = values.cpf ? values.cpf.replace(/\D/g, '') : null;
         const cleanRG = values.rg ? values.rg.replace(/\D/g, '') : null;
         const cleanCEP = values.cep ? values.cep.replace(/\D/g, '') : null;
         
         const genderToSave = values.gender || null; 
 
-        const dataToSave = {
+        return {
             first_name: values.first_name || null,
             last_name: values.last_name || null, 
             birth_date: values.birth_date || null,
@@ -251,10 +240,59 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             estado: values.estado || null,
             numero: values.numero || null,
             complemento: values.complemento || null,
-            tipo_usuario_id: 2, // Define como Gestor PRO (Pessoa Física)
+            // Se for promover, define tipo 2 (Gestor PRO) e natureza jurídica 1 (Pessoa Física).
+            tipo_usuario_id: promoteToManager ? 2 : profile?.tipo_usuario_id, 
+            natureza_juridica_id: promoteToManager ? 1 : profile?.natureza_juridica_id, // NOVO: Adicionando natureza jurídica
         };
+    };
+
+    // Função para salvar o progresso (rascunho) sem promover o usuário
+    const saveDraftProfile = async () => {
+        if (!userId || isSaving) return;
+        
+        // Obtém os valores atuais do formulário (incluindo campos incompletos)
+        const currentValues = form.getValues();
+        
+        // Prepara os dados, mantendo o tipo de usuário atual (tipo 3)
+        const dataToSave = prepareDataToSave(currentValues, false);
 
         try {
+            // Salva o rascunho no perfil do usuário
+            const { error } = await supabase
+                .from('profiles')
+                .update(dataToSave)
+                .eq('id', userId);
+
+            if (error) {
+                console.error("Warning: Failed to save draft profile:", error);
+            } else {
+                // Invalida o cache do perfil para que os dados preenchidos sejam carregados na próxima vez
+                queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+            }
+        } catch (e) {
+            console.error("Unexpected error during draft save:", e);
+        }
+    };
+
+    const handleCloseModal = () => {
+        // Salva o progresso antes de fechar
+        saveDraftProfile();
+        onClose();
+    };
+
+    const onSubmit = async (values: ManagerIndividualProfileData) => {
+        if (!userId) {
+            showError("Usuário não autenticado.");
+            return;
+        }
+        setIsSaving(true);
+        const toastId = showLoading("Registrando como Gestor PF...");
+
+        // Prepara os dados, PROMOVENDO para tipo 2 e natureza jurídica 1
+        const dataToSave = prepareDataToSave(values, true);
+
+        try {
+            // 1. Atualiza o perfil e promove o usuário
             const { error } = await supabase
                 .from('profiles')
                 .update(dataToSave)
@@ -265,7 +303,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
             }
 
             dismissToast(toastId);
-            showSuccess("Cadastro como Gestor PF realizado com sucesso!");
+            showSuccess("Cadastro como Gestor PF realizado com sucesso! Redirecionando para o Dashboard PRO.");
             queryClient.invalidateQueries({ queryKey: ['profile', userId] }); // Invalida o cache do perfil
             onClose(); // Fecha o modal
             navigate('/manager/dashboard'); // Redireciona para o dashboard do gestor
@@ -280,7 +318,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={handleCloseModal}>
             <DialogContent className="sm:max-w-[800px] bg-black/90 border border-yellow-500/30 text-white p-6">
                 <DialogHeader>
                     <DialogTitle className="text-yellow-500 text-2xl flex items-center">
@@ -288,10 +326,10 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                         Cadastro de Gestor PF
                     </DialogTitle>
                     <DialogDescription className="text-gray-400">
-                        Preencha seus dados pessoais para se registrar como gestor individual.
+                        Preencha seus dados pessoais para se registrar como gestor individual. Todos os campos são obrigatórios.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto pr-4"> {/* Adicionando barra de rolagem aqui */}
+                <div className="max-h-[60vh] overflow-y-auto pr-4">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -305,7 +343,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                 <Input 
                                                     placeholder="Seu primeiro nome" 
                                                     {...field} 
-                                                    isInvalid={!!form.formState.errors.first_name} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.first_name}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -323,7 +361,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                 <Input 
                                                     placeholder="Seu sobrenome" 
                                                     {...field} 
-                                                    isInvalid={!!form.formState.errors.last_name} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.last_name}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -345,7 +383,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="000.000.000-00"
                                                     {...field} 
                                                     onChange={handleCpfChange}
-                                                    isInvalid={!!form.formState.errors.cpf} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.cpf}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                     maxLength={14}
                                                 />
@@ -365,7 +403,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="00.000.000-0"
                                                     {...field} 
                                                     onChange={handleRgChange}
-                                                    isInvalid={!!form.formState.errors.rg} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.rg}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                     maxLength={12}
                                                 />
@@ -387,7 +425,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                 <Input 
                                                     type="date" 
                                                     {...field} 
-                                                    isInvalid={!!form.formState.errors.birth_date} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.birth_date}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -407,7 +445,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                             >
                                                 <FormControl>
                                                     <SelectTrigger 
-                                                        isInvalid={!!form.formState.errors.gender} // Adicionado isInvalid
+                                                        isInvalid={!!form.formState.errors.gender}
                                                         className={`w-full bg-black/60 text-white focus:ring-yellow-500`}
                                                     >
                                                         <SelectValue placeholder="Selecione seu gênero" />
@@ -443,7 +481,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                         {...field} 
                                                         onChange={handleCepChange}
                                                         disabled={isCepLoading} 
-                                                        isInvalid={!!form.formState.errors.cep} // Adicionado isInvalid
+                                                        isInvalid={!!form.formState.errors.cep}
                                                         className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500 pr-10`} 
                                                         maxLength={9}
                                                     />
@@ -475,7 +513,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                         placeholder="Ex: Av. Paulista" 
                                                         {...field} 
                                                         disabled={isCepLoading} 
-                                                        isInvalid={!!form.formState.errors.rua} // Adicionado isInvalid
+                                                        isInvalid={!!form.formState.errors.rua}
                                                         className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                     />
                                                 </FormControl>
@@ -496,7 +534,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="123" 
                                                     {...field} 
                                                     disabled={isCepLoading} 
-                                                    isInvalid={!!form.formState.errors.numero} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.numero}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -511,13 +549,13 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                 name="complemento"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-white">Complemento (Opcional)</FormLabel>
+                                        <FormLabel className="text-white">Complemento *</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 placeholder="Apto 101, Bloco B" 
                                                 {...field} 
                                                 disabled={isCepLoading} 
-                                                isInvalid={!!form.formState.errors.complemento} // Adicionado isInvalid
+                                                isInvalid={!!form.formState.errors.complemento}
                                                 className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                             />
                                         </FormControl>
@@ -538,7 +576,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="Jardim Paulista" 
                                                     {...field} 
                                                     disabled={isCepLoading} 
-                                                    isInvalid={!!form.formState.errors.bairro} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.bairro}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -557,7 +595,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="São Paulo" 
                                                     {...field} 
                                                     disabled={isCepLoading} 
-                                                    isInvalid={!!form.formState.errors.cidade} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.cidade}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -576,7 +614,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                                     placeholder="SP" 
                                                     {...field} 
                                                     disabled={isCepLoading} 
-                                                    isInvalid={!!form.formState.errors.estado} // Adicionado isInvalid
+                                                    isInvalid={!!form.formState.errors.estado}
                                                     className={`bg-black/60 text-white placeholder-gray-500 focus:border-yellow-500`} 
                                                 />
                                             </FormControl>
@@ -606,7 +644,7 @@ const ManagerIndividualRegisterDialog: React.FC<ManagerIndividualRegisterDialogP
                                 </Button>
                                 <Button
                                     type="button"
-                                    onClick={onClose}
+                                    onClick={handleCloseModal} // Usa o novo handler que salva o rascunho
                                     variant="outline"
                                     className="flex-1 bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
                                     disabled={isSaving}

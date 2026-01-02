@@ -1,24 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Loader2, Crown, LayoutDashboard, CalendarCheck, PlusCircle, QrCode, Settings, LogOut } from 'lucide-react';
+import { Menu, X, Loader2, Crown, LogOut, User, Settings, QrCode, BarChart3, CalendarDays, ChevronDown, SlidersHorizontal, Plus, Image, ListOrdered, History, CreditCard, Percent } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/use-profile';
 import { useUserType } from '@/hooks/use-user-type';
 import { showError } from '@/utils/toast';
-import { useProfileStatus } from '@/hooks/use-profile-status'; // Import useProfileStatus
-import { useManagerCompany } from '@/hooks/use-manager-company'; // Import useManagerCompany
+import { useManagerCompany } from '@/hooks/use-manager-company';
 
 const ADMIN_USER_TYPE_ID = 1;
-const MANAGER_PRO_USER_TYPE_ID = 2;
+const MANAGER_USER_TYPE_ID = 2;
 
 const ManagerLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [userId, setUserId] = useState<string | undefined>(undefined);
     const [loadingSession, setLoadingSession] = useState(true);
+    const [isSettingsDropdownOpen, setIsSettingsDropdownOpen] = useState(false);
+
+    const isAdminSettingsPath = useMemo(() => {
+        return location.pathname.startsWith('/admin/settings') ||
+               location.pathname.startsWith('/manager/settings/advanced') ||
+               location.pathname.startsWith('/manager/settings/history');
+    }, [location.pathname]);
+
+    useEffect(() => {
+        setIsSettingsDropdownOpen(isAdminSettingsPath);
+    }, [isAdminSettingsPath]);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -28,9 +38,11 @@ const ManagerLayout: React.FC = () => {
     }, []);
 
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
-    const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
-    const { isComplete: isProfileFullyComplete, loading: isLoadingProfileStatus, needsCompanyProfile, needsPersonalProfileCompletion } = useProfileStatus(profile, isLoadingProfile);
-    const { company, isLoading: isLoadingCompany } = useManagerCompany(userId); // Fetch company data
+    const { userTypeName: baseUserTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
+    
+    const isManagerPro = profile?.tipo_usuario_id === MANAGER_USER_TYPE_ID;
+    const { company, isLoading: isLoadingCompany } = useManagerCompany(isManagerPro ? userId : undefined);
+
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -41,62 +53,20 @@ const ManagerLayout: React.FC = () => {
         }
     };
 
-    // Combined loading state
-    const isLoadingCombined = loadingSession || isLoadingProfile || isLoadingUserType || isLoadingProfileStatus || isLoadingCompany;
-
-    // Determine user type and manager status
-    const userType = profile?.tipo_usuario_id;
-    const isManager = userType === ADMIN_USER_TYPE_ID || userType === MANAGER_PRO_USER_TYPE_ID;
-    const isAdminMaster = userType === ADMIN_USER_TYPE_ID;
-
-    // Pages where profile completion is allowed/expected
-    const isProfileCompletionPage = location.pathname === '/profile' || 
-                                   location.pathname === '/manager/settings/company-profile' ||
-                                   location.pathname === '/manager/register' || 
-                                   location.pathname === '/manager/register/company' ||
-                                   location.pathname === '/admin/register-manager'; 
-
-    // Effect for redirection logic
-    useEffect(() => {
-        if (isLoadingCombined) return; // Wait for all data to load
-
-        // 1. Redirect unauthenticated users to login
-        if (!userId) {
+    // Redirect unauthenticated users to login
+    if (loadingSession || isLoadingProfile || isLoadingUserType || (isManagerPro && isLoadingCompany)) {
+        if (!userId && !loadingSession) {
+            // Only redirect if trying to access a manager/admin route
             if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-                navigate('/manager/login', { replace: true });
+                navigate('/manager/login');
             }
-            return;
+            return (
+                <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
+                </div>
+            );
         }
-
-        // 2. Redirect non-managers away from manager/admin routes
-        if (!isManager) {
-            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-                navigate('/', { replace: true });
-            }
-            return;
-        }
-
-        // 3. Redirect managers with incomplete profiles
-        if (isManager && !isProfileFullyComplete && !isProfileCompletionPage) {
-            if (needsCompanyProfile) {
-                showError("Seu perfil de empresa não está cadastrado. Por favor, preencha os dados da sua empresa para acessar o Dashboard PRO.");
-                navigate('/manager/settings/company-profile', { replace: true });
-                return;
-            }
-            if (needsPersonalProfileCompletion) {
-                showError("Seu perfil pessoal está incompleto. Por favor, preencha todos os dados essenciais para acessar o Dashboard PRO.");
-                navigate('/profile', { replace: true });
-                return;
-            }
-            // Fallback for any other incomplete state not explicitly handled
-            showError("Seu perfil de gestor está incompleto. Por favor, complete seu cadastro.");
-            navigate('/profile', { replace: true }); // Default to personal profile completion
-            return;
-        }
-    }, [isLoadingCombined, userId, isManager, isProfileFullyComplete, isProfileCompletionPage, userType, company, navigate, location.pathname, needsCompanyProfile, needsPersonalProfileCompletion]);
-
-
-    if (isLoadingCombined) {
+        // If loading, show spinner
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
@@ -104,65 +74,64 @@ const ManagerLayout: React.FC = () => {
         );
     }
     
-    const navItems = [
-        { path: '/', label: 'Home' },
-        { path: '/manager/dashboard', label: 'Dashboard PRO' },
-        { path: '/manager/events', label: 'Eventos' },
-        { path: '/manager/wristbands', label: 'Pulseiras' },
-        { path: '/manager/reports', label: 'Relatórios' },
-        { path: '/manager/settings', label: 'Configurações' },
+    // Check if user is authorized (Admin or Manager)
+    const userType = profile?.tipo_usuario_id;
+    const isManager = userType === ADMIN_USER_TYPE_ID || userType === MANAGER_USER_TYPE_ID;
+    const isAdminMaster = userType === ADMIN_USER_TYPE_ID;
+
+    if (!isManager) {
+        // If the user is logged in but not a manager/admin (e.g., client type 3), redirect them
+        if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+            navigate('/');
+            return null;
+        }
+    }
+    
+    const baseNavItems = [
+        { path: '/', label: 'Home', icon: <User className="mr-2 h-4 w-4" /> },
+        { path: '/manager/dashboard', label: 'Dashboard PRO', icon: <Crown className="mr-2 h-4 w-4" /> },
+        { path: '/manager/events', label: 'Eventos', icon: <CalendarDays className="mr-2 h-4 w-4" /> },
+        { path: '/manager/events/create', label: 'Criar Novo Evento', icon: <Plus className="mr-2 h-4 w-4" /> },
+        { path: '/manager/events/banners/create', label: 'Criar Banner de Evento', icon: <Image className="mr-2 h-4 w-4" /> },
+        { path: '/manager/wristbands', label: 'Pulseiras', icon: <QrCode className="mr-2 h-4 w-4" /> },
+        { path: '/manager/reports', label: 'Relatórios', icon: <BarChart3 className="mr-2 h-4 w-4" /> },
+        { path: '/manager/settings', label: 'Configurações', icon: <Settings className="mr-2 h-4 w-4" /> },
     ];
     
+    let allNavItems = [...baseNavItems];
+
+    // Adiciona links específicos do Admin Master
     if (isAdminMaster) {
-        navItems.splice(1, 0, { path: '/admin/dashboard', label: 'Dashboard Admin' });
+        allNavItems.splice(1, 0, { path: '/admin/dashboard', label: 'Dashboard Admin', icon: <Crown className="mr-2 h-4 w-4" /> });
     }
+    
+    // FILTRAGEM: Remove o item cuja rota é a rota atual
+    const navItems = allNavItems.filter(item => item.path !== location.pathname);
     
     const dashboardTitle = isAdminMaster && location.pathname.startsWith('/admin') ? 'ADMIN' : 'PRO';
     
     const userName = profile?.first_name || 'Gestor';
-    const userRole = userTypeName;
+    
+    let userRoleDisplay = baseUserTypeName;
+    if (isManagerPro) {
+        userRoleDisplay = company?.id ? `${baseUserTypeName} (PJ)` : `${baseUserTypeName} (PF)`;
+    } else {
+        userRoleDisplay = baseUserTypeName;
+    }
 
-    const NavLinks: React.FC<{ onClick?: () => void }> = ({ onClick }) => (
-        <nav className="flex flex-col md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0">
-            {navItems.map(item => {
-                const isLinkActive = location.pathname.startsWith(item.path) && (item.path !== '/' || location.pathname === '/');
-
-                if (isLinkActive) {
-                    return (
-                        <span 
-                            key={item.path}
-                            className="text-yellow-500 md:border-b-2 border-yellow-500 font-semibold py-2 md:py-0 md:pb-1 text-left"
-                        >
-                            {item.label}
-                        </span>
-                    );
-                }
-
-                return (
-                    <button 
-                        key={item.path}
-                        onClick={() => {
-                            if (item.path !== '#') navigate(item.path);
-                            if (onClick) onClick();
-                        }} 
-                        className="transition-colors duration-300 cursor-pointer py-2 md:py-0 md:pb-1 text-left text-white hover:text-yellow-500"
-                    >
-                        {item.label}
-                    </button>
-                );
-            })}
-        </nav>
-    );
 
     return (
         <div className="min-h-screen bg-black text-white">
             <header className="fixed top-0 left-0 right-0 z-[100] bg-black/90 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center justify-between max-w-7xl px-4 sm:px-6 py-4 mx-auto">
                     <div className="flex items-center space-x-4 sm:space-x-6">
-                        <Link to="/" className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold flex items-center cursor-pointer">
+                        <div 
+                            className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold flex items-center cursor-pointer"
+                            onClick={() => navigate('/')}
+                        >
                             Mazoy
                             <span className="ml-2 sm:ml-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-2 sm:px-3 py-0.5 rounded-lg text-xs sm:text-sm font-bold">{dashboardTitle}</span>
-                        </Link>
+                        </div>
                     </div>
                     <div className="flex items-center space-x-3 sm:space-x-4">
                         <button className="relative p-2 text-yellow-500 hover:bg-yellow-500/10 rounded-lg transition-colors cursor-pointer hidden sm:block">
@@ -170,66 +139,133 @@ const ManagerLayout: React.FC = () => {
                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">3</span>
                         </button>
                         
-                        {isManager && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black hover:from-yellow-600 hover:to-yellow-700 px-4 py-2 text-sm font-semibold transition-all duration-300 cursor-pointer flex items-center h-8 hidden sm:flex"
-                                    >
-                                        <Crown className="h-4 w-4 mr-2" />
-                                        Gestor PRO
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
-                                    <DropdownMenuLabel className="text-yellow-500">Ações de Gestão PRO</DropdownMenuLabel>
-                                    <DropdownMenuSeparator className="bg-yellow-500/20" />
-                                    {location.pathname !== '/manager/dashboard' && (
-                                        <DropdownMenuItem onClick={() => navigate('/manager/dashboard')} className="cursor-pointer hover:bg-yellow-500/10">
-                                            <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard PRO
+                        {/* Dropdown Menu para Gestor/Admin */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="hidden md:flex items-center bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/30 hover:border-yellow-500 transition-all duration-300 cursor-pointer px-4 py-2 h-10"
+                                >
+                                    <Crown className="h-5 w-5 mr-2" />
+                                    <span className="font-semibold">{userName}</span>
+                                    <span className="text-gray-400 text-xs ml-2 hidden lg:block">{userRoleDisplay}</span>
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56 bg-black/90 border border-yellow-500/30 text-white">
+                                <DropdownMenuLabel className="text-yellow-500 truncate max-w-[200px]">
+                                    {userName}
+                                </DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-gray-400 text-xs pt-0">
+                                    {userRoleDisplay}
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                
+                                {/* Renderiza itens de navegação */}
+                                {allNavItems.map(item => {
+                                    // Se for Admin Master, e o item for Configurações, renderiza o submenu
+                                    if (isAdminMaster && item.path === '/manager/settings') {
+                                        return (
+                                            <React.Fragment key={item.path}>
+                                                <DropdownMenuItem 
+                                                    onClick={() => navigate(item.path)}
+                                                    className="cursor-pointer hover:bg-yellow-500/10"
+                                                >
+                                                    {item.icon}
+                                                    {item.label}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                                <DropdownMenu open={isSettingsDropdownOpen} onOpenChange={setIsSettingsDropdownOpen}>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <DropdownMenuItem 
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 flex justify-between items-center ${isAdminSettingsPath ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                            onSelect={(e) => e.preventDefault()} // Previne o fechamento do menu principal
+                                                        >
+                                                            <div className="flex items-center text-yellow-500">
+                                                                <Settings className="mr-2 h-4 w-4" />
+                                                                Configurações Admin
+                                                            </div>
+                                                            <ChevronDown className="h-4 w-4 ml-auto" />
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent side="right" align="start" className="w-56 bg-black/90 border border-yellow-500/30 text-white">
+                                                        <DropdownMenuLabel className="text-yellow-500">Gerenciamento Avançado</DropdownMenuLabel>
+                                                        <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                                        <DropdownMenuItem 
+                                                            onClick={() => navigate('/admin/settings/carousel')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/admin/settings/carousel' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <SlidersHorizontal className="mr-2 h-4 w-4" />
+                                                            Config. Carrossel
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem 
+                                                            onClick={() => navigate('/admin/settings/commission-tiers')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/admin/settings/commission-tiers' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <Percent className="mr-2 h-4 w-4" />
+                                                            Faixas de Comissão
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem 
+                                                            onClick={() => navigate('/admin/banners')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/admin/banners' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <ListOrdered className="mr-2 h-4 w-4" />
+                                                            Listar Banners
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem 
+                                                            onClick={() => navigate('/admin/banners/create')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/admin/banners/create' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <Image className="mr-2 h-4 w-4" />
+                                                            Criar Banner Promo
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                                        <DropdownMenuItem 
+                                                            onClick={() => navigate('/manager/settings/advanced')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/manager/settings/advanced' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <Settings className="mr-2 h-4 w-4" />
+                                                            Avançadas
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem 
+                                                            onClick={() => navigate('/manager/settings/history')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/manager/settings/history' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <History className="mr-2 h-4 w-4" />
+                                                            Histórico
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                            </React.Fragment>
+                                        );
+                                    }
+                                    
+                                    // Renderiza itens normais
+                                    return (
+                                        <DropdownMenuItem 
+                                            key={item.path}
+                                            onClick={() => navigate(item.path)}
+                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === item.path ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                        >
+                                            {item.icon}
+                                            {item.label}
                                         </DropdownMenuItem>
-                                    )}
-                                    {location.pathname !== '/manager/events' && (
-                                        <DropdownMenuItem onClick={() => navigate('/manager/events')} className="cursor-pointer hover:bg-yellow-500/10">
-                                            <CalendarCheck className="mr-2 h-4 w-4" /> Meus Eventos
-                                        </DropdownMenuItem>
-                                    )}
-                                    {location.pathname !== '/manager/events/create' && (
-                                        <DropdownMenuItem onClick={() => navigate('/manager/events/create')} className="cursor-pointer hover:bg-yellow-500/10">
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Novo Evento
-                                        </DropdownMenuItem>
-                                    )}
-                                    {location.pathname !== '/manager/wristbands' && (
-                                        <DropdownMenuItem onClick={() => navigate('/manager/wristbands')} className="cursor-pointer hover:bg-yellow-500/10">
-                                            <QrCode className="mr-2 h-4 w-4" /> Gestão de Pulseiras
-                                        </DropdownMenuItem>
-                                    )}
-                                    {location.pathname !== '/manager/wristbands/create' && (
-                                        <DropdownMenuItem onClick={() => navigate('/manager/wristbands/create')} className="cursor-pointer hover:bg-yellow-500/10">
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Nova Pulseira
-                                        </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator className="bg-yellow-500/20" />
-                                    {location.pathname !== '/manager/settings' && (
-                                        <DropdownMenuItem onClick={() => navigate('/manager/settings')} className="cursor-pointer hover:bg-yellow-500/10">
-                                            <Settings className="mr-2 h-4 w-4" /> Configurações
-                                        </DropdownMenuItem>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
+                                    );
+                                })}
+                                
+                                <DropdownMenuSeparator className="bg-yellow-500/20" />
+                                <DropdownMenuItem 
+                                    onClick={handleLogout} 
+                                    className="cursor-pointer hover:bg-red-500/10 text-red-400"
+                                >
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    Sair
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
 
-                        <div className="text-right hidden lg:block">
-                            <div className="text-white font-semibold text-sm">{userName}</div>
-                            <div className="text-gray-400 text-xs">{userRole}</div>
-                        </div>
-
-                        <Button
-                            onClick={handleLogout}
-                            className="bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 transition-all duration-300 cursor-pointer px-3 py-1 h-8 text-sm hidden sm:block"
-                        >
-                            Sair
-                        </Button>
-
+                        {/* Mobile Menu Trigger */}
                         <Sheet>
                             <SheetTrigger asChild>
                                 <Button variant="ghost" size="icon" className="md:hidden text-yellow-500 hover:bg-yellow-500/10">
@@ -247,10 +283,84 @@ const ManagerLayout: React.FC = () => {
                                         </div>
                                         <div>
                                             <div className="text-white font-semibold">{userName}</div>
-                                            <div className="text-gray-400 text-sm">{userRole}</div>
+                                            <div className="text-gray-400 text-sm">{userRoleDisplay}</div>
                                         </div>
                                     </div>
-                                    <NavLinks onClick={() => {}} />
+                                    {/* Reutilizando allNavItems para o menu mobile */}
+                                    <nav className="flex flex-col space-y-2">
+                                        {allNavItems.map(item => {
+                                            // Se for Admin Master, e o item for Configurações, renderiza o submenu
+                                            if (isAdminMaster && item.path === '/manager/settings') {
+                                                return (
+                                                    <div key={item.path} className="space-y-2">
+                                                        <button 
+                                                            onClick={() => navigate(item.path)}
+                                                            className="flex items-center p-3 rounded-xl text-white hover:bg-yellow-500/10 transition-colors duration-200 text-lg w-full justify-start"
+                                                        >
+                                                            {item.icon}
+                                                            {item.label}
+                                                        </button>
+                                                        <div className="pl-6 space-y-1 border-l border-yellow-500/20 ml-3">
+                                                            <button 
+                                                                onClick={() => navigate('/admin/settings/carousel')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                                                                Config. Carrossel
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => navigate('/admin/settings/commission-tiers')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <Percent className="mr-2 h-4 w-4" />
+                                                                Faixas de Comissão
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => navigate('/admin/banners')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <ListOrdered className="mr-2 h-4 w-4" />
+                                                                Listar Banners
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => navigate('/admin/banners/create')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <Image className="mr-2 h-4 w-4" />
+                                                                Criar Banner Promo
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => navigate('/manager/settings/advanced')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <Settings className="mr-2 h-4 w-4" />
+                                                                Avançadas
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => navigate('/manager/settings/history')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <History className="mr-2 h-4 w-4" />
+                                                                Histórico
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            
+                                            // Renderiza itens normais
+                                            return (
+                                                <button 
+                                                    key={item.path}
+                                                    onClick={() => navigate(item.path)} 
+                                                    className="flex items-center p-3 rounded-xl text-white hover:bg-yellow-500/10 transition-colors duration-200 text-lg w-full justify-start"
+                                                >
+                                                    {item.icon}
+                                                    {item.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </nav>
                                     <div className="border-t border-yellow-500/20 pt-4">
                                         <Button
                                             onClick={handleLogout}

@@ -109,7 +109,7 @@ const ManagerCreateWristband: React.FC = () => {
         
         if (!formData.eventId) errors.push("Selecione o evento.");
         if (!formData.baseCode.trim()) errors.push("O Código Base é obrigatório.");
-        if (formData.quantity < 1) errors.push("A quantidade deve ser pelo menos 1.");
+        if (formData.quantity < 1 || formData.quantity > 100) errors.push("A quantidade deve ser entre 1 e 100.");
         if (!formData.accessType) errors.push("O Tipo de Acesso é obrigatório.");
         if (!company?.id) errors.push("O Perfil da Empresa não está cadastrado. Cadastre-o em Configurações.");
         
@@ -129,34 +129,69 @@ const ManagerCreateWristband: React.FC = () => {
         if (!validateForm(priceNumeric) || !company?.id || !userId) return;
 
         setIsSaving(true);
-        const toastId = showLoading(`Gerando ${formData.quantity} registros de pulseira...`);
+        const toastId = showLoading(`Cadastrando pulseira e ${formData.quantity} registros de analytics...`);
 
         try {
             const baseCodeClean = formData.baseCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
             
-            // Chamar a nova Edge Function para processar a criação em lote
-            const { data: edgeFunctionResponse, error: edgeFunctionError } = await supabase.functions.invoke('create-wristbands-batch', {
-                body: {
-                    event_id: formData.eventId,
-                    company_id: company.id,
-                    manager_user_id: userId,
-                    base_code: baseCodeClean,
-                    access_type: formData.accessType,
-                    price: priceNumeric,
-                    quantity: formData.quantity,
-                },
-            });
+            // 1. Inserir APENAS UM registro na tabela wristbands
+            const wristbandData = {
+                event_id: formData.eventId,
+                company_id: company.id,
+                manager_user_id: userId,
+                code: baseCodeClean, // Usando o Código Base como o código principal
+                access_type: formData.accessType,
+                status: 'active',
+                price: priceNumeric, // Salvando o preço
+            };
 
-            if (edgeFunctionError) {
-                throw new Error(edgeFunctionError.message);
+            const { data: insertedWristband, error: insertError } = await supabase
+                .from('wristbands')
+                .insert([wristbandData])
+                .select('id, code')
+                .single();
+
+            if (insertError) {
+                if (insertError.code === '23505') { // Unique violation (código da pulseira já existe)
+                    throw new Error("O Código Base informado já está em uso. Tente um código diferente.");
+                }
+                throw insertError;
             }
             
-            if (edgeFunctionResponse.error) {
-                throw new Error(edgeFunctionResponse.error);
+            const wristbandId = insertedWristband.id;
+            
+            // 2. Inserir N registros de analytics (baseado na quantidade)
+            const analyticsToInsert = [];
+            for (let i = 0; i < formData.quantity; i++) {
+                analyticsToInsert.push({
+                    wristband_id: wristbandId,
+                    event_type: 'creation',
+                    client_user_id: null, 
+                    code_wristbands: insertedWristband.code, // Gravando o Código Base aqui
+                    status: 'active',
+                    sequential_number: i + 1, // Adicionando o número sequencial
+                    event_data: {
+                        code: insertedWristband.code, // Mantendo no event_data para histórico
+                        access_type: formData.accessType,
+                        price: priceNumeric, // Incluindo o preço no histórico
+                        manager_id: userId,
+                        event_id: formData.eventId,
+                        initial_status: 'active',
+                        sequential_entry: i + 1,
+                    },
+                });
+            }
+
+            const { error: analyticsError } = await supabase
+                .from('wristband_analytics')
+                .insert(analyticsToInsert);
+
+            if (analyticsError) {
+                console.error("Warning: Failed to insert analytics records:", analyticsError);
             }
 
             dismissToast(toastId);
-            showSuccess(`Pulseira "${baseCodeClean}" cadastrada com ${edgeFunctionResponse.count} registros de analytics!`);
+            showSuccess(`Pulseira "${baseCodeClean}" cadastrada com ${formData.quantity} registros de analytics...`);
             
             // Limpar formulário após sucesso
             setFormData(prev => ({ 
@@ -220,7 +255,7 @@ const ManagerCreateWristband: React.FC = () => {
                 </Button>
             </div>
 
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
+            <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
                 <CardHeader>
                     <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Detalhes da Pulseira</CardTitle>
                     <CardDescription className="text-gray-400 text-sm">
@@ -284,10 +319,10 @@ const ManagerCreateWristband: React.FC = () => {
                                     placeholder="1"
                                     className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
                                     min={1}
-                                    // REMOVIDO: max={100}
+                                    max={100}
                                     required
                                 />
-                                <p className="text-xs text-gray-500 mt-1">O número de registros de 'criação' no histórico será igual a esta quantidade.</p>
+                                <p className="text-xs text-gray-500 mt-1">O número de registros de 'criação' no histórico será igual a esta quantidade (máx. 100).</p>
                             </div>
                             <div>
                                 <label htmlFor="accessType" className="block text-sm font-medium text-white mb-2 flex items-center">

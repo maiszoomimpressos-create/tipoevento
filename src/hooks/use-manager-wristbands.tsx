@@ -16,7 +16,7 @@ export interface WristbandData {
     } | null;
 }
 
-const fetchManagerWristbands = async (userId: string, userTypeId: number): Promise<WristbandData[]> => {
+const fetchManagerWristbands = async (userId: string, isAdminMaster: boolean): Promise<WristbandData[]> => {
     if (!userId) {
         console.warn("Attempted to fetch wristbands without a userId.");
         return [];
@@ -32,12 +32,32 @@ const fetchManagerWristbands = async (userId: string, userTypeId: number): Promi
             created_at,
             event_id,
             events (title)
-        `);
+        `)
+        .order('created_at', { ascending: false });
 
-    // Se não for Admin Master (tipo 1), a RLS já filtra por empresa/gestor.
-    // Se for Admin Master, a RLS permite ver tudo, então não adicionamos filtro aqui.
-    // Apenas ordenamos.
-    query = query.order('created_at', { ascending: false });
+    if (!isAdminMaster) {
+        // Para gestores normais, primeiro precisamos do company_id
+        const { data: companyData, error: companyError } = await supabase
+            .from('user_companies')
+            .select('company_id')
+            .eq('user_id', userId)
+            .eq('is_primary', true)
+            .limit(1)
+            .single();
+
+        if (companyError && companyError.code !== 'PGRST116') {
+            console.error("Error fetching company ID for manager wristbands:", companyError);
+            throw new Error(companyError.message);
+        }
+
+        if (!companyData?.company_id) {
+            console.warn("Manager has no primary company associated. Returning empty wristband list.");
+            return [];
+        }
+        query = query.eq('company_id', companyData.company_id);
+    }
+    // Se for isAdminMaster, nenhum filtro de company_id é aplicado,
+    // e a RLS no banco de dados já garante o acesso total.
 
     const { data, error } = await query;
 
@@ -49,23 +69,23 @@ const fetchManagerWristbands = async (userId: string, userTypeId: number): Promi
     return data as WristbandData[];
 };
 
-export const useManagerWristbands = (userId: string | undefined, userTypeId: number | undefined) => {
+export const useManagerWristbands = (userId: string | undefined, isAdminMaster: boolean) => {
     const queryClient = useQueryClient();
 
     const query = useQuery({
-        queryKey: ['managerWristbands', userId, userTypeId], // Inclui userTypeId na chave de cache
-        queryFn: () => fetchManagerWristbands(userId!, userTypeId!),
-        enabled: !!userId && !!userTypeId, // Habilita a query apenas se ambos estiverem disponíveis
+        queryKey: ['managerWristbands', userId, isAdminMaster], // Adiciona isAdminMaster à chave de cache
+        queryFn: () => fetchManagerWristbands(userId!, isAdminMaster),
+        enabled: !!userId, // Só executa se tiver o userId
         staleTime: 1000 * 30, // 30 seconds
         onError: (error) => {
             console.error("Query Error:", error);
-            showError("Erro ao carregar lista de pulseiras. Tente recarregar a página.");
+            showError("Erro ao carregar lista de pulseiras.");
         }
     });
 
     return {
         ...query,
         wristbands: query.data || [],
-        invalidateWristbands: () => queryClient.invalidateQueries({ queryKey: ['managerWristbands', userId, userTypeId] }),
+        invalidateWristbands: () => queryClient.invalidateQueries({ queryKey: ['managerWristbands', userId, isAdminMaster] }),
     };
 };

@@ -1,76 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, MapPin, Clock, Users, UserCheck, User, Shield, ArrowLeft } from 'lucide-react';
-import { showError, showSuccess } from '@/utils/toast';
-import { useEventDetails, TicketType } from '@/hooks/use-event-details';
-import EventBanner from '@/components/EventBanner';
-import { usePurchaseTicket } from '@/hooks/use-purchase-ticket';
+import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from '@/components/ui/input';
+import { useEventDetails, EventDetailsData, TicketType } from '@/hooks/use-event-details';
+import { Loader2, ShoppingCart } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { showError, showSuccess, showLoading, dismissToast } from '@/utils/toast'; // Importando showLoading/dismissToast
 import { useAuthRedirect } from '@/hooks/use-auth-redirect';
+import { supabase } from '@/integrations/supabase/client'; // Importando supabase
+import { FunctionsHttpError } from '@supabase/supabase-js'; // Importando o tipo de erro específico
+
+// Tipos de dados para os itens de compra
+interface PurchaseItem {
+    ticketTypeId: string; // ID da pulseira base (wristband ID)
+    quantity: number;
+    price: number;
+    name: string; // Nome do tipo de ingresso
+}
 
 // Helper function to get the minimum price display
-const getMinPriceDisplay = (ticketTypes: TicketType[]): string => {
-    if (!ticketTypes || ticketTypes.length === 0) return 'Sem ingressos ativos';
-    const minPrice = Math.min(...ticketTypes.map(t => t.price));
-    // Formata para R$ X.XX, sem centavos
-    return `A partir de R$ ${minPrice.toFixed(0)}`; 
+const getPriceDisplay = (price: number): string => {
+    return `R$ ${price.toFixed(2).replace('.', ',')}`;
+};
+
+const getMinPriceDisplay = (price: number | null | undefined) => {
+    if (price === null || price === undefined || price === 0) return 'Sem ingressos ativos';
+    return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
 const EventDetails: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const location = useLocation();
-    const { id } = useParams<{ id: string }>(); 
     
     const { details, isLoading, isError } = useEventDetails(id);
-    const { isLoading: isPurchasing, purchaseTicket } = usePurchaseTicket();
     const { isAuthenticated, redirectToLogin } = useAuthRedirect();
-
-    // Inicializa o estado dos ingressos a partir do estado de navegação (se houver)
-    const initialSelectedTickets = location.state?.selectedTickets || {};
-    const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>(initialSelectedTickets);
-
-    // Limpa o estado de navegação após a montagem para evitar loops de re-renderização
-    useEffect(() => {
-        if (location.state?.selectedTickets) {
-            // Remove o estado de navegação após usá-lo
-            navigate(location.pathname, { replace: true });
-        }
-    }, [location.state, location.pathname, navigate]);
-
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center pt-20">
-                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-            </div>
-        );
-    }
-
-    if (isError || !details?.event) {
-        return (
-            <div className="min-h-screen bg-black text-white pt-20 px-4">
-                <div className="max-w-4xl mx-auto py-10">
-                    <Card className="bg-black/80 backdrop-blur-sm border border-red-500/30 rounded-2xl p-8 text-center">
-                        <i className="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
-                        <h1 className="text-2xl font-serif text-white mb-2">Evento Não Encontrado</h1>
-                        <p className="text-gray-400 mb-6">O evento que você está procurando não existe, foi removido ou o ID é inválido.</p>
-                        <Button 
-                            onClick={() => navigate('/')}
-                            className="bg-yellow-500 text-black hover:bg-yellow-600"
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            Voltar para a Home
-                        </Button>
-                    </Card>
-                </div>
-            </div>
-        );
-    }
-
-    const { event, ticketTypes } = details;
     
+    const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
+    const [isProcessing, setIsProcessing] = useState(false); // Novo estado para o spinner
+
     const handleTicketChange = (ticketId: string, quantity: number) => {
         setSelectedTickets(prev => ({
             ...prev,
@@ -79,8 +48,9 @@ const EventDetails: React.FC = () => {
     };
 
     const getTotalPrice = () => {
+        if (!details) return 0;
         return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
-            const ticket = ticketTypes.find(t => t.id === ticketId);
+            const ticket = details.ticketTypes.find((t: TicketType) => t.id === ticketId);
             return total + (ticket ? ticket.price * quantity : 0);
         }, 0);
     };
@@ -91,154 +61,279 @@ const EventDetails: React.FC = () => {
     
     const handleCheckout = async () => {
         const totalTickets = getTotalTickets();
+        
         if (totalTickets === 0) {
-            showError("Selecione pelo menos um ingresso para continuar.");
+            showError("Selecione pelo menos um ingresso para prosseguir.");
             return;
         }
         
-        // 1. VERIFICAÇÃO DE AUTENTICAÇÃO
         if (!isAuthenticated) {
-            // Salva o estado atual dos ingressos selecionados antes de redirecionar
-            redirectToLogin({ selectedTickets });
+            showError("Você precisa estar logado para comprar ingressos.");
+            redirectToLogin();
             return;
         }
         
-        // 2. LÓGICA DE COMPRA (Se autenticado)
-        
-        // Prepara os itens para o Mercado Pago
-        const purchaseItems = Object.entries(selectedTickets)
-            .filter(([, quantity]) => quantity > 0)
-            .map(([ticketId, quantity]) => {
-                const ticketDetails = ticketTypes.find(t => t.id === ticketId);
-                
-                if (!ticketDetails) {
-                    throw new Error(`Detalhes do ingresso ${ticketId} não encontrados.`);
-                }
+        if (!details || !id) return;
 
-                return {
-                    ticketTypeId: ticketId,
-                    quantity: quantity,
-                    price: ticketDetails.price,
-                    name: `${event.title} - ${ticketDetails.name}`,
-                };
-            });
+        // 1. Preparar itens de compra
+        const purchaseItems: PurchaseItem[] = details.ticketTypes
+            .filter(ticket => selectedTickets[ticket.id] > 0)
+            .map(ticket => ({
+                ticketTypeId: ticket.id,
+                quantity: selectedTickets[ticket.id],
+                price: ticket.price,
+                name: ticket.name,
+            }));
+            
+        if (purchaseItems.length === 0) {
+            showError("Nenhum item selecionado para a compra.");
+            return;
+        }
+
+        setIsProcessing(true);
+        const toastId = showLoading("Preparando pagamento e redirecionando...");
 
         try {
-            const result = await purchaseTicket({
-                eventId: event.id, // UUID do evento
-                purchaseItems: purchaseItems,
-            });
-            
-            if (result && result.checkoutUrl) {
-                showSuccess("Redirecionando para o pagamento...");
-                // Redireciona o usuário para o checkout do Mercado Pago
-                window.location.href = result.checkoutUrl;
-            } else {
-                showError("Falha ao gerar o link de pagamento. Verifique as configurações do gestor.");
+            // 2. Obter o token de autenticação do usuário logado
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                dismissToast(toastId);
+                showError("Sessão expirada. Faça login novamente.");
+                navigate('/login');
+                return;
             }
-        } catch (e: any) {
-            console.error("Erro durante o processamento de checkout:", e);
-            showError(e.message || "Ocorreu um erro ao processar a compra.");
+            
+            // 3. Chamar o Edge Function para criar a preferência de pagamento
+            const response = await supabase.functions.invoke('create-payment-preference', {
+                body: {
+                    eventId: id,
+                    purchaseItems: purchaseItems.map(item => ({
+                        ticketTypeId: item.ticketTypeId,
+                        quantity: item.quantity,
+                        price: item.price,
+                        name: item.name,
+                    })),
+                },
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                }
+            });
+
+            let errorMessage = "Falha ao iniciar o pagamento. Tente novamente.";
+
+            if (response.error) {
+                // Se for um FunctionsHttpError, tenta obter o erro específico do corpo da resposta
+                if (response.data && typeof response.data === 'object' && 'error' in response.data) {
+                    errorMessage = (response.data as { error: string }).error;
+                } else {
+                    // Fallback para a mensagem genérica do FunctionsHttpError
+                    errorMessage = response.error.message;
+                }
+                throw new Error(errorMessage); // Lança o erro com a mensagem mais específica
+            }
+            
+            const edgeData = response.data;
+
+            if (edgeData.error) {
+                // Este caso lida se a Edge Function retornar um status 2xx, mas com um erro no corpo
+                throw new Error(edgeData.error);
+            }
+            
+            const checkoutUrl = edgeData.checkoutUrl;
+            
+            dismissToast(toastId);
+            showSuccess("Redirecionando para o Mercado Pago...");
+            
+            // 4. Redirecionar para a URL de checkout
+            window.location.href = checkoutUrl;
+
+        } catch (error: any) {
+            dismissToast(toastId);
+            console.error("Erro ao criar preferência de pagamento:", error);
+            // Exibe a mensagem de erro detalhada (seja do Edge Function ou do Mercado Pago)
+            showError(error.message || "Ocorreu um erro inesperado. Tente novamente.");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
-    const minPriceDisplay = getMinPriceDisplay(ticketTypes);
-    const classificationDisplay = event.min_age === 0 ? 'Livre' : `${event.min_age} anos`;
-    const organizerName = event.companies?.corporate_name || 'Organizador Desconhecido';
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center pt-20">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
+            </div>
+        );
+    }
+
+    if (isError || !details) {
+        return (
+            <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center pt-20 px-4">
+                <h1 className="text-4xl font-serif text-red-500 mb-4">Erro 404</h1>
+                <p className="text-xl text-gray-400 mb-6">Evento não encontrado ou indisponível.</p>
+                <Button onClick={() => navigate('/')} className="bg-yellow-500 text-black hover:bg-yellow-600">
+                    Voltar para a Home
+                </Button>
+            </div>
+        );
+    }
+    
+    const { event, ticketTypes } = details;
+    const minPriceDisplay = getMinPriceDisplay(event.min_price);
+    
+    const organizerName = event.companies?.corporate_name || 'N/A';
+    const capacityDisplay = event.capacity > 0 ? event.capacity.toLocaleString('pt-BR') : 'N/A';
+    const durationDisplay = event.duration || 'N/A';
+    
+    const bannerImageUrl = event.banner_image_url || event.image_url;
 
     return (
         <div className="min-h-screen bg-black text-white overflow-x-hidden">
-            
-            {/* 1. Cabeçalho do Evento (Banner) */}
-            <EventBanner 
-                event={event} 
-                minPriceDisplay={minPriceDisplay} 
-                showActionButton={false} // O botão principal está na sidebar
-            />
-            
-            {/* Linha divisória */}
-            <div className="w-full h-px bg-yellow-500/20"></div>
-            
+            <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-4 sm:space-x-8">
+                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold cursor-pointer" onClick={() => navigate('/')}>
+                            Mazoy
+                        </div>
+                        <nav className="hidden md:flex items-center space-x-8">
+                            <button onClick={() => navigate('/')} className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</button>
+                            <a href="/#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
+                            <a href="/#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
+                            <a href="/#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
+                        </nav>
+                    </div>
+                    <div className="flex items-center space-x-3 sm:space-x-4">
+                        <div className="relative hidden lg:block">
+                            <Input 
+                                type="search" 
+                                placeholder="Buscar eventos..." 
+                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-64 pl-4 pr-10 py-2 rounded-xl"
+                            />
+                            <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
+                        </div>
+                        <AuthStatusMenu />
+                        <Button onClick={() => navigate('/')} className="border border-yellow-500 bg-transparent text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all duration-300 cursor-pointer px-3 sm:px-4">
+                            Voltar
+                        </Button>
+                    </div>
+                </div>
+            </header>
+            <section className="pt-20 pb-0 flex justify-center">
+                <div className="relative w-full max-w-5xl h-[500px] overflow-hidden rounded-xl shadow-2xl shadow-yellow-500/20 mx-4 sm:mx-6">
+                    <img
+                        src={bannerImageUrl}
+                        alt={event.title}
+                        className="w-full h-full object-cover object-top"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40"></div>
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full px-4 sm:px-6">
+                            <div className="max-w-full lg:max-w-3xl">
+                                <div className="inline-block bg-yellow-500 text-black px-3 py-1 rounded-full text-xs sm:text-sm font-semibold mb-2 sm:mb-4">
+                                    {event.category}
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-serif text-white mb-3 sm:mb-6 leading-tight">
+                                    {event.title}
+                                </h1>
+                                <p className="text-base sm:text-xl text-gray-200 mb-4 sm:mb-8 leading-relaxed line-clamp-3">
+                                    {event.description}
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                                    <div className="flex items-center">
+                                        <i className="fas fa-calendar-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
+                                        <div>
+                                            <div className="text-xs sm:text-sm text-gray-400">Data</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{new Date(event.date).toLocaleDateString('pt-BR')}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <i className="fas fa-clock text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
+                                        <div>
+                                            <div className="text-xs sm:text-sm text-gray-400">Horário</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.time}</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl sm:text-2xl mr-3 sm:mr-4"></i>
+                                        <div>
+                                            <div className="text-xs sm:text-sm text-gray-400">Local</div>
+                                            <div className="text-sm sm:text-lg font-semibold text-white">{event.location}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                                    <span className="text-2xl sm:text-4xl font-bold text-yellow-500">
+                                        A partir de {minPriceDisplay}
+                                    </span>
+                                    <Button 
+                                        onClick={handleCheckout}
+                                        disabled={isProcessing || getTotalTickets() === 0}
+                                        className="w-full sm:w-auto bg-yellow-500 text-black hover:bg-yellow-600 px-6 sm:px-8 py-3 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50"
+                                    >
+                                        {isProcessing ? (
+                                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                        ) : (
+                                            <ShoppingCart className="h-5 w-5 mr-2" />
+                                        )}
+                                        {isProcessing ? 'Processando...' : 'Comprar Ingressos'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <div className="w-full h-px bg-yellow-500"></div>
             <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-                        
-                        {/* Coluna Principal (Detalhes) */}
                         <div className="lg:col-span-2 space-y-8 sm:space-y-12 order-2 lg:order-1">
-                            
-                            {/* 2. Seção "Sobre o Evento" */}
                             <div>
                                 <h2 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-6">Sobre o Evento</h2>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-6">
                                         {event.description}
                                     </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-4 border-t border-yellow-500/10">
-                                        {/* Capacidade */}
-                                        <div className="flex items-center text-sm sm:text-base">
-                                            <Users className="text-yellow-500 mr-3 h-5 w-5" />
-                                            <div>
-                                                <div className="text-xs text-gray-400">Capacidade</div>
-                                                <span className="text-white font-semibold">{event.capacity.toLocaleString()} pessoas</span>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <div className="flex items-center text-sm sm:text-base">
+                                                <i className="fas fa-users text-yellow-500 mr-3"></i>
+                                                <span className="text-white">Capacidade: {capacityDisplay}</span>
+                                            </div>
+                                            <div className="flex items-center text-sm sm:text-base">
+                                                <i className="fas fa-clock text-yellow-500 mr-3"></i>
+                                                <span className="text-white">Duração: {durationDisplay}</span>
                                             </div>
                                         </div>
-                                        {/* Duração */}
-                                        <div className="flex items-center text-sm sm:text-base">
-                                            <Clock className="text-yellow-500 mr-3 h-5 w-5" />
-                                            <div>
-                                                <div className="text-xs text-gray-400">Duração</div>
-                                                <span className="text-white font-semibold">{event.duration}</span>
+                                        <div className="space-y-3 sm:space-y-4">
+                                            <div className="flex items-center text-sm sm:text-base">
+                                                <i className="fas fa-user-check text-yellow-500 mr-3"></i>
+                                                <span className="text-white">Classificação: {event.min_age === 0 ? 'Livre' : `${event.min_age} anos`}</span>
                                             </div>
-                                        </div>
-                                        {/* Classificação */}
-                                        <div className="flex items-center text-sm sm:text-base">
-                                            <UserCheck className="text-yellow-500 mr-3 h-5 w-5" />
-                                            <div>
-                                                <div className="text-xs text-gray-400">Classificação</div>
-                                                <span className="text-white font-semibold">{classificationDisplay}</span>
-                                            </div>
-                                        </div>
-                                        {/* Organizador */}
-                                        <div className="flex items-center text-sm sm:text-base">
-                                            <User className="text-yellow-500 mr-3 h-5 w-5" />
-                                            <div>
-                                                <div className="text-xs text-gray-400">Organizador</div>
-                                                <span className="text-white font-semibold">{organizerName}</span>
+                                            <div className="flex items-center text-sm sm:text-base">
+                                                <i className="fas fa-user-tie text-yellow-500 mr-3"></i>
+                                                <span className="text-white">Organizador: {organizerName}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* 3. Seção “Destaques do Evento” */}
-                            {/* Usando destaques mockados, pois não temos a coluna 'highlights' no hook */}
                             <div>
                                 <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Destaques do Evento</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    {/* Mock de Destaques */}
-                                    <Card className="bg-black/60 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 transition-all duration-300">
-                                        <i className="fas fa-star text-3xl text-yellow-500 mb-3"></i>
-                                        <p className="text-white font-semibold text-sm">Experiência Premium</p>
-                                    </Card>
-                                    <Card className="bg-black/60 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 transition-all duration-300">
-                                        <i className="fas fa-trophy text-3xl text-yellow-500 mb-3"></i>
-                                        <p className="text-white font-semibold text-sm">Curadoria Exclusiva</p>
-                                    </Card>
-                                    <Card className="bg-black/60 border border-yellow-500/30 rounded-2xl p-6 text-center hover:border-yellow-500/60 transition-all duration-300">
-                                        <i className="fas fa-users text-3xl text-yellow-500 mb-3"></i>
-                                        <p className="text-white font-semibold text-sm">Networking de Elite</p>
-                                    </Card>
+                                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
+                                    <div className="text-gray-400">
+                                        {/* Placeholder para destaques, pois não temos este campo no DB */}
+                                        <p>Destaques não disponíveis no momento. Consulte a descrição.</p>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            {/* 4. Seção “Localização” */}
                             <div>
                                 <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-4 sm:mb-6">Localização</h3>
                                 <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <div className="flex items-start space-x-4 mb-6">
-                                        <MapPin className="text-yellow-500 h-6 w-6 mt-1 flex-shrink-0" />
+                                        <i className="fas fa-map-marker-alt text-yellow-500 text-xl mt-1 flex-shrink-0"></i>
                                         <div>
-                                            <h4 className="text-white font-semibold text-base sm:text-lg">{event.location}</h4>
+                                            <h4 className="text-white font-semibold text-base sm:text-lg mb-2">{event.location}</h4>
                                             <p className="text-gray-300 text-sm sm:text-base">{event.address}</p>
                                         </div>
                                     </div>
@@ -251,58 +346,48 @@ const EventDetails: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        
-                        {/* Coluna de Ingressos (Sidebar) */}
-                        <div id="ingressos" className="lg:col-span-1 order-1 lg:order-2">
+                        <div className="lg:col-span-1 order-1 lg:order-2">
                             <div className="lg:sticky lg:top-24">
                                 <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 sm:p-8">
                                     <h3 className="text-xl sm:text-2xl font-serif text-yellow-500 mb-6">Selecionar Ingressos</h3>
                                     <div className="space-y-6">
                                         {ticketTypes.length > 0 ? (
-                                            ticketTypes.map((ticket) => {
-                                                const isAvailable = ticket.available > 0;
-                                                const currentQuantity = selectedTickets[ticket.id] || 0;
-                                                
-                                                return (
-                                                    <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6 opacity-100 transition-opacity duration-300">
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <div>
-                                                                <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
-                                                                <p className="text-gray-400 text-xs sm:text-sm mt-1 line-clamp-2">{ticket.description}</p>
-                                                            </div>
-                                                            <div className="text-right flex-shrink-0 ml-4">
-                                                                <div className="text-xl sm:text-2xl font-bold text-yellow-500">R$ {ticket.price.toFixed(0)}</div>
-                                                                <div className="text-xs sm:text-sm text-gray-400">
-                                                                    {isAvailable ? `${ticket.available} disponíveis` : 'Esgotado'}
-                                                                </div>
-                                                            </div>
+                                            ticketTypes.map((ticket: TicketType) => (
+                                                <div key={ticket.id} className="bg-black/60 border border-yellow-500/20 rounded-xl p-4 sm:p-6">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <h4 className="text-white font-semibold text-base sm:text-lg">{ticket.name}</h4>
+                                                            <p className="text-gray-400 text-xs sm:text-sm mt-1">{ticket.description}</p>
                                                         </div>
-                                                        <div className="flex items-center justify-between pt-3 border-t border-yellow-500/10">
-                                                            <span className="text-white text-sm sm:text-base">Quantidade:</span>
-                                                            <div className="flex items-center space-x-3">
-                                                                <button
-                                                                    onClick={() => handleTicketChange(ticket.id, currentQuantity - 1)}
-                                                                    className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer disabled:opacity-30"
-                                                                    disabled={!isAvailable || currentQuantity === 0 || isPurchasing}
-                                                                >
-                                                                    <i className="fas fa-minus text-xs"></i>
-                                                                </button>
-                                                                <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
-                                                                    {currentQuantity}
-                                                                </span>
-                                                                <button
-                                                                    onClick={() => handleTicketChange(ticket.id, currentQuantity + 1)}
-                                                                    className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer disabled:opacity-30"
-                                                                    // CORREÇÃO: Se a quantidade atual é igual à disponibilidade, o botão deve ser desabilitado.
-                                                                    disabled={!isAvailable || currentQuantity >= ticket.available || isPurchasing}
-                                                                >
-                                                                    <i className="fas fa-plus text-xs"></i>
-                                                                </button>
-                                                            </div>
+                                                        <div className="text-right flex-shrink-0 ml-4">
+                                                            <div className="text-xl sm:text-2xl font-bold text-yellow-500">{getPriceDisplay(ticket.price)}</div>
+                                                            <div className="text-xs sm:text-sm text-gray-400">{ticket.available} disponíveis</div>
                                                         </div>
                                                     </div>
-                                                );
-                                            })
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-white text-sm sm:text-base">Quantidade:</span>
+                                                        <div className="flex items-center space-x-3">
+                                                            <button
+                                                                onClick={() => handleTicketChange(ticket.id, (selectedTickets[ticket.id] || 0) - 1)}
+                                                                className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
+                                                                disabled={ticket.available === 0 || (selectedTickets[ticket.id] || 0) === 0 || isProcessing}
+                                                            >
+                                                                <i className="fas fa-minus text-xs"></i>
+                                                            </button>
+                                                            <span className="text-white font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">
+                                                                {selectedTickets[ticket.id] || 0}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleTicketChange(ticket.id, (selectedTickets[ticket.id] || 0) + 1)}
+                                                                className="w-7 h-7 sm:w-8 sm:h-8 bg-yellow-500/20 border border-yellow-500/40 rounded-full flex items-center justify-center text-yellow-500 hover:bg-yellow-500/30 transition-all duration-300 cursor-pointer"
+                                                                disabled={(selectedTickets[ticket.id] || 0) >= ticket.available || isProcessing}
+                                                            >
+                                                                <i className="fas fa-plus text-xs"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
                                         ) : (
                                             <div className="text-center p-4 bg-black/60 rounded-xl border border-red-500/30">
                                                 <p className="text-red-400 text-sm">Nenhum tipo de ingresso ativo encontrado para este evento.</p>
@@ -318,34 +403,31 @@ const EventDetails: React.FC = () => {
                                                 </div>
                                                 <div className="flex justify-between items-center mb-6">
                                                     <span className="text-white text-lg sm:text-xl">Total a Pagar:</span>
-                                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">R$ {getTotalPrice().toFixed(2).replace('.', ',')}</span>
+                                                    <span className="text-yellow-500 text-xl sm:text-2xl font-bold">{getPriceDisplay(getTotalPrice())}</span>
                                                 </div>
                                             </div>
                                             <Button 
                                                 onClick={handleCheckout}
-                                                disabled={isPurchasing}
-                                                className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                                                disabled={isProcessing || getTotalTickets() === 0}
+                                                className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 cursor-pointer hover:scale-105 disabled:opacity-50"
                                             >
-                                                {isPurchasing ? (
-                                                    <div className="flex items-center justify-center">
-                                                        <Loader2 className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin mr-2" />
-                                                        Redirecionando...
-                                                    </div>
+                                                {isProcessing ? (
+                                                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                                                 ) : (
-                                                    'Comprar e Pagar'
+                                                    <ShoppingCart className="h-5 w-5 mr-2" />
                                                 )}
+                                                {isProcessing ? 'Processando...' : 'Comprar Ingressos'}
                                             </Button>
                                         </>
                                     )}
-                                    {/* Aviso de Compra Segura */}
-                                    <div className="mt-6 p-4 bg-black/40 rounded-xl border border-yellow-500/20 flex items-start space-x-3">
-                                        <Shield className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                                        <div>
-                                            <h4 className="text-white font-semibold text-sm mb-1">Compra Segura</h4>
-                                            <p className="text-gray-400 text-xs">
-                                                Você será redirecionado ao Mercado Pago para finalizar o pagamento.
-                                            </p>
+                                    <div className="mt-6 p-4 bg-black/40 rounded-xl">
+                                        <div className="flex items-center text-yellow-500 mb-2">
+                                            <i className="fas fa-shield-alt mr-2"></i>
+                                            <span className="text-sm font-semibold">Compra Segura</span>
                                         </div>
+                                        <p className="text-gray-400 text-xs">
+                                            Seus dados estão protegidos e a compra é 100% segura.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -365,16 +447,16 @@ const EventDetails: React.FC = () => {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Links Úteis</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
+                                <li><a href="#" className="text-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Termos de Uso</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Privacidade</a></li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Suporte</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Suporte</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
@@ -383,7 +465,7 @@ const EventDetails: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-instagram text-xl sm:text-2xl"></i>

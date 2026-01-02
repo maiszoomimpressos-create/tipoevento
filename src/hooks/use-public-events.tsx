@@ -3,15 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { showError } from '@/utils/toast';
 
 export interface PublicEvent {
-    id: number; // Agora é o id_url (INT)
-    uuid: string; // O UUID real do Supabase
+    id: string;
     title: string;
     description: string;
     date: string; // Keep as string for display
     raw_date: Date; // New: raw Date object for comparison
     time: string;
     location: string;
-    image_url: string;
+    image_url: string; // RENOMEADO: Agora é a URL da imagem do Card de Exposição (400x200)
     category: string;
     min_price: number | null; // Preço mínimo calculado
     min_price_wristband_id: string | null;
@@ -20,10 +19,12 @@ export interface PublicEvent {
 }
 
 const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
-    // 1. Buscar todos os eventos com capacidade, incluindo o novo id_url e o UUID original
+    // 1. Buscar todos os eventos com capacidade
     const { data: eventsData, error: eventsError } = await supabase
         .from('events')
-        .select('id, id_url, title, description, date, time, location, image_url, category, capacity') // Include id_url
+        .select(`
+            id, title, description, date, time, location, exposure_card_image_url, category, capacity
+        `)
         .order('date', { ascending: true });
 
     if (eventsError) {
@@ -31,7 +32,7 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
         throw new Error(eventsError.message);
     }
     
-    const eventIds = eventsData.map(e => e.id); // Usamos o UUID para buscar pulseiras
+    const eventIds = eventsData.map(e => e.id);
     
     // 2. Buscar o preço mínimo e o ID da pulseira, e contar a disponibilidade para todos os eventos
     const { data: wristbandsData, error: wristbandsError } = await supabase
@@ -51,8 +52,8 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
 
         const price = parseFloat(item.price as unknown as string) || 0; 
         
+        // APENAS pulseiras 'active' são consideradas disponíveis para compra e cálculo de preço mínimo
         if (item.status === 'active') {
-            // Update min_price only for active wristbands
             if (price < acc[item.event_id].min_price) {
                 acc[item.event_id].min_price = price;
                 acc[item.event_id].min_price_wristband_id = item.id;
@@ -68,15 +69,14 @@ const fetchPublicEvents = async (): Promise<PublicEvent[]> => {
         const minPrice = aggregates.min_price === Infinity ? null : aggregates.min_price;
 
         return {
-            id: event.id_url, // Usando id_url como ID principal
-            uuid: event.id, // Mantendo o UUID original
+            id: event.id,
             title: event.title,
             description: event.description,
             date: new Date(event.date).toLocaleDateString('pt-BR'),
             raw_date: new Date(event.date), // Store raw date
             time: event.time,
             location: event.location,
-            image_url: event.image_url,
+            image_url: event.exposure_card_image_url, // USANDO O NOVO CAMPO PARA O CARD DE EXPOSIÇÃO
             category: event.category,
             min_price: minPrice,
             min_price_wristband_id: aggregates.min_price_wristband_id,

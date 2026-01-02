@@ -39,14 +39,15 @@ serve(async (req) => {
   }
 
   try {
-    // 2. Buscar a transação pendente usando o payment_gateway_id (MP preference ID)
-    // Usando .limit(1) em vez de .single()
+    // 2. Buscar a transação pendente na tabela 'receivables'
+    // IMPORTANT: A tabela 'receivables' precisa ter as colunas 'event_id' e 'total_amount'
+    // Estes campos devem ser preenchidos quando o receivable é criado na UI/API de criação de preferência de pagamento.
     const { data: receivableArray, error: fetchReceivableError } = await supabaseService
         .from('receivables')
-        .select('id, client_user_id, wristband_analytics_ids, manager_user_id')
-        .eq('payment_gateway_id', resourceId) // Assumindo que o ID do recurso é o ID da preferência/pagamento
+        .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_amount') // Incluir event_id e total_amount
+        .eq('payment_gateway_id', resourceId) 
         .eq('status', 'pending')
-        .limit(1); // Changed from .single() to .limit(1)
+        .limit(1);
 
     let receivable = null;
     if (receivableArray && receivableArray.length > 0) {
@@ -61,9 +62,19 @@ serve(async (req) => {
     const transactionId = receivable.id;
     const clientUserId = receivable.client_user_id;
     const analyticsIds = receivable.wristband_analytics_ids;
-    
+    const managerUserId = receivable.manager_user_id;
+    const eventId = receivable.event_id; // Novo campo
+    const totalAmount = receivable.total_amount; // Novo campo
+
+    // Validações adicionais para os novos campos
+    if (!eventId || !totalAmount) {
+        console.error(`[MP Webhook] Critical Error: Receivable ${transactionId} missing event_id or total_amount.`);
+        return new Response(JSON.stringify({ error: 'Transaction data incomplete.' }), { status: 500, headers: corsHeaders });
+    }
+
     // 3. SIMULAÇÃO DE VERIFICAÇÃO DE PAGAMENTO (Substituir pela chamada real ao MP)
     // Status do MP: approved, pending, rejected, refunded, cancelled
+    // Para produção, você faria uma chamada para a API do Mercado Pago para obter o status real do pagamento.
     const paymentStatus = 'approved'; // Simulação de sucesso
     
     if (paymentStatus === 'approved') {
@@ -75,7 +86,41 @@ serve(async (req) => {
 
         if (updateReceivableError) throw updateReceivableError;
 
-        // 5. Atualizar wristband analytics: associar cliente e marcar como 'used'/'purchase'
+        // 5. Buscar o percentual de comissão aplicado ao evento
+        const { data: eventData, error: fetchEventError } = await supabaseService
+            .from('events')
+            .select('applied_percentage')
+            .eq('id', eventId)
+            .single();
+        
+        if (fetchEventError || !eventData) {
+            console.error(`[MP Webhook] Critical Error: Event ${eventId} not found or missing applied_percentage.`, fetchEventError);
+            throw new Error(`Event ${eventId} data incomplete for financial split.`);
+        }
+
+        const appliedPercentage = eventData.applied_percentage;
+        const platformAmount = totalAmount * (appliedPercentage / 100);
+        const managerAmount = totalAmount - platformAmount;
+
+        // 6. Registrar a divisão financeira na nova tabela financial_splits
+        const { error: insertSplitError } = await supabaseService
+            .from('financial_splits')
+            .insert({
+                transaction_id: transactionId,
+                event_id: eventId,
+                manager_user_id: managerUserId,
+                platform_amount: platformAmount,
+                manager_amount: managerAmount,
+                total_amount: totalAmount,
+                applied_percentage: appliedPercentage,
+            });
+
+        if (insertSplitError) {
+            console.error(`[MP Webhook] Critical Error: Failed to insert financial split for transaction ${transactionId}:`, insertSplitError);
+            // Lidar com falha na inserção do split (ex: notificar admin, retry, etc.)
+        }
+
+        // 7. Atualizar wristband analytics: associar cliente e marcar como 'used'/'purchase'
         const { data: analyticsToUpdate, error: fetchUpdateError } = await supabaseService
             .from('wristband_analytics')
             .select('id, wristband_id')
@@ -83,7 +128,7 @@ serve(async (req) => {
             
         if (fetchUpdateError) {
             console.error("CRITICAL: Failed to fetch analytics records for update:", fetchUpdateError);
-            throw new Error("Payment successful, but failed to retrieve ticket details for assignment.");
+            throw new Error("Payment approved, but failed to retrieve ticket details for assignment.");
         }
         
         // Prepara batch update para analytics records
@@ -98,6 +143,9 @@ serve(async (req) => {
                     client_id: clientUserId,
                     transaction_id: transactionId,
                     // Outros dados de preço seriam buscados do receivable ou do wristband
+                    platform_commission_percentage: appliedPercentage, // Adiciona ao log de dados
+                    platform_commission_amount: platformAmount,       // Adiciona ao log de dados
+                    manager_net_amount: managerAmount,                // Adiciona ao log de dados
                 }
             };
         });
@@ -111,7 +159,7 @@ serve(async (req) => {
             // A transação foi paga, mas a atribuição falhou. Requer intervenção manual.
         }
         
-        return new Response(JSON.stringify({ message: 'Payment approved and tickets assigned.' }), { status: 200, headers: corsHeaders });
+        return new Response(JSON.stringify({ message: 'Payment approved, financial split recorded, and tickets assigned.' }), { status: 200, headers: corsHeaders });
 
     } else if (paymentStatus === 'rejected' || paymentStatus === 'cancelled') {
         // 4. Atualizar status da transação para 'failed'

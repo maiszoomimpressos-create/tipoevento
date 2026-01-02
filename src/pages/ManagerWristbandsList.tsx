@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Loader2, QrCode, Tag, AlertTriangle, Settings } from 'lucide-react';
+import { Plus, Search, Loader2, AlertTriangle, Tag, Settings, QrCode } from 'lucide-react'; // Adicionado QrCode
 import { supabase } from '@/integrations/supabase/client';
 import { useManagerWristbands, WristbandData } from '@/hooks/use-manager-wristbands';
-import { useProfile } from '@/hooks/use-profile'; // Importando useProfile
+import { useProfile } from '@/hooks/use-profile'; // Importando o hook de perfil
+
+const ADMIN_MASTER_USER_TYPE_ID = 1;
 
 const ManagerWristbandsList: React.FC = () => {
     const navigate = useNavigate();
@@ -19,12 +21,12 @@ const ManagerWristbandsList: React.FC = () => {
             setUserId(user?.id);
         });
     }, []);
+    
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+    const isAdminMaster = profile?.tipo_usuario_id === ADMIN_MASTER_USER_TYPE_ID;
 
-    const { profile, isLoading: isLoadingProfile } = useProfile(userId); // Obtém o perfil do usuário
-    const userTypeId = profile?.tipo_usuario_id;
-
-    // Passa userTypeId para o hook useManagerWristbands
-    const { wristbands, isLoading, isError, invalidateWristbands } = useManagerWristbands(userId, userTypeId);
+    // O hook agora recebe isAdminMaster
+    const { wristbands, isLoading, isError, invalidateWristbands } = useManagerWristbands(userId, isAdminMaster);
 
     const filteredWristbands = wristbands.filter(wristband =>
         wristband.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -40,6 +42,8 @@ const ManagerWristbandsList: React.FC = () => {
                 return 'bg-gray-500/20 text-gray-400';
             case 'lost':
                 return 'bg-red-500/20 text-red-400';
+            case 'pending': // NOVO
+                return 'bg-yellow-500/20 text-yellow-400';
             default:
                 return 'bg-yellow-500/20 text-yellow-400';
         }
@@ -51,12 +55,13 @@ const ManagerWristbandsList: React.FC = () => {
             case 'used': return 'Utilizada';
             case 'lost': return 'Perdida';
             case 'cancelled': return 'Cancelada';
+            case 'pending': return 'Pendente'; // NOVO
             default: return 'Desconhecido';
         }
     };
 
-    const handleManageClick = (wristbandId: string) => {
-        navigate(`/manager/wristbands/manage/${wristbandId}`);
+    const handleManageClick = (eventId: string) => {
+        navigate(`/manager/wristbands/manage/${eventId}`);
     };
 
     // Estado de carregamento inicial (antes de saber se o usuário está logado ou o perfil carregado)
@@ -68,12 +73,15 @@ const ManagerWristbandsList: React.FC = () => {
             </div>
         );
     }
+    
+    // Removemos o check de !company para Admin Master, pois eles não precisam de uma empresa associada
+    // para visualizar todas as pulseiras. Para gestores normais, o hook já lida com a ausência de companyId.
 
     if (isError) {
         return (
             <div className="text-red-400 text-center py-10 flex flex-col items-center">
                 <AlertTriangle className="h-10 w-10 mb-4" />
-                Erro ao carregar pulseiras. Verifique se o Perfil da Empresa está cadastrado corretamente.
+                Erro ao carregar pulseiras.
             </div>
         );
     }
@@ -83,7 +91,7 @@ const ManagerWristbandsList: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
                 <h1 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-4 sm:mb-0 flex items-center">
                     <QrCode className="h-7 w-7 mr-3" />
-                    Gestão de Pulseiras ({wristbands.length})
+                    {isAdminMaster ? `Todas as Pulseiras (${wristbands.length})` : `Gestão de Pulseiras (${wristbands.length})`}
                 </h1>
                 {/* Este botão permanece no cabeçalho */}
                 <Button 
@@ -95,7 +103,7 @@ const ManagerWristbandsList: React.FC = () => {
                 </Button>
             </div>
 
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
+            <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
                 {/* Botão movido para o topo do card, antes do campo de pesquisa */}
                 <Button 
                     onClick={() => navigate('/manager/wristbands/create')}
@@ -147,7 +155,7 @@ const ManagerWristbandsList: React.FC = () => {
                                             className="border-b border-yellow-500/10 hover:bg-black/40 transition-colors text-sm"
                                         >
                                             <TableCell className="py-4">
-                                                <div className="text-white font-medium truncate max-w-[200px]">{wristband.code}</div>
+                                                <div className="text-white font-medium">{wristband.code}</div>
                                             </TableCell>
                                             <TableCell className="py-4">
                                                 <div className="text-gray-300 truncate max-w-[200px]">{wristband.events?.title || 'Evento Removido'}</div>

@@ -29,7 +29,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Cartões de Estatísticas Globais */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
                             <Users className="text-blue-500 h-5 w-5" />
@@ -45,7 +45,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
                             <Building className="text-purple-500 h-5 w-5" />
@@ -61,7 +61,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
                             <Zap className="text-green-500 h-5 w-5" />
@@ -77,7 +77,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
                             <AlertTriangle className="text-red-500 h-5 w-5" />
@@ -98,7 +98,7 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 {/* Atividade Recente */}
-                <div className="lg:col-span-2 bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+                <div className="lg:col-span-2 bg-black border border-yellow-500/30 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg sm:text-xl font-semibold text-white flex items-center">
                             <Clock className="h-5 w-5 mr-2 text-yellow-500" />
@@ -127,7 +127,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Saúde da Plataforma */}
-                <div className="lg:col-span-1 bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+                <div className="lg:col-span-1 bg-black border border-yellow-500/30 rounded-2xl p-6">
                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-6 flex items-center">
                         <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
                         Saúde da Plataforma

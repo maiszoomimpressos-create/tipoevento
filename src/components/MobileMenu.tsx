@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, X, Bell, User, LogOut, Crown, PlusCircle } from 'lucide-react'; // Importando PlusCircle
+import { Menu, X, Bell, User, LogOut, Crown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from '@/integrations/supabase/client';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile } from '@/hooks/use-profile';
-import { useUserType } from '@/hooks/use-user-type';
+import { useUserType } from '@/hooks/use-user-type'; // Importando novo hook
 import { showSuccess, showError } from '@/utils/toast';
+import { useManagerCompany } from '@/hooks/use-manager-company'; // NOVO: Importando hook da empresa
+
+const MANAGER_USER_TYPE_ID = 2;
 
 const MobileMenu: React.FC = () => {
     const navigate = useNavigate();
@@ -34,7 +37,14 @@ const MobileMenu: React.FC = () => {
     const userId = session?.user?.id;
     const { profile, isLoading: isLoadingProfile } = useProfile(userId);
     const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
-    const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
+    
+    // Obtém o nome base do tipo de usuário
+    const { userTypeName: baseUserTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id); 
+    
+    // NOVO: Busca dados da empresa se for Gestor PRO (tipo 2)
+    const isManagerPro = profile?.tipo_usuario_id === MANAGER_USER_TYPE_ID;
+    const { company, isLoading: isLoadingCompany } = useManagerCompany(isManagerPro ? userId : undefined);
+
 
     const handleNavigation = (path: string) => {
         setIsOpen(false);
@@ -58,12 +68,17 @@ const MobileMenu: React.FC = () => {
         { path: '/#contato', label: 'Contato', icon: 'fas fa-envelope' },
     ];
 
-    const isUserLoading = loadingSession || isLoadingProfile || statusLoading || isLoadingUserType;
+    const isUserLoading = loadingSession || isLoadingProfile || statusLoading || isLoadingUserType || (isManagerPro && isLoadingCompany);
     const isLoggedIn = session && profile;
     const isManager = isLoggedIn && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
-    const isClient = isLoggedIn && profile.tipo_usuario_id === 3; // Novo: Verifica se é Cliente
     
     const fullName = profile?.first_name + (profile?.last_name ? ` ${profile.last_name}` : '');
+    
+    let userRoleDisplay = baseUserTypeName;
+    if (isManagerPro) {
+        userRoleDisplay = company?.id ? `${baseUserTypeName} (PJ)` : `${baseUserTypeName} (PF)`;
+    }
+
 
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -94,7 +109,7 @@ const MobileMenu: React.FC = () => {
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-white font-semibold truncate">{fullName || 'Usuário'}</div>
-                                    <div className="text-gray-400 text-sm truncate">{userTypeName}</div>
+                                    <div className="text-gray-400 text-sm truncate">{userRoleDisplay}</div>
                                 </div>
                             </div>
 
@@ -123,16 +138,6 @@ const MobileMenu: React.FC = () => {
                                 >
                                     <Crown className="mr-3 h-5 w-5" />
                                     Dashboard PRO
-                                </Button>
-                            )}
-                            {isClient && ( // Botão "Criar Evento" visível apenas para clientes
-                                <Button 
-                                    onClick={() => handleNavigation('/manager/register')}
-                                    variant="ghost"
-                                    className="w-full justify-start text-lg py-6 text-yellow-500 font-semibold hover:bg-yellow-500/10"
-                                >
-                                    <PlusCircle className="mr-3 h-5 w-5" />
-                                    Criar Evento
                                 </Button>
                             )}
                             <div className="border-t border-yellow-500/20 pt-4">

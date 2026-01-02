@@ -8,7 +8,8 @@ import { Loader2 } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/use-profile';
-import ManagerTypeSelectionDialog from '@/components/ManagerTypeSelectionDialog'; // Importando o novo modal
+import ManagerTypeSelectionDialog from '@/components/ManagerTypeSelectionDialog';
+import ManagerIndividualRegisterDialog from '@/components/ManagerIndividualRegisterDialog'; // Importando o novo modal PF
 
 const ADMIN_MASTER_USER_TYPE_ID = 1;
 
@@ -17,7 +18,8 @@ const ManagerRegister: React.FC = () => {
     const location = useLocation();
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false); // Novo estado para o modal
+    const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false);
+    const [showIndividualRegisterModal, setShowIndividualRegisterModal] = useState(false); // NOVO: Estado para o modal PF
 
     const [userId, setUserId] = useState<string | undefined>(undefined);
     React.useEffect(() => {
@@ -37,23 +39,26 @@ const ManagerRegister: React.FC = () => {
     };
 
     const handleContinue = () => {
-        // Em vez de navegar, abre o modal de seleção de tipo
+        // Abre o modal de seleção de tipo
         setShowTypeSelectionModal(true);
     };
 
     const handleSelectManagerType = (type: 'individual' | 'company') => {
-        setShowTypeSelectionModal(false); // Fecha o modal
-        setIsSubmitting(true); // Indica que está processando a navegação
-        showSuccess(`Você selecionou o cadastro como ${type === 'individual' ? 'Pessoa Física' : 'Pessoa Jurídica'}.`);
+        setShowTypeSelectionModal(false); // Fecha o modal de seleção
+        setIsSubmitting(true); 
         
-        setTimeout(() => {
+        if (type === 'individual') {
+            // Abre o modal de registro individual
+            setShowIndividualRegisterModal(true);
             setIsSubmitting(false);
-            if (type === 'individual') {
-                navigate('/manager/register/individual');
-            } else {
+        } else {
+            // Navega para o registro de empresa
+            showSuccess(`Você selecionou o cadastro como Pessoa Jurídica.`);
+            setTimeout(() => {
+                setIsSubmitting(false);
                 navigate('/manager/register/company');
-            }
-        }, 1500);
+            }, 500);
+        }
     };
 
     return (
@@ -66,6 +71,12 @@ const ManagerRegister: React.FC = () => {
             </div>
             <div className="relative z-10 w-full max-w-sm sm:max-w-[800px] space-y-6">
                 <div className="text-center mb-6 sm:mb-8">
+                    <div 
+                        className="text-3xl font-serif text-yellow-500 font-bold mb-2 cursor-pointer"
+                        onClick={() => navigate('/')} 
+                    >
+                        Mazoy PRO
+                    </div>
                     <h1 className="text-xl sm:text-2xl font-semibold text-white mb-2">
                         {isAdminRegisterRoute && isAdminMaster ? "Editar Termos de Registro de Gestor" : "Cadastro de Gestor"}
                     </h1>
@@ -108,12 +119,20 @@ const ManagerRegister: React.FC = () => {
                 )}
             </div>
 
-            {/* Novo Modal de Seleção de Tipo de Gestor */}
+            {/* Modal de Seleção de Tipo de Gestor */}
             <ManagerTypeSelectionDialog
                 isOpen={showTypeSelectionModal}
                 onClose={() => setShowTypeSelectionModal(false)}
                 onSelectType={handleSelectManagerType}
                 isSubmitting={isSubmitting}
+            />
+            
+            {/* NOVO: Modal de Registro Individual (PF) */}
+            <ManagerIndividualRegisterDialog
+                isOpen={showIndividualRegisterModal}
+                onClose={() => setShowIndividualRegisterModal(false)}
+                profile={profile}
+                userId={userId}
             />
         </div>
     );

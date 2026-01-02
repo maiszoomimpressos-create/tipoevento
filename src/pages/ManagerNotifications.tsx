@@ -59,19 +59,20 @@ const ManagerNotifications: React.FC = () => {
             const fetchedCompanyEmail = companyData?.email || null;
             setCompanyEmail(fetchedCompanyEmail);
 
-            // Fetch Manager Settings - Using .limit(1) instead of .single()
-            const { data: settingsArray, error: settingsError } = await supabase
+            // Fetch Manager Settings
+            const { data: settingsData, error: settingsError } = await supabase
                 .from('manager_settings')
                 .select('*')
                 .eq('user_id', user.id)
-                .limit(1); // Changed from .single() to .limit(1)
+                .single();
 
-            let initialSettings = DEFAULT_SETTINGS;
-            if (settingsError && settingsError.code !== 'PGRST116' && settingsError.code !== '406') { // PGRST116 = No rows found, 406 = Not Acceptable
+            if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = No rows found
                 console.error("Error fetching settings:", settingsError);
                 showError("Erro ao carregar configurações de notificação.");
-            } else if (settingsArray && settingsArray.length > 0) {
-                const settingsData = settingsArray[0]; // Get the first (and only) item from the array
+            }
+
+            let initialSettings = DEFAULT_SETTINGS;
+            if (settingsData) {
                 initialSettings = {
                     newSaleEmail: settingsData.new_sale_email ?? DEFAULT_SETTINGS.newSaleEmail,
                     newSaleSystem: settingsData.new_sale_system ?? DEFAULT_SETTINGS.newSaleSystem,
@@ -182,7 +183,7 @@ const ManagerNotifications: React.FC = () => {
                 </div>
             </div>
 
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
+            <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
                 <CardHeader>
                     <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Preferências de Alerta</CardTitle>
                     <CardDescription className="text-gray-400 text-sm">
@@ -199,7 +200,7 @@ const ManagerNotifications: React.FC = () => {
                                 <div>
                                     <h3 className="font-semibold text-white mb-1">E-mail da Empresa Ausente</h3>
                                     <p className="text-sm text-gray-300">
-                                        Para receber notificações por e-mail, cadastre o E-mail da Empresa.
+                                        Para receber notificações por e-mail, cadastre o E-mail da Empresa no Perfil da Empresa.
                                     </p>
                                 </div>
                             </div>

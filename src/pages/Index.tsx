@@ -1,72 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { categories } from '@/data/events'; // Mantendo categories
+import { categories } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import { Input } from "@/components/ui/input";
 import MobileMenu from '@/components/MobileMenu';
 import { supabase } from '@/integrations/supabase/client';
 import { trackAdvancedFilterUse } from '@/utils/metrics';
 import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'; // Importando ChevronLeft e ChevronRight
-import EventCarousel from '@/components/EventCarousel'; // Importando o novo componente
+import { Loader2, AlertTriangle } from 'lucide-react';
+import Carousel3D from '@/components/Carousel3D'; // Importando o novo carrossel
+import { showSuccess, showError } from '@/utils/toast'; // Importando toast
 
 const EVENTS_PER_PAGE = 12;
 
-// Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null || price === 0) return 'Grátis';
-    // Formata para R$ X.XX, usando vírgula como separador decimal
+    if (price === null || price === 0) return 'Sem ingressos ativos';
     return `R$ ${price.toFixed(2).replace('.', ',')}`;
 };
 
 const Index: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation(); // Hook para acessar a localização atual
     const [userId, setUserId] = useState<string | undefined>(undefined);
     
-    // Extrai o termo de busca da URL (ex: /?search=termo)
-    const queryParams = new URLSearchParams(location.search);
-    const initialSearchTerm = queryParams.get('search') || '';
-    
-    const [searchTerm, setSearchTerm] = useState(initialSearchTerm); // Inicializa com o termo da URL
-    
-    // Carregamento de eventos do Supabase
     const { events: allEvents, isLoading: isLoadingEvents, isError: isErrorEvents } = usePublicEvents();
     
-    // Fetch user ID on mount
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalPages = Math.ceil(allEvents.length / EVENTS_PER_PAGE);
+
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
             setUserId(user?.id);
         });
     }, []);
-    
-    // Sincroniza o estado de busca com a URL quando o componente é montado ou a URL muda
-    useEffect(() => {
-        const newSearchTerm = queryParams.get('search') || '';
-        if (newSearchTerm !== searchTerm) {
-            setSearchTerm(newSearchTerm);
-            setCurrentPage(1);
-        }
-    }, [location.search]);
 
-
-    // Lógica de Filtragem
-    const filteredEventsBySearch = allEvents.filter(event =>
-        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Paginação
-    const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = Math.ceil(filteredEventsBySearch.length / EVENTS_PER_PAGE);
-
-    // CORRIGIDO: Redireciona para a tela de finalização de compra
     const handleEventClick = (event: PublicEvent) => {
-        navigate(`/finalizar-compra`, { state: { eventId: event.id } });
+        navigate(`/events/${event.id}`); // Navega para a página de detalhes do evento
     };
     
     const handleApplyFilters = () => {
@@ -83,7 +53,7 @@ const Index: React.FC = () => {
             
             const eventsSection = document.getElementById('eventos');
             if (eventsSection) {
-                const offset = 180; 
+                const offset = 80; 
                 const topPosition = eventsSection.getBoundingClientRect().top + window.scrollY - offset;
                 
                 window.scrollTo({
@@ -94,10 +64,11 @@ const Index: React.FC = () => {
         }
     };
 
-    // Lógica de Paginação
+    // Removido o handleTestLog e o botão de teste de log
+
     const startIndex = (currentPage - 1) * EVENTS_PER_PAGE;
     const endIndex = startIndex + EVENTS_PER_PAGE;
-    const displayedEvents = filteredEventsBySearch.slice(startIndex, endIndex);
+    const displayedEvents = allEvents.slice(startIndex, endIndex);
     
     const getPageNumbers = () => {
         const maxPagesToShow = 5;
@@ -114,76 +85,33 @@ const Index: React.FC = () => {
         }
         return pages;
     };
-    
-    // Função para atualizar o termo de busca e a URL
-    const handleSearchChange = (value: string) => {
-        setSearchTerm(value);
-        setCurrentPage(1);
-        
-        // Atualiza a URL sem recarregar a página
-        if (value) {
-            navigate(`/?search=${encodeURIComponent(value)}`, { replace: true });
-        } else {
-            navigate('/', { replace: true });
-        }
-    };
 
     return (
-        <div className="min-h-screen bg-black text-white overflow-x-hidden">
-            <header className="fixed top-0 left-0 right-0 z-[100] bg-black/80 backdrop-blur-md border-b border-yellow-500/20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-4 sm:space-x-8">
-                        <div className="text-xl sm:text-2xl font-serif text-yellow-500 font-bold">
-                            Mazoy
-                        </div>
-                        <nav className="hidden md:flex items-center space-x-8">
-                            <a href="#home" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Home</a>
-                            <a href="#eventos" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Eventos</a>
-                            <a href="#categorias" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Categorias</a>
-                            <a href="#contato" className="text-white hover:text-yellow-500 transition-colors duration-300 cursor-pointer">Contato</a>
-                        </nav>
-                    </div>
-                    <div className="flex items-center space-x-3 sm:space-x-4">
-                        {/* CAMPO DE BUSCA NO HEADER (AGORA FUNCIONAL) */}
-                        <div className="relative hidden lg:block">
-                            <Input 
-                                type="search" 
-                                placeholder="Buscar eventos..." 
-                                value={searchTerm}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                                className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500 w-48 md:w-64 pl-4 pr-10 py-2 rounded-xl"
-                            />
-                            <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60"></i>
-                        </div>
-                        <div className="hidden md:block">
-                            <AuthStatusMenu />
-                        </div>
-                        <MobileMenu />
-                    </div>
-                </div>
-            </header>
-            <section id="home" className="pt-20 pb-8 px-4 sm:px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] overflow-hidden">
-                        {isLoadingEvents ? (
-                            <div className="flex items-center justify-center h-full bg-black/60 border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/20">
-                                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-                            </div>
-                        ) : (
-                            <EventCarousel events={allEvents} />
-                        )}
-                    </div>
-                </div>
+        <>
+            {/* NOVO: Carrossel 3D */}
+            <section id="carousel" className="pt-0 bg-black">
+                <Carousel3D />
             </section>
-            <section id="eventos" className="py-12 sm:py-20 px-4 sm:px-6">
+            
+            <section id="eventos" className="py-12 sm:py-20 px-4 sm:px-6 bg-black">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-10 sm:mb-16">
                         <h2 className="text-3xl sm:text-5xl font-serif text-yellow-500 mb-4">Lista de Eventos</h2>
                         <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
                     </div>
+                    
                     <div className="mb-12">
                         <div className="flex flex-col lg:flex-row gap-6 mb-8">
-                            {/* CAMPO DE BUSCA REMOVIDO DAQUI, POIS FOI MOVIDO PARA O HEADER */}
+                            <div className="flex-1">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar eventos..."
+                                        className="w-full bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white placeholder-gray-400 text-base sm:text-lg focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/20 transition-all duration-300"
+                                    />
+                                    <i className="fas fa-search absolute right-4 sm:right-6 top-1/2 transform -translate-y-1/2 text-yellow-500 text-lg"></i>
+                                </div>
+                            </div>
                             <div className="flex flex-wrap gap-4">
                                 <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
                                     <option value="">Todas as Categorias</option>
@@ -281,11 +209,12 @@ const Index: React.FC = () => {
                                         <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
                                         <p className="text-gray-400">Carregando eventos...</p>
                                     </div>
-                                ) : isErrorEvents || filteredEventsBySearch.length === 0 ? (
-                                    <div className="text-center py-20">
-                                        <i className="fas fa-calendar-times text-5xl text-gray-600 mb-4"></i>
-                                        <p className="text-gray-400 text-lg">Nenhum evento encontrado.</p>
-                                        <p className="text-gray-500 text-sm mt-2">Tente ajustar sua pesquisa ou filtros.</p>
+                                ) : isErrorEvents || allEvents.length === 0 ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                                        <div className="col-span-full text-center py-10">
+                                            <AlertTriangle className="h-10 w-10 text-red-500 mx-auto mb-4" />
+                                            <p className="text-gray-400">Nenhum evento encontrado.</p>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -297,9 +226,9 @@ const Index: React.FC = () => {
                                             >
                                                 <div className="relative overflow-hidden">
                                                     <img
-                                                        src={event.image_url}
+                                                        src={event.image_url} // USANDO O NOVO CAMPO (exposure_card_image_url)
                                                         alt={event.title}
-                                                        className="w-full h-48 sm:h-56 object-cover object-top group-hover:scale-110 transition-transform duration-500"
+                                                        className="w-full h-[200px] object-cover object-top group-hover:scale-110 transition-transform duration-500"
                                                     />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                                     <div className="absolute top-4 left-4">
@@ -353,14 +282,14 @@ const Index: React.FC = () => {
                                     </div>
                                 )}
                                 
-                                {filteredEventsBySearch.length > EVENTS_PER_PAGE && (
+                                {allEvents.length > EVENTS_PER_PAGE && (
                                     <div className="flex items-center justify-center mt-12 space-x-2">
                                         <button 
                                             onClick={() => handlePageChange(currentPage - 1)}
                                             disabled={currentPage === 1}
                                             className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <ChevronLeft className="h-5 w-5" /> {/* Ícone ChevronLeft */}
+                                            <i className="fas fa-chevron-left"></i>
                                         </button>
                                         
                                         {getPageNumbers().map((page) => (
@@ -381,13 +310,13 @@ const Index: React.FC = () => {
                                             disabled={currentPage === totalPages}
                                             className="w-10 h-10 sm:w-12 sm:h-12 bg-black/60 border border-yellow-500/30 rounded-xl flex items-center justify-center text-yellow-500 hover:bg-yellow-500/20 hover:border-yellow-500 transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <ChevronRight className="h-5 w-5" /> {/* Ícone ChevronRight */}
+                                            <i className="fas fa-chevron-right"></i>
                                         </button>
                                     </div>
                                 )}
                                 <div className="text-center mt-8">
                                     <p className="text-gray-400 text-sm sm:text-base">
-                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredEventsBySearch.length)}</span> de <span className="text-yellow-500 font-semibold">{filteredEventsBySearch.length}</span> eventos
+                                        Mostrando <span className="text-yellow-500 font-semibold">{startIndex + 1}-{Math.min(endIndex, allEvents.length)}</span> de <span className="text-yellow-500 font-semibold">{allEvents.length}</span> eventos
                                     </p>
                                 </div>
                             </div>
@@ -411,7 +340,7 @@ const Index: React.FC = () => {
                                     <i className={category.icon}></i>
                                 </div>
                                 <h3 className="text-white font-semibold text-sm sm:text-base mb-1">{category.name}</h3>
-                                <span className="text-gray-400 text-xs sm:text-sm">{category.count} eventos</span>
+                                <span className="text-gray-400 text-xs sm:text-text-sm">{category.count} eventos</span>
                             </div>
                         ))}
                     </div>
@@ -443,16 +372,16 @@ const Index: React.FC = () => {
                             </p>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Links Úteis</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Links Úteis</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Sobre Nós</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
+                                <li><a href="#" className="text-400 hover:text-yellow-500 transition-colors cursor-pointer">Como Funciona</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Termos de Uso</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Privacidade</a></li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Suporte</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Suporte</h4>
                             <ul className="space-y-2 text-sm">
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
                                 <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
@@ -461,7 +390,7 @@ const Index: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Redes Sociais</h4>
+                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg">Redes Sociais</h4>
                             <div className="flex space-x-4">
                                 <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
                                     <i className="fab fa-instagram text-xl sm:text-2xl"></i>
@@ -485,7 +414,7 @@ const Index: React.FC = () => {
                     </div>
                 </div>
             </footer>
-        </div>
+        </>
     );
 };
 

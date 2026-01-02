@@ -52,6 +52,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
     const { profile } = useProfile(userId);
     
     const isManager = profile && (profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2);
+    const isClient = profile && profile.tipo_usuario_id === 3;
     
     // Se for gestor e houver notificações pendentes (simuladas)
     const managerNotifications = isManager && hasPendingNotifications ? getManagerNotifications(userId!) : [];
@@ -107,21 +108,21 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ hasPendingNotificat
                         </div>
                     ) : 
                     /* Lógica para Cliente (Perfil Incompleto) */
-                    !isManager && hasPendingNotifications ? (
+                    isClient && hasPendingNotifications ? (
                         <div className="space-y-3">
                             <div className="flex items-start p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                                 <AlertTriangle className="h-5 w-5 text-red-400 mt-1 flex-shrink-0" />
                                 <div className="ml-3">
-                                    <p className="text-white font-medium text-sm">Perfil Incompleto</p>
+                                    <p className="text-white font-medium text-sm">Registro de Gestor Pendente</p>
                                     <p className="text-gray-400 text-xs mt-1">
-                                        Seu perfil está incompleto. Preencha os dados essenciais (CPF, Data de Nascimento, etc.) para liberar todas as funcionalidades.
+                                        Você iniciou o processo para se tornar um Gestor PRO. Complete seu cadastro (RG, Endereço, etc.) para liberar o Dashboard PRO.
                                     </p>
                                     <Button 
                                         variant="link" 
                                         className="h-auto p-0 mt-2 text-xs text-yellow-500 hover:text-yellow-400"
-                                        onClick={() => navigate('/profile')}
+                                        onClick={() => navigate('/manager/register')} // Redireciona para a página de registro de gestor
                                     >
-                                        Ir para o Perfil
+                                        Continuar Cadastro PRO
                                     </Button>
                                 </div>
                             </div>

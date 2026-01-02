@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
 import AuthStatusMenu from '@/components/AuthStatusMenu';
 import MobileMenu from '@/components/MobileMenu';
+import ScrollToTop from '@/components/ScrollToTop'; // Import ScrollToTop
 
 const ClientLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -34,7 +35,8 @@ const ClientLayout: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <main className="pt-20">
+            <main className="pt-[45px]"> {/* Ajustado o padding-top para 45px */}
+                <ScrollToTop />
                 <Outlet />
             </main>
         </div>

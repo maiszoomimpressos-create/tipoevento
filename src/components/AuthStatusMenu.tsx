@@ -8,8 +8,9 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useProfileStatus } from '@/hooks/use-profile-status';
 import { useProfile, ProfileData } from '@/hooks/use-profile';
 import NotificationBell from './NotificationBell';
-import { Shield, PlusCircle, UserPlus, Crown } from 'lucide-react'; // Adicionando Crown aqui
-import { useUserType } from '@/hooks/use-user-type';
+import { Shield } from 'lucide-react'; // Importando ícone para Admin
+import { useUserType } from '@/hooks/use-user-type'; // Importando novo hook
+import { useManagerCompany } from '@/hooks/use-manager-company'; // NOVO: Importando hook da empresa
 
 const AuthStatusMenu: React.FC = () => {
     const navigate = useNavigate();
@@ -37,7 +38,12 @@ const AuthStatusMenu: React.FC = () => {
     
     const { hasPendingNotifications, loading: statusLoading } = useProfileStatus(profile, isLoadingProfile);
     
-    const { userTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
+    // Obtém o nome base do tipo de usuário
+    const { userTypeName: baseUserTypeName, isLoadingUserType } = useUserType(profile?.tipo_usuario_id);
+    
+    // NOVO: Busca dados da empresa se for Gestor PRO (tipo 2)
+    const isManagerPro = profile?.tipo_usuario_id === 2;
+    const { company, isLoading: isLoadingCompany } = useManagerCompany(isManagerPro ? userId : undefined);
 
     const handleLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -49,25 +55,35 @@ const AuthStatusMenu: React.FC = () => {
         }
     };
 
-    if (loadingSession || isLoadingProfile || statusLoading || isLoadingUserType) {
+    if (loadingSession || isLoadingProfile || statusLoading || isLoadingUserType || (isManagerPro && isLoadingCompany)) {
+        // Pode retornar um Skeleton ou null durante o carregamento inicial
         return <div className="w-10 h-10 bg-yellow-500/20 rounded-full animate-pulse"></div>;
     }
 
     if (session && profile) {
         const initials = profile.first_name ? profile.first_name.charAt(0).toUpperCase() : 'U';
         const isManager = profile.tipo_usuario_id === 1 || profile.tipo_usuario_id === 2;
-        const isAdmin = profile.tipo_usuario_id === 1;
-        const isClient = profile.tipo_usuario_id === 3; // Novo: Verifica se é Cliente
+        const isClient = profile.tipo_usuario_id === 3;
+        const isAdmin = profile.tipo_usuario_id === 1; 
         
         const fullName = profile.first_name + (profile.last_name ? ` ${profile.last_name}` : '');
+        
+        let userRoleDisplay = baseUserTypeName;
+        if (isManagerPro) {
+            // Se for Gestor PRO (tipo 2), verifica se tem empresa
+            userRoleDisplay = company?.id ? `${baseUserTypeName} (PJ)` : `${baseUserTypeName} (PF)`;
+        }
+
 
         return (
             <div className="flex items-center space-x-4">
+                {/* Ícone de Notificação (Agora é um Popover) */}
                 <NotificationBell 
                     hasPendingNotifications={hasPendingNotifications} 
                     loading={statusLoading} 
                 />
 
+                {/* Menu de Perfil */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="cursor-pointer p-1 rounded-full border-2 border-yellow-500/50 hover:border-yellow-500 transition-all duration-300">
@@ -82,7 +98,7 @@ const AuthStatusMenu: React.FC = () => {
                             {fullName}
                         </DropdownMenuLabel>
                         <DropdownMenuLabel className="text-gray-400 text-xs pt-0">
-                            {userTypeName}
+                            {userRoleDisplay}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator className="bg-yellow-500/20" />
                         <DropdownMenuItem 
@@ -99,41 +115,34 @@ const AuthStatusMenu: React.FC = () => {
                             <i className="fas fa-ticket-alt mr-2"></i>
                             Meus Ingressos
                         </DropdownMenuItem>
+                        
+                        {/* NOVO: Cadastrar Eventos para Clientes (Tipo 3) */}
+                        {isClient && (
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/manager/register')} 
+                                className="cursor-pointer hover:bg-yellow-500/10 text-green-400 font-semibold"
+                            >
+                                <i className="fas fa-plus-circle mr-2"></i>
+                                Cadastrar Eventos
+                            </DropdownMenuItem>
+                        )}
+
                         {isManager && (
                             <DropdownMenuItem 
                                 onClick={() => navigate('/manager/dashboard')} 
                                 className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
                             >
-                                <Crown className="mr-2 h-4 w-4" />
+                                <i className="fas fa-crown mr-2"></i>
                                 Dashboard PRO
                             </DropdownMenuItem>
                         )}
                         {isAdmin && (
-                            <>
-                                <DropdownMenuItem 
-                                    onClick={() => navigate('/admin/dashboard')} 
-                                    className="cursor-pointer hover:bg-yellow-500/10 text-red-400 font-semibold"
-                                >
-                                    <Shield className="mr-2 h-4 w-4" />
-                                    Dashboard Admin
-                                </DropdownMenuItem>
-                                {/* Novo link para Admin Master registrar gestor */}
-                                <DropdownMenuItem 
-                                    onClick={() => navigate('/admin/register-manager')} 
-                                    className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
-                                >
-                                    <UserPlus className="mr-2 h-4 w-4" />
-                                    Registrar Novo Gestor
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                        {isClient && ( // Botão "Criar Evento" visível apenas para clientes
                             <DropdownMenuItem 
-                                onClick={() => navigate('/manager/register')} 
-                                className="cursor-pointer hover:bg-yellow-500/10 text-yellow-500 font-semibold"
+                                onClick={() => navigate('/admin/dashboard')} 
+                                className="cursor-pointer hover:bg-yellow-500/10 text-red-400 font-semibold"
                             >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Criar Evento
+                                <Shield className="mr-2 h-4 w-4" />
+                                Dashboard Admin
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator className="bg-yellow-500/20" />
@@ -150,6 +159,7 @@ const AuthStatusMenu: React.FC = () => {
         );
     }
 
+    // Se não estiver logado, retorna os botões de Login/Cadastro
     return (
         <div className="flex items-center space-x-3">
             <Button
