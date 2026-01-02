@@ -150,6 +150,7 @@ const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
                 variant="outline" 
                 className="w-full bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 text-sm h-10"
                 disabled={disabled || uploading}
+                type="button" // Adicionado explicitamente para evitar submissão de formulário
             >
                 {uploading ? (
                     <div className="flex items-center justify-center">

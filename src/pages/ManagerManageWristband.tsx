@@ -15,7 +15,7 @@ interface WristbandDetails {
     id: string;
     code: string;
     access_type: string;
-    status: 'active' | 'used' | 'lost' | 'cancelled';
+    status: 'active' | 'used' | 'lost' | 'cancelled' | 'pending'; // NOVO: Adicionado 'pending'
     created_at: string;
     manager_user_id: string;
     events: { title: string } | null;
@@ -30,12 +30,13 @@ interface AnalyticsEntry {
     event_data: any;
     created_at: string;
     code_wristbands: string;
-    status: 'active' | 'used' | 'lost' | 'cancelled';
+    status: 'active' | 'used' | 'lost' | 'cancelled' | 'pending'; // NOVO: Adicionado 'pending'
     sequential_number: number | null; // Novo campo
 }
 
 const STATUS_OPTIONS = [
     { value: 'active', label: 'Ativa', icon: CheckCircle, color: 'text-green-500' },
+    { value: 'pending', label: 'Pendente Pagamento', icon: AlertTriangle, color: 'text-yellow-500' }, // NOVO
     { value: 'used', label: 'Utilizada', icon: XCircle, color: 'text-gray-500' },
     { value: 'lost', label: 'Perdida', icon: AlertTriangle, color: 'text-red-500' },
     { value: 'cancelled', label: 'Cancelada', icon: XCircle, color: 'text-red-500' },
@@ -258,6 +259,7 @@ const ManagerManageWristband: React.FC = () => {
             case 'used': return 'bg-gray-500/20 text-gray-400';
             case 'lost': return 'bg-red-500/20 text-red-400';
             case 'cancelled': return 'bg-red-500/20 text-red-400';
+            case 'pending': return 'bg-yellow-500/20 text-yellow-400'; // NOVO
             default: return 'bg-yellow-500/20 text-yellow-400';
         }
     };
@@ -326,7 +328,7 @@ const ManagerManageWristband: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Coluna de Detalhes e Status (CONSOLIDADA) */}
                 <div className="lg:col-span-1 space-y-6">
-                    <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
+                    <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
                         <CardTitle className="text-white text-xl mb-4 flex items-center">
                             <Tag className="h-5 w-5 mr-2 text-yellow-500" />
                             Informações e Status
@@ -404,14 +406,14 @@ const ManagerManageWristband: React.FC = () => {
                             )}
 
                             {/* Botões de Ação (Ajustados) */}
-                            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 pt-2">
+                            <div className="flex space-x-4 pt-2">
                                 <Button
                                     onClick={handleStatusUpdate}
                                     disabled={isUpdatingStatus || !hasChanges}
                                     className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 py-2 text-base font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 h-10"
                                 >
                                     {isUpdatingStatus ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
                                     ) : (
                                         <>
                                             <Save className="w-4 h-4 mr-2" />
@@ -435,7 +437,7 @@ const ManagerManageWristband: React.FC = () => {
 
                 {/* Coluna de Histórico de Analytics (Grid/Tabela) */}
                 <div className="lg:col-span-2">
-                    <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
+                    <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 p-6">
                         <CardTitle className="text-white text-xl mb-4 flex items-center">
                             <Clock className="h-5 w-5 mr-2 text-yellow-500" />
                             Histórico de Uso (Analytics)

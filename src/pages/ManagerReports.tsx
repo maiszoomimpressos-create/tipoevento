@@ -6,7 +6,7 @@ import { ArrowLeft, BarChart3, FileText, TrendingUp, Users } from 'lucide-react'
 
 const ReportCard: React.FC<{ icon: React.ReactNode, title: string, description: string, onClick: () => void }> = ({ icon, title, description, onClick }) => (
     <Card 
-        className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer"
+        className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer"
         onClick={onClick}
     >
         <CardHeader className="p-0 mb-4">
@@ -71,7 +71,7 @@ const ManagerReports: React.FC = () => {
                 />
             </div>
             
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+            <Card className="bg-black border border-yellow-500/30 rounded-2xl p-6">
                 <CardHeader className="p-0 mb-4">
                     <CardTitle className="text-white text-xl flex items-center">
                         <BarChart3 className="h-5 w-5 mr-2 text-yellow-500" />

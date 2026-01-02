@@ -6,8 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Settings, ArrowLeft, Loader2, Zap, Key } from 'lucide-react';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useProfile } from '@/hooks/use-profile';
 
 interface AdvancedSettingsState {
     developmentMode: boolean;
@@ -23,36 +21,19 @@ const DEFAULT_ADVANCED_SETTINGS: AdvancedSettingsState = {
     autoArchiveEvents: true,
 };
 
-const ADMIN_MASTER_USER_TYPE_ID = 1;
-
 const ManagerAdvancedSettings: React.FC = () => {
     const navigate = useNavigate();
     const [settings, setSettings] = useState<AdvancedSettingsState>(DEFAULT_ADVANCED_SETTINGS);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [userId, setUserId] = useState<string | undefined>(undefined);
-
-    // 1. Fetch User ID
-    useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setUserId(user?.id);
-        });
-    }, []);
-    
-    // 2. Fetch Profile to get user type
-    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
-    const isAdminMaster = profile?.tipo_usuario_id === ADMIN_MASTER_USER_TYPE_ID;
-
     // Simulação de carregamento de dados
     useEffect(() => {
-        if (isLoadingProfile) return;
-        
         // Em um cenário real, buscaríamos essas configurações do DB (ex: manager_advanced_settings)
         setTimeout(() => {
             setSettings(DEFAULT_ADVANCED_SETTINGS);
             setIsLoading(false);
         }, 800);
-    }, [isLoadingProfile]);
+    }, []);
 
     const handleSwitchChange = (key: keyof AdvancedSettingsState, checked: boolean) => {
         setSettings(prev => ({ ...prev, [key]: checked }));
@@ -84,10 +65,8 @@ const ManagerAdvancedSettings: React.FC = () => {
             setIsSaving(false);
         }
     };
-    
-    // A função handleNavigateToEventDetails foi removida.
 
-    if (isLoading || isLoadingProfile) {
+    if (isLoading) {
         return (
             <div className="max-w-4xl mx-auto px-4 sm:px-0 text-center py-20">
                 <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
@@ -113,7 +92,7 @@ const ManagerAdvancedSettings: React.FC = () => {
                 </Button>
             </div>
 
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
+            <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
                 <CardHeader>
                     <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Ajustes de Sistema e Segurança</CardTitle>
                     <CardDescription className="text-gray-400 text-sm">
@@ -129,7 +108,7 @@ const ManagerAdvancedSettings: React.FC = () => {
                             Sistema
                         </h3>
                         
-                        <div className="flex items-center justify-between p-4 bg-black/60 rounded-xl border border-yellow-500/20">
+                        <div className="flex items-center justify-between p-4 bg-black/70 rounded-xl border border-yellow-500/20">
                             <div>
                                 <p className="text-white font-medium">Modo de Desenvolvimento</p>
                                 <p className="text-gray-400 text-xs">Ativa recursos de teste e desativa otimizações de produção. Use com cautela.</p>
@@ -142,7 +121,7 @@ const ManagerAdvancedSettings: React.FC = () => {
                             />
                         </div>
 
-                        <div className="flex items-center justify-between p-4 bg-black/60 rounded-xl border border-yellow-500/20">
+                        <div className="flex items-center justify-between p-4 bg-black/70 rounded-xl border border-yellow-500/20">
                             <div>
                                 <p className="text-white font-medium">Arquivamento Automático de Eventos</p>
                                 <p className="text-gray-400 text-xs">Eventos finalizados são movidos automaticamente para o arquivo após 7 dias.</p>
@@ -154,8 +133,6 @@ const ManagerAdvancedSettings: React.FC = () => {
                                 disabled={isSaving}
                             />
                         </div>
-                        
-                        {/* O bloco de Ferramentas de Teste (Admin) foi removido */}
                     </div>
 
                     {/* Integrações e API */}
@@ -165,7 +142,7 @@ const ManagerAdvancedSettings: React.FC = () => {
                             Integração de API
                         </h3>
                         
-                        <div className="flex items-center justify-between p-4 bg-black/60 rounded-xl border border-yellow-500/20">
+                        <div className="flex items-center justify-between p-4 bg-black/70 rounded-xl border border-yellow-500/20">
                             <div>
                                 <p className="text-white font-medium">Habilitar Integração Externa</p>
                                 <p className="text-gray-400 text-xs">Permite que sistemas externos acessem seus dados de eventos via API.</p>

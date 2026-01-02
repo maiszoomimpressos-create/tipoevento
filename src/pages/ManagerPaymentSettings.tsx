@@ -38,18 +38,18 @@ const ManagerPaymentSettings: React.FC = () => {
             }
             setUserId(user.id);
 
-            // Fetch Payment Settings - Using .limit(1) instead of .single()
-            const { data: settingsArray, error: settingsError } = await supabase
+            const { data: settingsData, error: settingsError } = await supabase
                 .from('payment_settings')
                 .select('*')
                 .eq('user_id', user.id)
-                .limit(1); // Changed from .single() to .limit(1)
+                .single();
 
-            if (settingsError && settingsError.code !== 'PGRST116' && settingsError.code !== '406') { // PGRST116 = No rows found, 406 = Not Acceptable
+            if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = No rows found
                 console.error("Error fetching payment settings:", settingsError);
                 showError("Erro ao carregar configurações de pagamento.");
-            } else if (settingsArray && settingsArray.length > 0) {
-                const settingsData = settingsArray[0]; // Get the first (and only) item from the array
+            }
+
+            if (settingsData) {
                 // Ao carregar, mostramos apenas os últimos 4 dígitos para segurança
                 const maskedApiKey = settingsData.api_key ? '••••••••••••' + settingsData.api_key.slice(-4) : '';
                 const maskedApiToken = settingsData.api_token ? '••••••••••••' + settingsData.api_token.slice(-4) : '';
@@ -81,7 +81,6 @@ const ManagerPaymentSettings: React.FC = () => {
             gateway_name: settings.gatewayName,
         };
 
-        // Se o valor não começar com '••••', significa que o usuário digitou um novo valor
         if (!settings.apiKey.startsWith('••••')) {
             dataToSave.api_key = settings.apiKey;
         }
@@ -90,7 +89,7 @@ const ManagerPaymentSettings: React.FC = () => {
         }
 
         try {
-            // Tenta atualizar (UPSERT) usando user_id como chave de conflito
+            // Tenta atualizar (UPSERT)
             const { error } = await supabase
                 .from('payment_settings')
                 .upsert(dataToSave, { onConflict: 'user_id' });
@@ -138,7 +137,7 @@ const ManagerPaymentSettings: React.FC = () => {
                 </Button>
             </div>
 
-            <Card className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
+            <Card className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10">
                 <CardHeader>
                     <CardTitle className="text-white text-xl sm:text-2xl font-semibold">Integração de Gateway</CardTitle>
                     <CardDescription className="text-gray-400 text-sm">
@@ -166,7 +165,7 @@ const ManagerPaymentSettings: React.FC = () => {
                             type="text"
                             value={settings.gatewayName} 
                             onChange={(e) => handleInputChange('gatewayName', e.target.value)} 
-                            placeholder="Ex: Mercado Pago"
+                            placeholder="Ex: Stripe, PagSeguro, etc."
                             className="bg-black/60 border-yellow-500/30 text-white placeholder-gray-500 focus:border-yellow-500"
                             disabled={isSaving}
                         />

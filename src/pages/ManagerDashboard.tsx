@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { managerStats } from '@/data/events';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, QrCode, BarChart3, Download, Settings, ChevronDown } from 'lucide-react';
 
 const ManagerDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -15,7 +17,7 @@ const ManagerDashboard: React.FC = () => {
 
             {/* Cartões de Estatísticas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
                             <i className="fas fa-chart-line text-green-500 text-lg sm:text-xl"></i>
@@ -31,7 +33,7 @@ const ManagerDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
                             <i className="fas fa-ticket-alt text-blue-500 text-lg sm:text-xl"></i>
@@ -47,7 +49,7 @@ const ManagerDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center">
                             <i className="fas fa-calendar-check text-yellow-500 text-lg sm:text-xl"></i>
@@ -63,7 +65,7 @@ const ManagerDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6 hover:border-yellow-500/60 transition-all duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
                             <i className="fas fa-users text-purple-500 text-lg sm:text-xl"></i>
@@ -82,7 +84,7 @@ const ManagerDashboard: React.FC = () => {
 
             {/* Gráficos e Top Eventos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg sm:text-xl font-semibold text-white">Receita Mensal</h3>
                         <div className="flex items-center space-x-4">
@@ -101,7 +103,7 @@ const ManagerDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6">
                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-6">Eventos Mais Vendidos</h3>
                     <div className="space-y-4">
                         {managerStats.topEvents.map((event, index) => (
@@ -130,7 +132,7 @@ const ManagerDashboard: React.FC = () => {
 
             {/* Vendas Recentes e Ações Rápidas */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+                <div className="lg:col-span-2 bg-black border border-yellow-500/30 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg sm:text-xl font-semibold text-white">Vendas Recentes</h3>
                         <Button className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 text-xs sm:text-sm cursor-pointer px-3 py-1">
@@ -178,36 +180,56 @@ const ManagerDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-6">
+                <div className="bg-black border border-yellow-500/30 rounded-2xl p-6">
                     <h3 className="text-lg sm:text-xl font-semibold text-white mb-6">Ações Rápidas</h3>
-                    <div className="space-y-4">
-                        <Button 
-                            onClick={() => navigate('/manager/events/create')}
-                            className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base"
-                        >
-                            <i className="fas fa-plus mr-2"></i>
-                            Criar Novo Evento
-                        </Button>
-                        <Button 
-                            onClick={() => navigate('/manager/wristbands/create')}
-                            className="w-full bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base"
-                        >
-                            <i className="fas fa-id-badge mr-2"></i>
-                            Gerar Pulseiras
-                        </Button>
-                        <Button 
-                            onClick={() => navigate('/manager/reports')}
-                            className="w-full bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base"
-                        >
-                            <i className="fas fa-chart-bar mr-2"></i>
-                            Relatório Completo
-                        </Button>
-                        <Button className="w-full bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base">
-                            <i className="fas fa-download mr-2"></i>
-                            Exportar Dados
-                        </Button>
-                    </div>
-
+                    
+                    {/* Menu Suspenso de Ações Rápidas */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                className="w-full bg-yellow-500 text-black hover:bg-yellow-600 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base"
+                            >
+                                <Settings className="mr-2 h-5 w-5" />
+                                Ações de Gerenciamento
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-full bg-black/90 border border-yellow-500/30 text-white">
+                            <DropdownMenuLabel className="text-yellow-500">Gerenciar Eventos e Pulseiras</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-yellow-500/20" />
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/manager/events/create')}
+                                className="cursor-pointer hover:bg-yellow-500/10"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Criar Novo Evento
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/manager/wristbands/create')}
+                                className="cursor-pointer hover:bg-yellow-500/10"
+                            >
+                                <QrCode className="mr-2 h-4 w-4" />
+                                Gerar Pulseiras
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-yellow-500/20" />
+                            <DropdownMenuItem 
+                                onClick={() => navigate('/manager/reports')}
+                                className="cursor-pointer hover:bg-yellow-500/10"
+                            >
+                                <BarChart3 className="mr-2 h-4 w-4" />
+                                Relatório Completo
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => alert('Exportando dados...')}
+                                className="cursor-pointer hover:bg-yellow-500/10"
+                            >
+                                <Download className="mr-2 h-4 w-4" />
+                                Exportar Dados
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    {/* Status do Sistema (mantido) */}
                     <div className="mt-8 p-4 bg-black/40 rounded-xl">
                         <h4 className="text-white font-semibold mb-4 flex items-center text-base sm:text-lg">
                             <i className="fas fa-server text-yellow-500 mr-2"></i>
