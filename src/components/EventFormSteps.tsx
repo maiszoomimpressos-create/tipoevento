@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { categories } from '@/data/events';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ImageOff, CalendarDays, ArrowLeft, Save, ArrowRight, Image, CheckSquare } from 'lucide-react';
+import { Loader2, ImageOff, CalendarDays, ArrowLeft, Save, ArrowRight, Image, CheckSquare, FileText, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { DatePicker } from '@/components/DatePicker';
 import ImageUploadPicker from '@/components/ImageUploadPicker';
@@ -43,6 +43,7 @@ interface EventFormData {
     has_food_court: boolean;
     has_restrooms: boolean;
     has_parking: boolean;
+    accept_contract: boolean; // Adicionado
 }
 
 // Zod schema for form validation
@@ -69,6 +70,7 @@ const eventSchema = z.object({
     has_food_court: z.boolean(),
     has_restrooms: z.boolean(),
     has_parking: z.boolean(),
+    accept_contract: z.boolean({ required_error: "Você deve aceitar os termos do contrato." }), // Adicionado
 });
 
 interface EventFormStepsProps {
@@ -90,23 +92,7 @@ const EventFormSteps: React.FC<EventFormStepsProps> = ({ eventId, initialData, o
     const [commissionRanges, setCommissionRanges] = useState<any[]>([]); // Faixas de comissão
     const [calculatedCommission, setCalculatedCommission] = useState<{ percentage: number; rangeId: string } | null>(null); // Comissão calculada
 
-    const capacity = form.watch('capacity'); // Observa a capacidade para recalcular a comissão
-
-    useEffect(() => {
-        if (typeof capacity === 'number' && capacity > 0 && commissionRanges.length > 0) {
-            const matchingRange = commissionRanges.find(range => 
-                capacity >= range.min_tickets && capacity <= range.max_tickets
-            );
-            if (matchingRange) {
-                setCalculatedCommission({ percentage: matchingRange.percentage, rangeId: matchingRange.id });
-            } else {
-                setCalculatedCommission(null);
-                showError("Não foi encontrada uma faixa de comissão válida para a capacidade informada.");
-            }
-        } else {
-            setCalculatedCommission(null);
-        }
-    }, [capacity, commissionRanges]);
+    // Declaração única e correta de form e capacity
     const form = useForm<EventFormData>({
         resolver: zodResolver(eventSchema),
         defaultValues: {
@@ -130,8 +116,26 @@ const EventFormSteps: React.FC<EventFormStepsProps> = ({ eventId, initialData, o
             has_parking: false,
             accept_contract: false, // Default para o checkbox de contrato
         },
-        values: initialData, // Use initialData for default values
+        values: initialData,
     });
+
+    const capacity = form.watch('capacity'); // Observa a capacidade para recalcular a comissão
+
+    useEffect(() => {
+        if (typeof capacity === 'number' && capacity > 0 && commissionRanges.length > 0) {
+            const matchingRange = commissionRanges.find(range => 
+                capacity >= range.min_tickets && capacity <= range.max_tickets
+            );
+            if (matchingRange) {
+                setCalculatedCommission({ percentage: matchingRange.percentage, rangeId: matchingRange.id });
+            } else {
+                setCalculatedCommission(null);
+                showError("Não foi encontrada uma faixa de comissão válida para a capacidade informada.");
+            }
+        } else {
+            setCalculatedCommission(null);
+        }
+    }, [capacity, commissionRanges]);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -216,6 +220,7 @@ const EventFormSteps: React.FC<EventFormStepsProps> = ({ eventId, initialData, o
                 has_food_court: eventData.has_food_court ?? false,
                 has_restrooms: eventData.has_restrooms ?? false,
                 has_parking: eventData.has_parking ?? false,
+                accept_contract: eventData.contract_accepted_at ? true : false, // Carrega o estado de aceitação do contrato
             });
         };
         
@@ -348,7 +353,7 @@ const EventFormSteps: React.FC<EventFormStepsProps> = ({ eventId, initialData, o
             applied_percentage: calculatedCommission?.percentage || 0,
             commission_range_id: calculatedCommission?.rangeId || null,
             contract_version: activeContract?.version || null,
-            contract_accepted_at: values.accept_contract ? new Date().toISOString() : null,
+            contract_accepted_at: values.accept_contract ? new Date().toISOString() : null, // Inclui aceitação do contrato
             // contract_ip será preenchido via trigger/edge function no backend para maior segurança
         };
 
