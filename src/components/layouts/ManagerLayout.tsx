@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Menu, X, Loader2, Crown, LogOut, User, Settings, QrCode, BarChart3, CalendarDays, ChevronDown, SlidersHorizontal, Plus, Image, ListOrdered, History, CreditCard, Percent } from 'lucide-react';
@@ -16,6 +16,8 @@ const MANAGER_USER_TYPE_ID = 2;
 const ManagerLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const headerRef = useRef<HTMLElement>(null);
+    const [headerHeight, setHeaderHeight] = useState(0);
     const [userId, setUserId] = useState<string | undefined>(undefined);
     const [loadingSession, setLoadingSession] = useState(true);
     const [isSettingsDropdownOpen, setIsSettingsDropdownOpen] = useState(false);
@@ -29,6 +31,21 @@ const ManagerLayout: React.FC = () => {
     useEffect(() => {
         setIsSettingsDropdownOpen(isAdminSettingsPath);
     }, [isAdminSettingsPath]);
+
+    useEffect(() => {
+        const measureHeaderHeight = () => {
+            if (headerRef.current) {
+                setHeaderHeight(headerRef.current.offsetHeight);
+            }
+        };
+
+        measureHeaderHeight(); // Measure on mount
+        window.addEventListener('resize', measureHeaderHeight);
+
+        return () => {
+            window.removeEventListener('resize', measureHeaderHeight);
+        };
+    }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -122,7 +139,7 @@ const ManagerLayout: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-black text-white">
-            <header className="fixed top-0 left-0 right-0 z-[100] bg-black/90 backdrop-blur-md border-b border-yellow-500/20">
+            <header ref={headerRef} className="fixed top-0 left-0 right-0 z-[110] bg-black/90 backdrop-blur-md border-b border-yellow-500/20">
                 <div className="flex items-center justify-between max-w-7xl px-4 sm:px-6 py-4 mx-auto">
                     <div className="flex items-center space-x-4 sm:space-x-6">
                         <div 
@@ -376,7 +393,7 @@ const ManagerLayout: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <main className="pt-20 p-4 sm:p-6">
+            <main style={{ paddingTop: `${headerHeight}px` }} className="p-4 sm:p-6">
                 <Outlet />
             </main>
         </div>
