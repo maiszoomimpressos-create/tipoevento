@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Loader2, Crown, LogOut, User, Settings, QrCode, BarChart3, CalendarDays, ChevronDown, SlidersHorizontal, Plus, Image, ListOrdered, History, CreditCard, Percent } from 'lucide-react';
+import { Menu, X, Loader2, Crown, LogOut, User, Settings, QrCode, BarChart3, CalendarDays, ChevronDown, SlidersHorizontal, Plus, Image, ListOrdered, History, CreditCard, Percent, FileText } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from '@/integrations/supabase/client';
@@ -39,10 +39,16 @@ const ManagerLayout: React.FC = () => {
             }
         };
 
-        measureHeaderHeight(); // Measure on mount
+        // Mede imediatamente
+        measureHeaderHeight();
+        
+        // Mede novamente após um pequeno delay para garantir que o DOM está totalmente renderizado
+        const timeoutId = setTimeout(measureHeaderHeight, 100);
+        
         window.addEventListener('resize', measureHeaderHeight);
 
         return () => {
+            clearTimeout(timeoutId);
             window.removeEventListener('resize', measureHeaderHeight);
         };
     }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
@@ -223,6 +229,13 @@ const ManagerLayout: React.FC = () => {
                                                             Faixas de Comissão
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem 
+                                                            onClick={() => navigate('/admin/settings/contracts')}
+                                                            className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/admin/settings/contracts' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
+                                                        >
+                                                            <FileText className="mr-2 h-4 w-4" />
+                                                            Contratos
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem 
                                                             onClick={() => navigate('/admin/banners')}
                                                             className={`cursor-pointer hover:bg-yellow-500/10 ${location.pathname === '/admin/banners' ? 'bg-yellow-500/20 text-yellow-500' : ''}`}
                                                         >
@@ -333,6 +346,13 @@ const ManagerLayout: React.FC = () => {
                                                                 Faixas de Comissão
                                                             </button>
                                                             <button 
+                                                                onClick={() => navigate('/admin/settings/contracts')}
+                                                                className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
+                                                            >
+                                                                <FileText className="mr-2 h-4 w-4" />
+                                                                Contratos
+                                                            </button>
+                                                            <button 
                                                                 onClick={() => navigate('/admin/banners')}
                                                                 className="flex items-center p-2 rounded-xl text-gray-300 hover:bg-yellow-500/10 transition-colors duration-200 text-base w-full justify-start"
                                                             >
@@ -393,7 +413,7 @@ const ManagerLayout: React.FC = () => {
                     </div>
                 </div>
             </header>
-            <main style={{ paddingTop: `${headerHeight}px` }} className="p-4 sm:p-6">
+            <main style={{ paddingTop: `${Math.max(headerHeight, 80)}px` }} className="p-4 sm:p-6">
                 <Outlet />
             </main>
         </div>
