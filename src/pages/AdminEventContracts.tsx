@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Loader2, ArrowLeft, FileText, Edit, Power, Eye, AlertTriangle, XCircle } from 'lucide-react';
+import { Plus, Loader2, ArrowLeft, FileText, Edit, Power, Eye, AlertTriangle, XCircle, Trash2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { showSuccess, showError, showLoading, dismissToast } from '@/utils/toast';
@@ -325,6 +326,93 @@ const ToggleActiveDialog: React.FC<{ contract: EventContract, onToggleSuccess: (
     );
 };
 
+// Componente de Diálogo de Exclusão
+const DeleteContractDialog: React.FC<{ contract: EventContract, onDeleteSuccess: () => void }> = ({ contract, onDeleteSuccess }) => {
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        const toastId = showLoading("Excluindo contrato...");
+
+        try {
+            // Verifica se o contrato está ativo antes de excluir
+            if (contract.is_active) {
+                dismissToast(toastId);
+                showError("Não é possível excluir um contrato ativo. Desative-o primeiro.");
+                setIsDialogOpen(false);
+                setIsDeleting(false);
+                return;
+            }
+
+            const { error } = await supabase
+                .from('event_contracts')
+                .delete()
+                .eq('id', contract.id);
+
+            if (error) {
+                throw error;
+            }
+
+            dismissToast(toastId);
+            showSuccess(`Contrato "${contract.title}" excluído com sucesso.`);
+            onDeleteSuccess();
+            setIsDialogOpen(false);
+
+        } catch (e: any) {
+            dismissToast(toastId);
+            console.error("Erro ao excluir contrato:", e);
+            showError(`Falha ao excluir contrato: ${e.message || 'Erro desconhecido'}`);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <AlertDialogTrigger asChild>
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="bg-black/60 border-red-500/30 text-red-400 hover:bg-red-500/10 h-8 px-3"
+                >
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-black/90 border border-yellow-500/30 text-white">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-red-400">
+                        Excluir Contrato
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-400">
+                        Tem certeza que deseja excluir este contrato? Esta ação não pode ser desfeita.
+                        <br /><br />
+                        Contrato: <span className="font-semibold text-white">{contract.title} (Versão {contract.version})</span>
+                        {contract.is_active && (
+                            <>
+                                <br /><br />
+                                <span className="text-red-400 font-semibold">⚠️ Atenção: Este contrato está ativo. Desative-o antes de excluir.</span>
+                            </>
+                        )}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-black/60 border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10">
+                        Cancelar
+                    </AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={handleDelete} 
+                        className="bg-red-600 text-white hover:bg-red-700"
+                        disabled={isDeleting || contract.is_active}
+                    >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+};
+
 // Componente para visualização do conteúdo do contrato
 const ViewContentDialog: React.FC<{ contract: EventContract, onClose: () => void }> = ({ contract, onClose }) => {
     return (
@@ -509,6 +597,7 @@ const AdminEventContracts: React.FC = () => {
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
                                                 <ToggleActiveDialog contract={contract} onToggleSuccess={invalidateContracts} userId={userId!} />
+                                                <DeleteContractDialog contract={contract} onDeleteSuccess={invalidateContracts} />
                                             </div>
                                         </TableCell>
                                     </TableRow>
