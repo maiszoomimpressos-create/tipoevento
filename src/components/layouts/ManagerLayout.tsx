@@ -76,25 +76,21 @@ const ManagerLayout: React.FC = () => {
         }
     };
 
-    // Redirect unauthenticated users to login
+    // Show loading spinner while session or profile/company data is being fetched
     if (loadingSession || isLoadingProfile || isLoadingUserType || (isManagerPro && isLoadingCompany)) {
-        if (!userId && !loadingSession) {
-            // Only redirect if trying to access a manager/admin route
-            if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
-                navigate('/manager/login');
-            }
-            return (
-                <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                    <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-                </div>
-            );
-        }
-        // If loading, show spinner
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
             </div>
         );
+    }
+
+    // Redirect unauthenticated users to login after loading is complete
+    if (!userId && !loadingSession) { // Ensure loadingSession is false before redirecting
+        if (location.pathname.startsWith('/manager') || location.pathname.startsWith('/admin')) {
+            navigate('/manager/login');
+            return null; // Prevent rendering anything else
+        }
     }
     
     // Check if user is authorized (Admin or Manager)

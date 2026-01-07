@@ -83,8 +83,7 @@ const ManagerCreateEvent: React.FC = () => {
             </div>
 
             <EventFormSteps 
-                onSaveSuccess={handleSaveSuccess} 
-                onCancel={() => navigate('/manager/events')} 
+                userId={userId}
             />
             
             <AlertDialog open={showWristbandModal} onOpenChange={setShowWristbandModal}>
