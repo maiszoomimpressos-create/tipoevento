@@ -205,7 +205,7 @@ const ManagerCreateEventBanner: React.FC = () => {
                                             </FormControl>
                                             <SelectContent className="bg-black border-yellow-500/30 text-white">
                                                 {events.length === 0 ? (
-                                                    <SelectItem value="" disabled>Nenhum evento publicado encontrado</SelectItem>
+                                                    <div className="py-2 px-3 text-sm text-gray-500">Nenhum evento publicado encontrado</div>
                                                 ) : (
                                                     events.filter(e => !e.is_draft).map((event: ManagerEvent) => (
                                                         <SelectItem key={event.id} value={event.id} className="hover:bg-yellow-500/10 cursor-pointer">

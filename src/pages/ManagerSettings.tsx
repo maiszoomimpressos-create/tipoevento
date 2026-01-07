@@ -1,0 +1,101 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Settings, User, Building, Bell, CreditCard, History, Loader2 } from 'lucide-react';
+import { useProfile } from '@/hooks/use-profile';
+import { supabase } from '@/integrations/supabase/client';
+
+const MANAGER_PRO_USER_TYPE_ID = 2;
+
+const ManagerSettings: React.FC = () => {
+    const navigate = useNavigate();
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+    const { profile, isLoading: isLoadingProfile } = useProfile(userId);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUserId(user?.id);
+        });
+    }, []);
+
+    const isManagerPro = profile?.tipo_usuario_id === MANAGER_PRO_USER_TYPE_ID;
+    const isAdminMaster = profile?.tipo_usuario_id === 1;
+
+    let settingsOptions = [
+        { 
+            icon: <User className="h-6 w-6 text-yellow-500" />, 
+            title: "Perfil Individual", 
+            description: "Gerencie suas informações pessoais e dados de contato.", 
+            path: "/manager/settings/individual-profile" 
+        },
+        { 
+            icon: <Bell className="h-6 w-6 text-yellow-500" />, 
+            title: "Notificações", 
+            description: "Configure como e quando você deseja receber notificações.", 
+            path: "/manager/settings/notifications" 
+        },
+    ];
+    
+    // Adiciona opções específicas para Admin Master
+    if (isAdminMaster) {
+        settingsOptions.push(
+            { icon: <CreditCard className="h-6 w-6 text-yellow-500" />, title: "Configurações de Pagamento", description: "Gerencie contas bancárias e gateways de pagamento.", path: "/manager/settings/payment" },
+            { icon: <History className="h-6 w-6 text-yellow-500" />, title: "Histórico de Configurações", description: "Visualize todas as alterações feitas nas configurações da sua conta.", path: "/manager/settings/history" },
+            { icon: <Settings className="h-6 w-6 text-yellow-500" />, title: "Configurações Avançadas", description: "Ajustes de sistema, segurança e integrações.", path: "/manager/settings/advanced" }
+        );
+    }
+
+    // Adiciona opção de perfil de empresa se for Manager Pro
+    if (isManagerPro) {
+        settingsOptions.splice(1, 0, { 
+            icon: <Building className="h-6 w-6 text-yellow-500" />, 
+            title: "Perfil da Empresa", 
+            description: "Gerencie as informações da sua empresa e dados corporativos.", 
+            path: "/manager/settings/company-profile" 
+        });
+    }
+
+    if (isLoadingProfile) {
+        return (
+            <div className="max-w-7xl mx-auto text-center py-20">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-500 mx-auto mb-4" />
+                <p className="text-gray-400">Carregando configurações...</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="max-w-7xl mx-auto">
+            <div className="mb-8">
+                <h1 className="text-2xl sm:text-3xl font-serif text-yellow-500 mb-2 flex items-center">
+                    <Settings className="h-7 w-7 mr-3" />
+                    Configurações
+                </h1>
+                <p className="text-gray-400 text-sm sm:text-base">Gerencie suas preferências e configurações da conta</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {settingsOptions.map((option, index) => (
+                    <Card 
+                        key={index}
+                        className="bg-black border border-yellow-500/30 rounded-2xl shadow-2xl shadow-yellow-500/10 hover:border-yellow-500/60 transition-all duration-300 cursor-pointer"
+                        onClick={() => navigate(option.path)}
+                    >
+                        <CardHeader>
+                            <div className="flex items-center space-x-3 mb-2">
+                                {option.icon}
+                                <CardTitle className="text-white text-lg font-semibold">{option.title}</CardTitle>
+                            </div>
+                            <CardDescription className="text-gray-400 text-sm">
+                                {option.description}
+                            </CardDescription>
+                        </CardHeader>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+export default ManagerSettings;
+
