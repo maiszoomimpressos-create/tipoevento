@@ -277,7 +277,7 @@ const ManagerCreateWristband: React.FC = () => {
                                 </SelectTrigger>
                                 <SelectContent className="bg-black border-yellow-500/30 text-white">
                                     {events.length === 0 ? (
-                                        <SelectItem value="" disabled>Nenhum evento cadastrado</SelectItem>
+                                        <div className="px-2 py-1.5 text-sm text-gray-400">Nenhum evento cadastrado</div>
                                     ) : (
                                         events.map((event: ManagerEvent) => (
                                             <SelectItem key={event.id} value={event.id} className="hover:bg-yellow-500/10 cursor-pointer">
