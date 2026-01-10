@@ -33,6 +33,7 @@ const formatInputDate = (value: string): string => {
 
 export function DatePicker({ date, setDate, placeholder = "Selecione a data", disabled = false }: DatePickerProps) {
     const [inputValue, setInputValue] = React.useState(date ? format(date, "dd/MM/yyyy") : '');
+    const [open, setOpen] = React.useState(false);
 
     // Sincroniza o estado interno do input com a prop 'date'
     React.useEffect(() => {
@@ -65,13 +66,15 @@ export function DatePicker({ date, setDate, placeholder = "Selecione a data", di
         setDate(selectedDate);
         if (selectedDate) {
             setInputValue(format(selectedDate, "dd/MM/yyyy"));
+            // Fecha o popover automaticamente após selecionar uma data
+            setOpen(false);
         } else {
             setInputValue('');
         }
     };
 
     return (
-        <Popover>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <div className="relative w-full">
                     <Input
@@ -87,10 +90,10 @@ export function DatePicker({ date, setDate, placeholder = "Selecione a data", di
                             disabled && "opacity-50 cursor-not-allowed"
                         )}
                     />
-                    <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-yellow-500 cursor-pointer" />
+                    <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-yellow-500 cursor-pointer pointer-events-none" />
                 </div>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-black/90 border border-yellow-500/30 text-white">
+            <PopoverContent className="w-auto p-0 bg-black/90 border border-yellow-500/30 text-white" align="start">
                 <Calendar
                     mode="single"
                     selected={date}

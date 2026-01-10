@@ -1,7 +1,6 @@
--- Adiciona o campo contract_id na tabela events
+-- Adicionar coluna contract_id à tabela events
 ALTER TABLE events
-ADD COLUMN contract_id UUID REFERENCES event_contracts(id) ON DELETE SET NULL;
+ADD COLUMN contract_id uuid NULL;
 
--- Opcional: Adicionar índice para performance
-CREATE INDEX IF NOT EXISTS idx_events_contract_id ON events(contract_id);
-
+-- Opcional: Adicionar uma chave estrangeira se houver uma tabela de contratos
+-- Exemplo: ALTER TABLE events ADD CONSTRAINT fk_contract FOREIGN KEY (contract_id) REFERENCES event_contracts(id);
