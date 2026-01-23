@@ -2,7 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, BarChart3, FileText, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, BarChart3, FileText, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { useProfile } from '@/hooks/use-profile';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 
 const ReportCard: React.FC<{ icon: React.ReactNode, title: string, description: string, onClick: () => void }> = ({ icon, title, description, onClick }) => (
     <Card 
@@ -27,6 +30,18 @@ const ReportCard: React.FC<{ icon: React.ReactNode, title: string, description: 
 
 const ManagerReports: React.FC = () => {
     const navigate = useNavigate();
+    const [userId, setUserId] = useState<string | undefined>(undefined);
+    
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setUserId(user?.id);
+        });
+    }, []);
+
+    const { profile } = useProfile(userId);
+    const isAdminMaster = profile?.tipo_usuario_id === 1;
+    const isManagerPro = profile?.tipo_usuario_id === 2;
+    const canAccessFinancialReport = isAdminMaster || isManagerPro;
 
     const handleReportClick = (reportName: string) => {
         alert(`Gerando relatório: ${reportName}`);
@@ -51,6 +66,14 @@ const ManagerReports: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                {canAccessFinancialReport && (
+                    <ReportCard
+                        icon={<DollarSign className="h-6 w-6 text-yellow-500" />}
+                        title="Relatório Financeiro"
+                        description="Valores vendidos, comissões do sistema e valores líquidos dos organizadores por evento."
+                        onClick={() => navigate('/manager/reports/financial')}
+                    />
+                )}
                 <ReportCard
                     icon={<TrendingUp className="h-6 w-6 text-yellow-500" />}
                     title="Relatório de Vendas"
