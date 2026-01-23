@@ -18,22 +18,34 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   
-  // Webhooks do Mercado Pago geralmente usam query parameters para notificação
+  // Webhooks do Mercado Pago podem enviar dados via query params OU corpo JSON
   const url = new URL(req.url);
   const topic = url.searchParams.get('topic');
-  const id = url.searchParams.get('id'); // ID da notificação ou do recurso
+  const idFromQuery = url.searchParams.get('id'); // ID da notificação ou do recurso (query)
   const type = url.searchParams.get('type'); // Alias para topic
 
-  if (!topic && !type) {
-    return new Response(JSON.stringify({ error: 'Missing topic/type parameter' }), { status: 400, headers: corsHeaders });
+  // Tentar também ler o corpo JSON (alguns webhooks do MP enviam data.id no body)
+  let body: any = null;
+  try {
+    if (req.method !== 'OPTIONS') {
+      body = await req.json().catch(() => null);
+    }
+  } catch {
+    body = null;
+  }
+
+  const idFromBody = body?.data?.id || body?.id || null;
+  const notificationType = topic || type || body?.type || body?.action || null;
+
+  if (!notificationType) {
+    return new Response(JSON.stringify({ error: 'Missing notification type' }), { status: 400, headers: corsHeaders });
   }
   
   // 1. Determinar o tipo de notificação e ID do recurso
-  const resourceId = id;
-  const notificationType = topic || type;
+  const resourceId = idFromQuery || idFromBody;
 
   if (notificationType !== 'payment' || !resourceId) {
-    console.log(`[MP Webhook] Ignoring notification type: ${notificationType} or missing resource ID.`);
+    console.log(`[MP Webhook] Ignoring notification type: ${notificationType} or missing resource ID. Query id: ${idFromQuery}, Body id: ${idFromBody}`);
     return new Response(JSON.stringify({ message: 'Notification received, but ignored.' }), { status: 200, headers: corsHeaders });
   }
 
