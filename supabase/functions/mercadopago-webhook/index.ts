@@ -78,8 +78,19 @@ serve(async (req) => {
 
     const mpPaymentData = await mpPaymentApiResponse.json();
     const paymentStatus = mpPaymentData.status; // Status real do pagamento
+    const paymentStatusDetail = mpPaymentData.status_detail || null; // Detalhes adicionais do status
     console.log(`[MP Webhook] Payment status from Mercado Pago API: ${paymentStatus}`);
-    console.log(`[MP Webhook] Mercado Pago Payment Data:`, JSON.stringify(mpPaymentData, null, 2));
+    console.log(`[MP Webhook] Payment status_detail: ${paymentStatusDetail}`);
+    console.log(`[MP Webhook] Payment ID: ${mpPaymentData.id}`);
+    console.log(`[MP Webhook] Payment operation_type: ${mpPaymentData.operation_type || 'N/A'}`);
+    console.log(`[MP Webhook] Full payment data (truncated):`, JSON.stringify({
+        id: mpPaymentData.id,
+        status: mpPaymentData.status,
+        status_detail: mpPaymentData.status_detail,
+        external_reference: mpPaymentData.external_reference,
+        transaction_amount: mpPaymentData.transaction_amount,
+        date_approved: mpPaymentData.date_approved,
+    }, null, 2));
 
     // 4. Usar o external_reference do pagamento para localizar a transação em 'receivables'
     // No create-payment-preference, definimos external_reference = transactionId (id do receivable)
@@ -124,23 +135,38 @@ serve(async (req) => {
             receivable = receivableAnyStatus;
         } else {
             // Última tentativa: buscar pelo payment_gateway_id (ID da preferência do MP)
-            // Isso pode acontecer se o external_reference não foi salvo corretamente
-            console.log(`[MP Webhook] Receivable not found by transaction ID. Trying to find by payment_gateway_id (preference ID)...`);
-            const { data: receivableByGatewayId, error: fetchByGatewayError } = await supabaseService
-                .from('receivables')
-                .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value, status, payment_gateway_id')
-                .eq('payment_gateway_id', resourceId)
-                .maybeSingle();
+            // O payment_gateway_id armazena o ID da preferência, não o ID do pagamento
+            // Mas podemos tentar buscar pelo order.id do pagamento (que referencia a preferência)
+            const preferenceId = mpPaymentData.order?.id || mpPaymentData.preference_id || null;
+            console.log(`[MP Webhook] Receivable not found by transaction ID. Trying to find by preference ID...`);
+            console.log(`[MP Webhook] Payment order.id: ${preferenceId || 'N/A'}`);
+            console.log(`[MP Webhook] Payment preference_id: ${mpPaymentData.preference_id || 'N/A'}`);
             
-            if (receivableByGatewayId) {
-                console.log(`[MP Webhook] Found receivable by payment_gateway_id: ${receivableByGatewayId.id}, status: ${receivableByGatewayId.status}`);
-                if (receivableByGatewayId.status === 'paid') {
-                    console.log(`[MP Webhook] Receivable already processed. Ignoring notification.`);
-                    return new Response(JSON.stringify({ message: 'Receivable already processed.' }), { status: 200, headers: corsHeaders });
+            if (preferenceId) {
+                const { data: receivableByGatewayId, error: fetchByGatewayError } = await supabaseService
+                    .from('receivables')
+                    .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value, status, payment_gateway_id')
+                    .eq('payment_gateway_id', preferenceId)
+                    .maybeSingle();
+                
+                if (receivableByGatewayId) {
+                    console.log(`[MP Webhook] Found receivable by preference ID (payment_gateway_id): ${receivableByGatewayId.id}, status: ${receivableByGatewayId.status}`);
+                    if (receivableByGatewayId.status === 'paid') {
+                        console.log(`[MP Webhook] Receivable already processed. Ignoring notification.`);
+                        return new Response(JSON.stringify({ message: 'Receivable already processed.' }), { status: 200, headers: corsHeaders });
+                    }
+                    receivable = receivableByGatewayId;
+                } else {
+                    console.error(`[MP Webhook] CRITICAL: Receivable not found by transaction ID (${transactionId}) or preference ID (${preferenceId}).`);
+                    console.error(`[MP Webhook] Available payment data:`, JSON.stringify({
+                        external_reference: externalReference,
+                        order_id: preferenceId,
+                        payment_id: resourceId,
+                    }, null, 2));
+                    return new Response(JSON.stringify({ message: 'Receivable not found in database.' }), { status: 200, headers: corsHeaders });
                 }
-                receivable = receivableByGatewayId;
             } else {
-                console.error(`[MP Webhook] CRITICAL: Receivable not found by transaction ID (${transactionId}) or payment_gateway_id (${resourceId}).`);
+                console.error(`[MP Webhook] CRITICAL: Receivable not found by transaction ID (${transactionId}) and no preference ID available.`);
                 console.error(`[MP Webhook] This suggests the receivable was not created correctly or the external_reference is wrong.`);
                 return new Response(JSON.stringify({ message: 'Receivable not found in database.' }), { status: 200, headers: corsHeaders });
             }
@@ -152,9 +178,16 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Database error fetching receivable.' }), { status: 500, headers: corsHeaders });
     }
     
+    // Verificar se o receivable foi encontrado
+    if (!receivable) {
+        console.error(`[MP Webhook] CRITICAL: Receivable not found after all search attempts. Transaction ID: ${transactionId}, Payment Gateway ID: ${resourceId}`);
+        console.error(`[MP Webhook] This is a critical error. The receivable should exist before payment processing.`);
+        return new Response(JSON.stringify({ error: 'Receivable not found in database. Cannot process payment.' }), { status: 500, headers: corsHeaders });
+    }
+    
     // Atualizar transactionId para o ID real do receivable encontrado (caso tenha sido encontrado por payment_gateway_id)
     const finalTransactionId = receivable.id;
-    console.log(`[MP Webhook] Successfully found receivable: ${finalTransactionId}`);
+    console.log(`[MP Webhook] Successfully found receivable: ${finalTransactionId}, current status: ${receivable.status}`);
 
     const clientUserId = receivable.client_user_id;
     const analyticsIds = receivable.wristband_analytics_ids;
@@ -168,8 +201,24 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Transaction data incomplete.' }), { status: 500, headers: corsHeaders });
     }
 
+    // Verificar se o pagamento foi aprovado/autorizado
+    // O Mercado Pago pode retornar diferentes status para pagamentos bem-sucedidos:
+    // - 'approved': Pagamento aprovado
+    // - 'authorized': Pagamento autorizado (cartão de crédito)
+    // - 'in_process' com date_approved: Pagamento em processamento mas já aprovado
+    const hasDateApproved = mpPaymentData.date_approved !== null && mpPaymentData.date_approved !== undefined;
+    const isPaymentApproved = paymentStatus === 'approved' || 
+                              paymentStatus === 'authorized' || 
+                              (paymentStatus === 'in_process' && hasDateApproved);
     
-    if (paymentStatus === 'approved') {
+    console.log(`[MP Webhook] Payment status evaluation:`);
+    console.log(`  - Status: ${paymentStatus}`);
+    console.log(`  - Status Detail: ${paymentStatusDetail}`);
+    console.log(`  - Date Approved: ${mpPaymentData.date_approved || 'N/A'}`);
+    console.log(`  - Has Date Approved: ${hasDateApproved}`);
+    console.log(`  - Is Payment Approved: ${isPaymentApproved}`);
+    
+    if (isPaymentApproved) {
         // 6. Atualizar status da transação para 'paid'
         console.log(`[MP Webhook] Updating receivable ${finalTransactionId} status to 'paid'...`);
         const { error: updateReceivableError, data: updateReceivableData } = await supabaseService
@@ -356,23 +405,44 @@ serve(async (req) => {
         
         console.log(`[MP Webhook] Successfully updated ${updates.length} wristband analytics records for transaction ${finalTransactionId}`);
         
-        return new Response(JSON.stringify({ message: 'Payment approved, financial split recorded, and tickets assigned.' }), { status: 200, headers: corsHeaders });
+        // Log final de confirmação
+        console.log(`[MP Webhook] ✅ COMPLETE: Transaction ${finalTransactionId} fully processed:`);
+        console.log(`  ✅ Receivable status updated to 'paid'`);
+        console.log(`  ✅ Financial splits recorded (2 records)`);
+        console.log(`  ✅ Wristband analytics updated (${updates.length} records)`);
+        
+        return new Response(JSON.stringify({ 
+            message: 'Payment approved, financial split recorded, and tickets assigned.',
+            transaction_id: finalTransactionId,
+            status: 'paid'
+        }), { status: 200, headers: corsHeaders });
 
     } else if (paymentStatus === 'rejected' || paymentStatus === 'cancelled') {
         // 4. Atualizar status da transação para 'failed'
+        console.log(`[MP Webhook] Payment ${paymentStatus}. Updating receivable ${finalTransactionId} to 'failed'...`);
         const { error: updateReceivableError } = await supabaseService
             .from('receivables')
             .update({ status: 'failed' })
             .eq('id', finalTransactionId);
 
-        if (updateReceivableError) throw updateReceivableError;
+        if (updateReceivableError) {
+            console.error(`[MP Webhook] CRITICAL: Failed to update receivable to 'failed':`, updateReceivableError);
+            throw updateReceivableError;
+        }
         
+        console.log(`[MP Webhook] Receivable ${finalTransactionId} marked as 'failed'`);
         // NOTA: Não precisamos reverter o status 'active' dos analytics, pois eles nunca foram alterados.
         
         return new Response(JSON.stringify({ message: `Payment ${paymentStatus}. Transaction marked as failed.` }), { status: 200, headers: corsHeaders });
+    } else {
+        // Status não tratado (pending, in_process sem date_approved, etc.)
+        console.log(`[MP Webhook] Payment status '${paymentStatus}' not processed. Transaction ${finalTransactionId} remains in current status.`);
+        console.log(`[MP Webhook] Payment will be processed when status changes to 'approved' or 'authorized'.`);
+        return new Response(JSON.stringify({ 
+            message: `Notification processed. Payment status: ${paymentStatus}. Transaction remains pending.`,
+            payment_status: paymentStatus
+        }), { status: 200, headers: corsHeaders });
     }
-
-    return new Response(JSON.stringify({ message: 'Notification processed (no status change).' }), { status: 200, headers: corsHeaders });
 
   } catch (error) {
     console.error('Edge Function Error:', error);
