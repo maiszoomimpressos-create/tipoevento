@@ -171,12 +171,24 @@ serve(async (req) => {
     
     if (paymentStatus === 'approved') {
         // 6. Atualizar status da transação para 'paid'
-        const { error: updateReceivableError } = await supabaseService
+        console.log(`[MP Webhook] Updating receivable ${finalTransactionId} status to 'paid'...`);
+        const { error: updateReceivableError, data: updateReceivableData } = await supabaseService
             .from('receivables')
             .update({ status: 'paid' })
-            .eq('id', finalTransactionId);
+            .eq('id', finalTransactionId)
+            .select('id, status');
 
-        if (updateReceivableError) throw updateReceivableError;
+        if (updateReceivableError) {
+            console.error(`[MP Webhook] CRITICAL: Failed to update receivable status:`, updateReceivableError);
+            throw updateReceivableError;
+        }
+        
+        if (!updateReceivableData || updateReceivableData.length === 0) {
+            console.error(`[MP Webhook] CRITICAL: Receivable ${finalTransactionId} not found for status update.`);
+            throw new Error(`Receivable ${finalTransactionId} not found for status update.`);
+        }
+        
+        console.log(`[MP Webhook] Successfully updated receivable ${finalTransactionId} status to 'paid'`);
 
         // 5. Buscar o percentual de comissão aplicado ao evento e company_id
         const { data: eventData, error: fetchEventError } = await supabaseService
@@ -243,21 +255,37 @@ serve(async (req) => {
             }
         ];
 
-        // Inserir os 2 registros de forma atômica (se um falhar, ambos falham)
-        // Usando transação implícita do Supabase (insert em lote)
-        const { error: insertSplitError } = await supabaseService
+        // Verificar se os financial_splits já foram inseridos (idempotência)
+        const { data: existingSplits, error: checkSplitsError } = await supabaseService
             .from('financial_splits')
-            .insert(financialSplitsToInsert);
-
-        if (insertSplitError) {
-            console.error(`[MP Webhook] Critical Error: Failed to insert financial splits for transaction ${finalTransactionId}:`, insertSplitError);
-            // Se a inserção falhar, reverter a atualização do receivable para manter consistência
-            await supabaseService
-                .from('receivables')
-                .update({ status: 'pending' })
-                .eq('id', finalTransactionId);
-            throw new Error(`Failed to record financial splits: ${insertSplitError.message}`);
+            .select('id')
+            .eq('transaction_id', finalTransactionId)
+            .limit(1);
+        
+        if (checkSplitsError) {
+            console.error(`[MP Webhook] Error checking existing financial splits:`, checkSplitsError);
+            throw new Error(`Failed to check existing financial splits: ${checkSplitsError.message}`);
         }
+        
+        if (existingSplits && existingSplits.length > 0) {
+            console.log(`[MP Webhook] Financial splits already exist for transaction ${finalTransactionId}. Skipping insertion to avoid duplicates.`);
+        } else {
+            // Inserir os 2 registros de forma atômica (se um falhar, ambos falham)
+            // Usando transação implícita do Supabase (insert em lote)
+            console.log(`[MP Webhook] Inserting financial splits for transaction ${finalTransactionId}...`);
+            const { error: insertSplitError } = await supabaseService
+                .from('financial_splits')
+                .insert(financialSplitsToInsert);
+
+            if (insertSplitError) {
+                console.error(`[MP Webhook] Critical Error: Failed to insert financial splits for transaction ${finalTransactionId}:`, insertSplitError);
+                // Se a inserção falhar, reverter a atualização do receivable para manter consistência
+                await supabaseService
+                    .from('receivables')
+                    .update({ status: 'pending' })
+                    .eq('id', finalTransactionId);
+                throw new Error(`Failed to record financial splits: ${insertSplitError.message}`);
+            }
         
         console.log(`[MP Webhook] Successfully inserted 2 financial split records for transaction ${finalTransactionId}:`);
         console.log(`  - Manager Net Amount Record: R$ ${managerAmount.toFixed(2)}`);
