@@ -24,6 +24,7 @@ import ManagerCreateWristband from "./pages/ManagerCreateWristband";
 import ManagerWristbandsList from "./pages/ManagerWristbandsList"; 
 import ManagerManageWristband from "./pages/ManagerManageWristband";
 import ManagerReports from "./pages/ManagerReports";
+import FinancialReports from "./pages/FinancialReports";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminRouteGuard from "./components/AdminRouteGuard";
 import AdminMasterRouteGuard from "./components/AdminMasterRouteGuard";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/manager/wristbands/create" element={<ManagerCreateWristband />} /> 
             <Route path="/manager/wristbands/manage/:id" element={<ManagerManageWristband />} />
             <Route path="/manager/reports" element={<ManagerReports />} />
+            <Route path="/manager/reports/financial" element={<FinancialReports />} />
             <Route path="/manager/settings" element={<ManagerSettings />} />
             <Route path="/manager/settings/company-profile" element={<ManagerCompanyProfile />} />
             <Route path="/manager/settings/individual-profile" element={<ManagerIndividualProfile />} />
