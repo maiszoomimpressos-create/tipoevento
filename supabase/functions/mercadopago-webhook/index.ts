@@ -200,9 +200,10 @@ serve(async (req) => {
         console.log(`  - Platform Commission Record: R$ ${platformAmount.toFixed(2)}`);
 
         // 7. Atualizar wristband analytics: associar cliente e marcar como 'used'/'purchase'
+        // IMPORTANTE: Buscar TODOS os campos obrigatórios para evitar erro de NOT NULL constraint
         const { data: analyticsToUpdate, error: fetchUpdateError } = await supabaseService
             .from('wristband_analytics')
-            .select('id, wristband_id')
+            .select('id, wristband_id, code_wristbands, sequential_number, status, event_type, event_data')
             .in('id', analyticsIds);
             
         if (fetchUpdateError) {
@@ -210,33 +211,58 @@ serve(async (req) => {
             throw new Error("Payment approved, but failed to retrieve ticket details for assignment.");
         }
         
+        if (!analyticsToUpdate || analyticsToUpdate.length === 0) {
+            console.error(`CRITICAL: No analytics records found for IDs: ${analyticsIds.join(', ')}`);
+            throw new Error("Payment approved, but no analytics records found for assignment.");
+        }
+        
         // Prepara batch update para analytics records
+        // IMPORTANTE: Incluir TODOS os campos obrigatórios (NOT NULL) para evitar erro 23502
         const updates = analyticsToUpdate.map(record => {
+            // Preservar event_data existente e adicionar dados da compra
+            const existingEventData = record.event_data || {};
+            const purchaseEventData = {
+                ...existingEventData,
+                purchase_date: new Date().toISOString(),
+                client_id: clientUserId,
+                transaction_id: transactionId,
+                platform_commission_percentage: appliedPercentage,
+                platform_commission_amount: platformAmount,
+                manager_net_amount: managerAmount,
+            };
+            
             return {
                 id: record.id,
+                wristband_id: record.wristband_id, // Campo obrigatório
+                code_wristbands: record.code_wristbands, // Campo obrigatório
+                sequential_number: record.sequential_number, // Campo obrigatório (pode ser null, mas incluímos)
                 client_user_id: clientUserId,
                 status: 'used', 
                 event_type: 'purchase',
-                event_data: {
-                    purchase_date: new Date().toISOString(),
-                    client_id: clientUserId,
-                    transaction_id: transactionId,
-                    // Outros dados de preço seriam buscados do receivable ou do wristband
-                    platform_commission_percentage: appliedPercentage, // Adiciona ao log de dados
-                    platform_commission_amount: platformAmount,       // Adiciona ao log de dados
-                    manager_net_amount: managerAmount,                // Adiciona ao log de dados
-                }
+                event_data: purchaseEventData,
             };
         });
 
-        const { error: updateAnalyticsError } = await supabaseService
-            .from('wristband_analytics')
-            .upsert(updates);
-
-        if (updateAnalyticsError) {
-            console.error("CRITICAL: Failed to update wristband analytics after successful payment:", updateAnalyticsError);
-            // A transação foi paga, mas a atribuição falhou. Requer intervenção manual.
+        // Usar update em vez de upsert para garantir que apenas os registros existentes sejam atualizados
+        // E fazer update individual para cada registro para garantir atomicidade
+        for (const update of updates) {
+            const { error: updateError } = await supabaseService
+                .from('wristband_analytics')
+                .update({
+                    client_user_id: update.client_user_id,
+                    status: update.status,
+                    event_type: update.event_type,
+                    event_data: update.event_data,
+                })
+                .eq('id', update.id);
+            
+            if (updateError) {
+                console.error(`CRITICAL: Failed to update wristband analytics record ${update.id}:`, updateError);
+                throw new Error(`Failed to update wristband analytics: ${updateError.message}`);
+            }
         }
+        
+        console.log(`[MP Webhook] Successfully updated ${updates.length} wristband analytics records for transaction ${transactionId}`);
         
         return new Response(JSON.stringify({ message: 'Payment approved, financial split recorded, and tickets assigned.' }), { status: 200, headers: corsHeaders });
 
