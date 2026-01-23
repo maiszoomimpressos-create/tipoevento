@@ -84,25 +84,77 @@ serve(async (req) => {
     // 4. Usar o external_reference do pagamento para localizar a transação em 'receivables'
     // No create-payment-preference, definimos external_reference = transactionId (id do receivable)
     const externalReference = mpPaymentData.external_reference as string | null;
+    console.log(`[MP Webhook] Payment external_reference: ${externalReference}`);
+    
     if (!externalReference) {
         console.error('[MP Webhook] ERROR: Payment external_reference not found. Cannot link to receivables transaction.');
+        console.error('[MP Webhook] Full payment data keys:', Object.keys(mpPaymentData));
         return new Response(JSON.stringify({ error: 'Payment external_reference missing. Cannot link transaction.' }), { status: 500, headers: corsHeaders });
     }
 
     const transactionId = externalReference;
+    console.log(`[MP Webhook] Looking for receivable with transaction ID: ${transactionId}`);
+    console.log(`[MP Webhook] Payment ID (resourceId): ${resourceId}`);
 
-    // 5. Buscar a transação pendente na tabela 'receivables' usando o transactionId
-    const { data: receivable, error: fetchReceivableError } = await supabaseService
+    // 5. Buscar a transação na tabela 'receivables' usando o transactionId (external_reference)
+    // Primeiro, tentar encontrar com status 'pending'
+    let { data: receivable, error: fetchReceivableError } = await supabaseService
         .from('receivables')
-        .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value')
+        .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value, status, payment_gateway_id')
         .eq('id', transactionId)
         .eq('status', 'pending')
-        .single();
+        .maybeSingle();
 
-    if (fetchReceivableError || !receivable) {
-        console.warn(`[MP Webhook] Pending receivable not found for transaction ID (external_reference): ${transactionId}`);
-        return new Response(JSON.stringify({ message: 'Receivable not found or already processed.' }), { status: 200, headers: corsHeaders });
+    // Se não encontrou com status 'pending', buscar sem filtro de status
+    if (!receivable) {
+        console.log(`[MP Webhook] Receivable not found with status 'pending', searching without status filter...`);
+        const { data: receivableAnyStatus, error: fetchAnyStatusError } = await supabaseService
+            .from('receivables')
+            .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value, status, payment_gateway_id')
+            .eq('id', transactionId)
+            .maybeSingle();
+        
+        if (receivableAnyStatus) {
+            console.log(`[MP Webhook] Found receivable with status: ${receivableAnyStatus.status}, payment_gateway_id: ${receivableAnyStatus.payment_gateway_id}`);
+            if (receivableAnyStatus.status === 'paid') {
+                console.log(`[MP Webhook] Receivable already processed (status: paid). Ignoring notification.`);
+                return new Response(JSON.stringify({ message: 'Receivable already processed.' }), { status: 200, headers: corsHeaders });
+            }
+            // Se está em outro status (ex: 'failed'), vamos processar mesmo assim se o pagamento foi aprovado
+            receivable = receivableAnyStatus;
+        } else {
+            // Última tentativa: buscar pelo payment_gateway_id (ID da preferência do MP)
+            // Isso pode acontecer se o external_reference não foi salvo corretamente
+            console.log(`[MP Webhook] Receivable not found by transaction ID. Trying to find by payment_gateway_id (preference ID)...`);
+            const { data: receivableByGatewayId, error: fetchByGatewayError } = await supabaseService
+                .from('receivables')
+                .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value, status, payment_gateway_id')
+                .eq('payment_gateway_id', resourceId)
+                .maybeSingle();
+            
+            if (receivableByGatewayId) {
+                console.log(`[MP Webhook] Found receivable by payment_gateway_id: ${receivableByGatewayId.id}, status: ${receivableByGatewayId.status}`);
+                if (receivableByGatewayId.status === 'paid') {
+                    console.log(`[MP Webhook] Receivable already processed. Ignoring notification.`);
+                    return new Response(JSON.stringify({ message: 'Receivable already processed.' }), { status: 200, headers: corsHeaders });
+                }
+                receivable = receivableByGatewayId;
+            } else {
+                console.error(`[MP Webhook] CRITICAL: Receivable not found by transaction ID (${transactionId}) or payment_gateway_id (${resourceId}).`);
+                console.error(`[MP Webhook] This suggests the receivable was not created correctly or the external_reference is wrong.`);
+                return new Response(JSON.stringify({ message: 'Receivable not found in database.' }), { status: 200, headers: corsHeaders });
+            }
+        }
     }
+
+    if (fetchReceivableError && fetchReceivableError.code !== 'PGRST116') {
+        console.error(`[MP Webhook] Error fetching receivable:`, fetchReceivableError);
+        return new Response(JSON.stringify({ error: 'Database error fetching receivable.' }), { status: 500, headers: corsHeaders });
+    }
+    
+    // Atualizar transactionId para o ID real do receivable encontrado (caso tenha sido encontrado por payment_gateway_id)
+    const finalTransactionId = receivable.id;
+    console.log(`[MP Webhook] Successfully found receivable: ${finalTransactionId}`);
 
     const clientUserId = receivable.client_user_id;
     const analyticsIds = receivable.wristband_analytics_ids;
@@ -112,7 +164,7 @@ serve(async (req) => {
 
     // Validações adicionais para os novos campos
     if (!eventId || !totalValue) {
-        console.error(`[MP Webhook] Critical Error: Receivable ${transactionId} missing event_id or total_value.`);
+        console.error(`[MP Webhook] Critical Error: Receivable ${finalTransactionId} missing event_id or total_value.`);
         return new Response(JSON.stringify({ error: 'Transaction data incomplete.' }), { status: 500, headers: corsHeaders });
     }
 
@@ -122,7 +174,7 @@ serve(async (req) => {
         const { error: updateReceivableError } = await supabaseService
             .from('receivables')
             .update({ status: 'paid' })
-            .eq('id', transactionId);
+            .eq('id', finalTransactionId);
 
         if (updateReceivableError) throw updateReceivableError;
 
@@ -151,7 +203,7 @@ serve(async (req) => {
         const platformAmount = totalValue * (appliedPercentage / 100);
         const managerAmount = totalValue - platformAmount;
         
-        console.log(`[MP Webhook] Financial Calculation for transaction ${transactionId}:`);
+        console.log(`[MP Webhook] Financial Calculation for transaction ${finalTransactionId}:`);
         console.log(`  - Total Value: R$ ${totalValue.toFixed(2)}`);
         console.log(`  - Applied Percentage: ${appliedPercentage}%`);
         console.log(`  - Platform Commission: R$ ${platformAmount.toFixed(2)}`);
@@ -171,7 +223,7 @@ serve(async (req) => {
         const financialSplitsToInsert = [
             // Registro 1: Valor líquido do organizador (manager)
             {
-                transaction_id: transactionId,
+                transaction_id: finalTransactionId,
                 event_id: eventId,
                 manager_user_id: managerUserId,
                 platform_amount: 0, // Zero identifica que este é o valor líquido do organizador
@@ -181,7 +233,7 @@ serve(async (req) => {
             },
             // Registro 2: Comissão da plataforma (sistema)
             {
-                transaction_id: transactionId,
+                transaction_id: finalTransactionId,
                 event_id: eventId,
                 manager_user_id: managerUserId,
                 platform_amount: platformAmount, // Valor > 0 identifica que este é a comissão do sistema
@@ -198,16 +250,16 @@ serve(async (req) => {
             .insert(financialSplitsToInsert);
 
         if (insertSplitError) {
-            console.error(`[MP Webhook] Critical Error: Failed to insert financial splits for transaction ${transactionId}:`, insertSplitError);
+            console.error(`[MP Webhook] Critical Error: Failed to insert financial splits for transaction ${finalTransactionId}:`, insertSplitError);
             // Se a inserção falhar, reverter a atualização do receivable para manter consistência
             await supabaseService
                 .from('receivables')
                 .update({ status: 'pending' })
-                .eq('id', transactionId);
+                .eq('id', finalTransactionId);
             throw new Error(`Failed to record financial splits: ${insertSplitError.message}`);
         }
         
-        console.log(`[MP Webhook] Successfully inserted 2 financial split records for transaction ${transactionId}:`);
+        console.log(`[MP Webhook] Successfully inserted 2 financial split records for transaction ${finalTransactionId}:`);
         console.log(`  - Manager Net Amount Record: R$ ${managerAmount.toFixed(2)}`);
         console.log(`  - Platform Commission Record: R$ ${platformAmount.toFixed(2)}`);
 
@@ -235,9 +287,9 @@ serve(async (req) => {
             const existingEventData = record.event_data || {};
             const purchaseEventData = {
                 ...existingEventData,
-                purchase_date: new Date().toISOString(),
-                client_id: clientUserId,
-                transaction_id: transactionId,
+                    purchase_date: new Date().toISOString(),
+                    client_id: clientUserId,
+                    transaction_id: finalTransactionId,
                 platform_commission_percentage: appliedPercentage,
                 platform_commission_amount: platformAmount,
                 manager_net_amount: managerAmount,
@@ -274,7 +326,7 @@ serve(async (req) => {
             }
         }
         
-        console.log(`[MP Webhook] Successfully updated ${updates.length} wristband analytics records for transaction ${transactionId}`);
+        console.log(`[MP Webhook] Successfully updated ${updates.length} wristband analytics records for transaction ${finalTransactionId}`);
         
         return new Response(JSON.stringify({ message: 'Payment approved, financial split recorded, and tickets assigned.' }), { status: 200, headers: corsHeaders });
 
@@ -283,7 +335,7 @@ serve(async (req) => {
         const { error: updateReceivableError } = await supabaseService
             .from('receivables')
             .update({ status: 'failed' })
-            .eq('id', transactionId);
+            .eq('id', finalTransactionId);
 
         if (updateReceivableError) throw updateReceivableError;
         
