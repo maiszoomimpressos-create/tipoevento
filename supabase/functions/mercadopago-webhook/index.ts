@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import mercadopago from 'https://esm.sh/mercadopago@2.0.8';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,46 +38,75 @@ serve(async (req) => {
   }
 
   try {
-    // 2. Buscar a transação pendente na tabela 'receivables'
-    // IMPORTANT: A tabela 'receivables' precisa ter as colunas 'event_id' e 'total_amount'
-    // Estes campos devem ser preenchidos quando o receivable é criado na UI/API de criação de preferência de pagamento.
-    const { data: receivableArray, error: fetchReceivableError } = await supabaseService
-        .from('receivables')
-        .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_amount') // Incluir event_id e total_amount
-        .eq('payment_gateway_id', resourceId) 
-        .eq('status', 'pending')
-        .limit(1);
-
-    let receivable = null;
-    if (receivableArray && receivableArray.length > 0) {
-        receivable = receivableArray[0];
+    // 2. Obter o access token do Mercado Pago das Secrets (PAYMENT_API_KEY_SECRET)
+    const mpAccessTokenRaw = Deno.env.get('PAYMENT_API_KEY_SECRET');
+    if (!mpAccessTokenRaw || mpAccessTokenRaw.trim() === '') {
+        console.error('[MP Webhook] ERROR: PAYMENT_API_KEY_SECRET not set or empty.');
+        return new Response(JSON.stringify({ error: 'Payment service not configured (missing PAYMENT_API_KEY_SECRET).' }), { status: 500, headers: corsHeaders });
     }
+    const mpAccessToken = mpAccessTokenRaw.trim();
+    console.log(`[MP Webhook] Access Token found (masked length: ${mpAccessToken.length})`);
+    console.log(`[MP Webhook] Access Token starts with: ${mpAccessToken.substring(0, 10)}...`);
+
+    // 3. Chamar a API do Mercado Pago para obter o status real do pagamento
+    console.log(`[MP Webhook] Fetching payment details for resource ID: ${resourceId}`);
+    const mpPaymentApiResponse = await fetch(`https://api.mercadopago.com/v1/payments/${resourceId}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${mpAccessToken}`,
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!mpPaymentApiResponse.ok) {
+        const errorText = await mpPaymentApiResponse.text();
+        console.error(`[MP Webhook] Mercado Pago API error fetching payment (${mpPaymentApiResponse.status}):`, errorText);
+        return new Response(JSON.stringify({ error: 'Failed to fetch payment details from Mercado Pago.' }), { status: 500, headers: corsHeaders });
+    }
+
+    const mpPaymentData = await mpPaymentApiResponse.json();
+    const paymentStatus = mpPaymentData.status; // Status real do pagamento
+    console.log(`[MP Webhook] Payment status from Mercado Pago API: ${paymentStatus}`);
+    console.log(`[MP Webhook] Mercado Pago Payment Data:`, JSON.stringify(mpPaymentData, null, 2));
+
+    // 4. Usar o external_reference do pagamento para localizar a transação em 'receivables'
+    // No create-payment-preference, definimos external_reference = transactionId (id do receivable)
+    const externalReference = mpPaymentData.external_reference as string | null;
+    if (!externalReference) {
+        console.error('[MP Webhook] ERROR: Payment external_reference not found. Cannot link to receivables transaction.');
+        return new Response(JSON.stringify({ error: 'Payment external_reference missing. Cannot link transaction.' }), { status: 500, headers: corsHeaders });
+    }
+
+    const transactionId = externalReference;
+
+    // 5. Buscar a transação pendente na tabela 'receivables' usando o transactionId
+    const { data: receivable, error: fetchReceivableError } = await supabaseService
+        .from('receivables')
+        .select('id, client_user_id, wristband_analytics_ids, manager_user_id, event_id, total_value')
+        .eq('id', transactionId)
+        .eq('status', 'pending')
+        .single();
 
     if (fetchReceivableError || !receivable) {
-        console.warn(`[MP Webhook] Pending receivable not found for resource ID: ${resourceId}`);
+        console.warn(`[MP Webhook] Pending receivable not found for transaction ID (external_reference): ${transactionId}`);
         return new Response(JSON.stringify({ message: 'Receivable not found or already processed.' }), { status: 200, headers: corsHeaders });
     }
-    
-    const transactionId = receivable.id;
+
     const clientUserId = receivable.client_user_id;
     const analyticsIds = receivable.wristband_analytics_ids;
     const managerUserId = receivable.manager_user_id;
-    const eventId = receivable.event_id; // Novo campo
-    const totalAmount = receivable.total_amount; // Novo campo
+    const eventId = receivable.event_id;
+    const totalValue = receivable.total_value;
 
     // Validações adicionais para os novos campos
-    if (!eventId || !totalAmount) {
-        console.error(`[MP Webhook] Critical Error: Receivable ${transactionId} missing event_id or total_amount.`);
+    if (!eventId || !totalValue) {
+        console.error(`[MP Webhook] Critical Error: Receivable ${transactionId} missing event_id or total_value.`);
         return new Response(JSON.stringify({ error: 'Transaction data incomplete.' }), { status: 500, headers: corsHeaders });
     }
 
-    // 3. SIMULAÇÃO DE VERIFICAÇÃO DE PAGAMENTO (Substituir pela chamada real ao MP)
-    // Status do MP: approved, pending, rejected, refunded, cancelled
-    // Para produção, você faria uma chamada para a API do Mercado Pago para obter o status real do pagamento.
-    const paymentStatus = 'approved'; // Simulação de sucesso
     
     if (paymentStatus === 'approved') {
-        // 4. Atualizar status da transação para 'paid'
+        // 6. Atualizar status da transação para 'paid'
         const { error: updateReceivableError } = await supabaseService
             .from('receivables')
             .update({ status: 'paid' })
@@ -86,10 +114,10 @@ serve(async (req) => {
 
         if (updateReceivableError) throw updateReceivableError;
 
-        // 5. Buscar o percentual de comissão aplicado ao evento
+        // 5. Buscar o percentual de comissão aplicado ao evento e company_id
         const { data: eventData, error: fetchEventError } = await supabaseService
             .from('events')
-            .select('applied_percentage')
+            .select('applied_percentage, company_id')
             .eq('id', eventId)
             .single();
         
@@ -99,26 +127,77 @@ serve(async (req) => {
         }
 
         const appliedPercentage = eventData.applied_percentage;
-        const platformAmount = totalAmount * (appliedPercentage / 100);
-        const managerAmount = totalAmount - platformAmount;
+        const companyId = eventData.company_id;
+        
+        // Validação do percentual de comissão
+        if (!appliedPercentage || appliedPercentage < 0 || appliedPercentage > 100) {
+            console.error(`[MP Webhook] Critical Error: Invalid applied_percentage (${appliedPercentage}) for event ${eventId}.`);
+            throw new Error(`Invalid commission percentage for event ${eventId}.`);
+        }
 
-        // 6. Registrar a divisão financeira na nova tabela financial_splits
-        const { error: insertSplitError } = await supabaseService
-            .from('financial_splits')
-            .insert({
+        // 6. Calcular valores: comissão da plataforma e valor líquido do organizador
+        const platformAmount = totalValue * (appliedPercentage / 100);
+        const managerAmount = totalValue - platformAmount;
+        
+        console.log(`[MP Webhook] Financial Calculation for transaction ${transactionId}:`);
+        console.log(`  - Total Value: R$ ${totalValue.toFixed(2)}`);
+        console.log(`  - Applied Percentage: ${appliedPercentage}%`);
+        console.log(`  - Platform Commission: R$ ${platformAmount.toFixed(2)}`);
+        console.log(`  - Manager Net Amount: R$ ${managerAmount.toFixed(2)}`);
+        console.log(`  - Company ID: ${companyId}`);
+
+        // 7. Registrar a divisão financeira na tabela financial_splits
+        // IMPORTANTE: Gravar 2 registros separados conforme regra de negócio:
+        // a) Um registro para o valor líquido do organizador (manager_amount preenchido, platform_amount = 0)
+        // b) Um registro para a comissão da plataforma (platform_amount preenchido, manager_amount = 0)
+        // Usando split_type como flag para identificar claramente cada registro
+        
+        // Preparar os 2 registros de financial_splits conforme regra de negócio
+        // IMPORTANTE: A identificação de qual registro é comissão é feita por:
+        // - Registro com platform_amount > 0 e manager_amount = 0 → Comissão do sistema
+        // - Registro com manager_amount > 0 e platform_amount = 0 → Valor líquido do organizador
+        const financialSplitsToInsert = [
+            // Registro 1: Valor líquido do organizador (manager)
+            {
                 transaction_id: transactionId,
                 event_id: eventId,
                 manager_user_id: managerUserId,
-                platform_amount: platformAmount,
-                manager_amount: managerAmount,
-                total_amount: totalAmount,
+                platform_amount: 0, // Zero identifica que este é o valor líquido do organizador
+                manager_amount: managerAmount, // Valor líquido do organizador
+                total_amount: totalValue,
                 applied_percentage: appliedPercentage,
-            });
+            },
+            // Registro 2: Comissão da plataforma (sistema)
+            {
+                transaction_id: transactionId,
+                event_id: eventId,
+                manager_user_id: managerUserId,
+                platform_amount: platformAmount, // Valor > 0 identifica que este é a comissão do sistema
+                manager_amount: 0, // Zero identifica que este é a comissão
+                total_amount: totalValue,
+                applied_percentage: appliedPercentage,
+            }
+        ];
+
+        // Inserir os 2 registros de forma atômica (se um falhar, ambos falham)
+        // Usando transação implícita do Supabase (insert em lote)
+        const { error: insertSplitError } = await supabaseService
+            .from('financial_splits')
+            .insert(financialSplitsToInsert);
 
         if (insertSplitError) {
-            console.error(`[MP Webhook] Critical Error: Failed to insert financial split for transaction ${transactionId}:`, insertSplitError);
-            // Lidar com falha na inserção do split (ex: notificar admin, retry, etc.)
+            console.error(`[MP Webhook] Critical Error: Failed to insert financial splits for transaction ${transactionId}:`, insertSplitError);
+            // Se a inserção falhar, reverter a atualização do receivable para manter consistência
+            await supabaseService
+                .from('receivables')
+                .update({ status: 'pending' })
+                .eq('id', transactionId);
+            throw new Error(`Failed to record financial splits: ${insertSplitError.message}`);
         }
+        
+        console.log(`[MP Webhook] Successfully inserted 2 financial split records for transaction ${transactionId}:`);
+        console.log(`  - Manager Net Amount Record: R$ ${managerAmount.toFixed(2)}`);
+        console.log(`  - Platform Commission Record: R$ ${platformAmount.toFixed(2)}`);
 
         // 7. Atualizar wristband analytics: associar cliente e marcar como 'used'/'purchase'
         const { data: analyticsToUpdate, error: fetchUpdateError } = await supabaseService
