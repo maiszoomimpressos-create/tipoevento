@@ -25,33 +25,7 @@ const ManagerLogin: React.FC = () => {
                     </div>
                     <h1 className="text-2xl font-semibold text-white mb-2">Área do Gestor</h1>
                     <p className="text-gray-400">Acesse seu painel de controle premium</p>
-                </div>
-                <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-8 shadow-2xl shadow-yellow-500/10">
-                    <form onSubmit={(e) => { e.preventDefault(); navigate('/manager/dashboard'); }} className="space-y-6">
-                        <div>
-                            <label htmlFor="managerEmail" className="block text-sm font-medium text-white mb-2">
-                                E-mail Corporativo
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="email"
-                                    id="managerEmail"
-                                    value={managerLoginData.email}
-                                    onChange={(e) => setManagerLoginData(prev => ({ ...prev, email: e.target.value }))}
-                                    className="w-full bg-black/60 border border-yellow-500/30 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-yellow-500 focus:ring-yellow-500/20 transition-all duration-300"
-                                    placeholder="gestor@empresa.com"
-                                    required
-                                />
-                                <i className="fas fa-building absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500/60 text-sm"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <label htmlFor="managerPassword" className="block text-sm font-medium text-white mb-2">
-                                Senha de Acesso
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="password"
+            
                                     id="managerPassword"
                                     value={managerLoginData.password}
                                     onChange={(e) => setManagerLoginData(prev => ({ ...prev, password: e.target.value }))}
@@ -80,36 +54,6 @@ const ManagerLogin: React.FC = () => {
                                 Acessar Dashboard PRO
                             </Button>
                             <Button
-                                type="button"
-                                onClick={() => navigate('/')}
-                                className="w-full bg-transparent border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 text-lg font-semibold transition-all duration-300 cursor-pointer"
-                            >
-                                Voltar ao Site
-                            </Button>
-                        </div>
-                    </form>
-                </div>
-                <div className="mt-6 grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-black/40 rounded-xl border border-yellow-500/20 text-center">
-                        <i className="fas fa-lock text-yellow-500 text-xl mb-2"></i>
-                        <div className="text-xs text-gray-400">Criptografia SSL</div>
-                    </div>
-                    <div className="p-4 bg-black/40 rounded-xl border border-yellow-500/20 text-center">
-                        <i className="fas fa-user-shield text-yellow-500 text-xl mb-2"></i>
-                        <div className="text-xs text-gray-400">Autenticação 2FA</div>
-                    </div>
-                </div>
-                <div className="mt-6 p-4 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 rounded-xl border border-yellow-500/30">
-                    <div className="flex items-center text-yellow-500 mb-2">
-                        <i className="fas fa-star mr-2"></i>
-                        <span className="text-sm font-semibold">Recursos Premium PRO</span>
-                    </div>
-                    <ul className="text-gray-300 text-xs space-y-1">
-                        <li>• Dashboard avançado com analytics em tempo real</li>
-                        <li>• Gestão completa de eventos e vendas</li>
-                        <li>• Sistema de pulseiras inteligentes</li>
-                        <li>• Relatórios detalhados e exportação</li>
-                    </ul>
                 </div>
             </div>
         </div>
