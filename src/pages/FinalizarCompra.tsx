@@ -7,8 +7,7 @@ import { showError } from '@/utils/toast';
 
 // Helper function to get the minimum price display
 const getMinPriceDisplay = (price: number | null): string => {
-    if (price === null || price === 0) return 'Grátis';
-    return `R$ ${price.toFixed(2).replace('.', ',')}`;
+   
 };
 
 const FinalizarCompra: React.FC = () => {
@@ -19,7 +18,7 @@ const FinalizarCompra: React.FC = () => {
     const eventId = location.state?.eventId as string | undefined;
 
     // 2. Buscar os detalhes do evento
-    const { details, isLoading, isError } = useEventDetails(eventId);
+   
 
     if (!eventId) {
         // Se não houver ID, redireciona para a home
@@ -35,13 +34,7 @@ const FinalizarCompra: React.FC = () => {
         );
     }
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-yellow-500" />
-            </div>
-        );
-    }
+   
 
     if (isError || !details) {
         return (
@@ -57,7 +50,7 @@ const FinalizarCompra: React.FC = () => {
     
     const { event, ticketTypes } = details;
     // Usando event.min_price que agora é calculado no hook
-    const minPriceDisplay = getMinPriceDisplay(event.min_price);
+    
 
     return (
         <div className="min-h-screen bg-black text-white">
@@ -66,7 +59,7 @@ const FinalizarCompra: React.FC = () => {
                 <img
                     src={event.image_url}
                     alt={event.title}
-                    className="w-full h-full object-cover object-top"
+                   
                 />
                 {/* Overlay escuro com gradiente */}
                 <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/40"></div>
@@ -81,7 +74,7 @@ const FinalizarCompra: React.FC = () => {
                                 {event.title}
                             </h1>
                             <p className="text-base sm:text-xl text-gray-200 mb-4 sm:mb-8 leading-relaxed line-clamp-3">
-                                {event.description}
+                              
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                                 <div className="flex items-center">
