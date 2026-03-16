@@ -6,8 +6,7 @@ import { Users, Building, Zap, Clock, AlertTriangle, CheckCircle, Loader2 } from
 
 const getActivityStatusClasses = (status: string) => {
     switch (status) {
-        case 'success': return 'text-green-500 bg-green-500/20';
-        case 'warning': return 'text-yellow-500 bg-yellow-500/20';
+        
         case 'error': return 'text-red-500 bg-red-500/20';
         case 'info':
         default: return 'text-blue-500 bg-blue-500/20';
@@ -114,8 +113,7 @@ const AdminDashboard: React.FC = () => {
                                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                                     <span className={`w-2 h-2 rounded-full ${getActivityStatusClasses(activity.status)}`}></span>
                                     <div className="min-w-0">
-                                        <div className="text-white font-medium text-sm truncate">{activity.type}</div>
-                                        <div className="text-gray-400 text-xs truncate">{activity.detail}</div>
+                            
                                     </div>
                                 </div>
                                 <div className="text-right flex-shrink-0 ml-4">
@@ -151,16 +149,7 @@ const AdminDashboard: React.FC = () => {
                     
                     <div className="mt-8 space-y-4">
                         <Button 
-                            onClick={() => navigate('/manager/settings/advanced')}
-                            className="w-full bg-black/60 border border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base"
-                        >
-                            <i className="fas fa-cog mr-2"></i>
-                            Gerenciar Configurações
-                        </Button>
-                        <Button 
-                            onClick={() => alert('Simulando reinício de serviços...')}
-                            className="w-full bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 py-3 transition-all duration-300 cursor-pointer flex items-center justify-center text-sm sm:text-base"
-                        >
+                            onClick={() =>
                             <i className="fas fa-sync-alt mr-2"></i>
                             Reiniciar Serviços Críticos
                         </Button>
