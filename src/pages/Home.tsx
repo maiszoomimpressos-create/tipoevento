@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { categories } from '@/data/events';
 import AuthStatusMenu from '@/components/AuthStatusMenu';
-import { Input } from "@/components/ui/input";
-import MobileMenu from '@/components/MobileMenu';
-import { supabase } from '@/integrations/supabase/client';
-import { trackAdvancedFilterUse } from '@/utils/metrics';
-import { usePublicEvents, PublicEvent } from '@/hooks/use-public-events';
-import { Loader2 } from 'lucide-react';
-import { showError } from '@/utils/toast';
+
 
 const EVENTS_PER_PAGE = 12;
 
@@ -141,14 +135,7 @@ const Home: React.FC = () => {
                 const [hours] = startTimeStr.split(':').map(Number);
                 const eventHour = hours;
 
-                return appliedTimeRanges.some(range => {
-                    switch (range) {
-                        case 'morning': return eventHour >= 6 && eventHour < 12;
-                        case 'afternoon': return eventHour >= 12 && eventHour < 18;
-                        case 'night': return eventHour >= 18 || eventHour < 6;
-                        default: return false;
-                    }
-                });
+         
             });
         }
 
@@ -173,12 +160,6 @@ const Home: React.FC = () => {
     const endIndex = startIndex + EVENTS_PER_PAGE;
     const displayedEvents = filteredEvents.slice(startIndex, endIndex);
     
-    const getPageNumbers = () => {
-        const maxPagesToShow = 5;
-        const pages = [];
-        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
         if (endPage - startPage + 1 < maxPagesToShow) {
             startPage = Math.max(1, endPage - maxPagesToShow + 1);
         }
@@ -279,16 +260,7 @@ const Home: React.FC = () => {
                                     <option value="">Todas as Cidades</option>
                                     <option value="sao-paulo">São Paulo</option>
                                     <option value="rio-janeiro">Rio de Janeiro</option>
-                                    <option value="belo-horizonte">Belo Horizonte</option>
-                                    <option value="brasilia">Brasília</option>
-                                </select>
-                                <select className="bg-black/60 border border-yellow-500/30 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-white focus:border-yellow-500 focus:outline-none cursor-pointer text-sm sm:text-base">
-                                    <option value="">Todas as Datas</option>
-                                    <option value="hoje">Hoje</option>
-                                    <option value="semana">Esta Semana</option>
-                                    <option value="mes">Este Mês</option>
-                                    <option value="proximo-mes">Próximo Mês</option>
-                                </select>
+                                    
                             </div>
                         </div>
                         <div className="flex flex-col lg:flex-row gap-8">
@@ -439,14 +411,7 @@ const Home: React.FC = () => {
                                                             <i className="fas fa-heart"></i>
                                                         </button>
                                                     </div>
-                                                </div>
-                                                <div className="p-6">
-                                                    <h3 className="text-xl font-semibold text-white mb-3 line-clamp-2 group-hover:text-yellow-500 transition-colors duration-300">
-                                                        {event.title}
-                                                    </h3>
-                                                    <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                                                        {event.description}
-                                                    </p>
+                                     
                                                     <div className="space-y-2 mb-4">
                                                         <div className="flex items-center text-gray-300 text-sm">
                                                             <i className="fas fa-calendar-alt text-yellow-500 mr-3 w-4"></i>
@@ -531,21 +496,7 @@ const Home: React.FC = () => {
                         <div className="w-16 sm:w-24 h-px bg-yellow-500 mx-auto"></div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-                        {categories.map((category) => (
-                            <div
-                                key={category.id}
-                                className="bg-black/60 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-4 sm:p-6 text-center hover:border-yellow-500/60 hover:shadow-lg hover:shadow-yellow-500/20 transition-all duration-300 cursor-pointer hover:scale-105"
-                            >
-                                <div className="text-3xl sm:text-4xl text-yellow-500 mb-2 sm:mb-4">
-                                    <i className={category.icon}></i>
-                                </div>
-                                <h3 className="text-white font-semibold text-sm sm:text-base mb-1">{category.name}</h3>
-                                <span className="text-gray-400 text-xs sm:text-sm">{category.count} eventos</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
+
             <section className="py-12 sm:py-20 px-4 sm:px-6">
                 <div className="max-w-4xl mx-auto text-center">
                     <h2 className="text-3xl sm:text-5xl font-serif text-yellow-500 mb-4 sm:mb-6">Seja um Promotor</h2>
@@ -583,30 +534,7 @@ const Home: React.FC = () => {
                         <div>
                             <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Suporte</h4>
                             <ul className="space-y-2 text-sm">
-                                <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Central de Ajuda</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Contato</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">FAQ</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-yellow-500 transition-colors cursor-pointer">Feedback</a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="text-white font-semibold mb-4 text-base sm:text-lg}>Redes Sociais</h4>
-                            <div className="flex space-x-4">
-                                <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-instagram text-xl sm:text-2xl"></i>
-                                </a>
-                                <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-facebook text-xl sm:text-2xl"></i>
-                                </a>
-                                <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-twitter text-xl sm:text-2xl"></i>
-                                </a>
-                                <a href="#" className="text-yellow-500 hover:text-yellow-600 transition-colors cursor-pointer">
-                                    <i className="fab fa-linkedin text-xl sm:text-2xl"></i>
-                                </a
-                            >
-                            </div>
-                        </div>
+   
                     </div>
                     <div className="border-t border-yellow-500/20 pt-6 text-center">
                         <p className="text-gray-400 text-sm">
